@@ -43,6 +43,148 @@ $announcements = $announcementsRow ? $announcementsRow['total'] : 0;
 
 $eventsRow = $conn->query("SELECT COUNT(*) AS total FROM events WHERE date >= CURDATE()")->fetch_assoc();
 $events = $eventsRow ? $eventsRow['total'] : 0;
+
+// --- Member analytics: detect columns and prepare datasets ---
+$memberCols = [];
+$colsRes = $conn->query("SHOW COLUMNS FROM members");
+if ($colsRes) {
+    while ($c = $colsRes->fetch_assoc()) $memberCols[] = $c['Field'];
+}
+
+$dateCandidates = ['created_at','date_added','date_registered','created','date_joined','reg_date','registered_at','date','added_on'];
+$dateCol = null;
+foreach ($dateCandidates as $c) { if (in_array($c, $memberCols)) { $dateCol = $c; break; } }
+
+$statusCandidates = ['status','is_active','active','member_status','status_id'];
+$statusCol = null;
+foreach ($statusCandidates as $c) { if (in_array($c, $memberCols)) { $statusCol = $c; break; } }
+
+$typeCandidates = ['member_type','type','role','category','member_category'];
+$typeCol = null;
+foreach ($typeCandidates as $c) { if (in_array($c, $memberCols)) { $typeCol = $c; break; } }
+
+// last 6 months labels
+$memberMonthLabels = [];
+$memberMonthIndex = [];
+for ($i = 5; $i >= 0; $i--) {
+    $ym = date('Y-m', strtotime("-$i month"));
+    $memberMonthIndex[$ym] = 0;
+    $memberMonthLabels[] = date('M Y', strtotime($ym . '-01'));
+}
+
+$monthlyNewData = array_values($memberMonthIndex);
+$activeTrendActive = array_values($memberMonthIndex);
+$activeTrendInactive = array_values($memberMonthIndex);
+
+if ($dateCol) {
+    // Monthly new members
+    $sql = "SELECT DATE_FORMAT($dateCol, '%Y-%m') AS ym, COUNT(*) AS cnt FROM members WHERE $dateCol >= DATE_SUB(CURDATE(), INTERVAL 5 MONTH) GROUP BY ym ORDER BY ym";
+    $res = $conn->query($sql);
+    if ($res) {
+        while ($r = $res->fetch_assoc()) {
+            $idx = array_search(date('M Y', strtotime($r['ym'] . '-01')), $memberMonthLabels);
+            if ($idx !== false) $monthlyNewData[$idx] = (int)$r['cnt'];
+        }
+    }
+
+    // Active vs Inactive per month (if status column exists)
+    if ($statusCol) {
+        $sql2 = "SELECT DATE_FORMAT($dateCol, '%Y-%m') AS ym, $statusCol AS st, COUNT(*) AS cnt FROM members WHERE $dateCol >= DATE_SUB(CURDATE(), INTERVAL 5 MONTH) GROUP BY ym, st ORDER BY ym";
+        $r2 = $conn->query($sql2);
+        if ($r2) {
+            while ($row = $r2->fetch_assoc()) {
+                $label = date('M Y', strtotime($row['ym'] . '-01'));
+                $idx = array_search($label, $memberMonthLabels);
+                if ($idx === false) continue;
+                $val = $row['cnt'];
+                $st = $row['st'];
+                $isActive = false;
+                if (is_numeric($st)) { $isActive = intval($st) === 1; }
+                else { $ls = strtolower(trim((string)$st)); $isActive = in_array($ls, ['active','a','yes','y','true','1']); }
+                if ($isActive) $activeTrendActive[$idx] = (int)$activeTrendActive[$idx] + (int)$val;
+                else $activeTrendInactive[$idx] = (int)$activeTrendInactive[$idx] + (int)$val;
+            }
+        }
+    }
+}
+
+// If no date column, attempt an overall active/inactive split (no trend)
+if (!$dateCol && $statusCol) {
+    $overall = $conn->query("SELECT $statusCol AS st, COUNT(*) AS cnt FROM members GROUP BY st");
+    if ($overall) {
+        while ($r = $overall->fetch_assoc()) {
+            $st = $r['st']; $cnt = (int)$r['cnt'];
+            $isActive = false;
+            if (is_numeric($st)) { $isActive = intval($st) === 1; }
+            else { $ls = strtolower(trim((string)$st)); $isActive = in_array($ls, ['active','a','yes','y','true','1']); }
+            if ($isActive) $activeTrendActive = [$cnt,0,0,0,0,0]; else $activeTrendInactive = [$cnt,0,0,0,0,0];
+        }
+    }
+}
+
+// Member types distribution
+$memberTypesLabels = [];
+$memberTypesData = [];
+if ($typeCol) {
+    $tq = $conn->query("SELECT COALESCE(NULLIF($typeCol, ''), 'Unknown') AS t, COUNT(*) AS cnt FROM members GROUP BY t ORDER BY cnt DESC");
+    if ($tq) {
+        while ($tr = $tq->fetch_assoc()) {
+            $memberTypesLabels[] = $tr['t'];
+            $memberTypesData[] = (int)$tr['cnt'];
+        }
+    }
+}
+
+// --- Event analytics (replace member types card) ---
+$eventCols = [];
+$ecRes = $conn->query("SHOW COLUMNS FROM events");
+if ($ecRes) { while ($r = $ecRes->fetch_assoc()) $eventCols[] = $r['Field']; }
+
+$eventDateCandidates = ['date','event_date','start_date','event_start','created_at'];
+$eventDateCol = null;
+foreach ($eventDateCandidates as $c) { if (in_array($c, $eventCols)) { $eventDateCol = $c; break; } }
+
+$eventTypeCandidates = ['category','event_type','type','event_category'];
+$eventTypeCol = null;
+foreach ($eventTypeCandidates as $c) { if (in_array($c, $eventCols)) { $eventTypeCol = $c; break; } }
+
+// last 6 months for events
+$eventMonthLabels = [];
+$eventMonthIndex = [];
+for ($i = 5; $i >= 0; $i--) {
+    $ym = date('Y-m', strtotime("-$i month"));
+    $eventMonthIndex[$ym] = 0;
+    $eventMonthLabels[] = date('M Y', strtotime($ym . '-01'));
+}
+$eventMonthData = array_values($eventMonthIndex);
+
+if ($eventDateCol) {
+    $esql = "SELECT DATE_FORMAT($eventDateCol, '%Y-%m') AS ym, COUNT(*) AS cnt FROM events WHERE $eventDateCol >= DATE_SUB(CURDATE(), INTERVAL 5 MONTH) GROUP BY ym ORDER BY ym";
+    $eres = $conn->query($esql);
+    if ($eres) {
+        while ($er = $eres->fetch_assoc()) {
+            $label = date('M Y', strtotime($er['ym'] . '-01'));
+            $idx = array_search($label, $eventMonthLabels);
+            if ($idx !== false) $eventMonthData[$idx] = (int)$er['cnt'];
+        }
+    }
+}
+
+$eventTypesLabels = [];
+$eventTypesData = [];
+if ($eventTypeCol) {
+    $etq = $conn->query("SELECT COALESCE(NULLIF($eventTypeCol, ''), 'Unknown') AS t, COUNT(*) AS cnt FROM events GROUP BY t ORDER BY cnt DESC");
+    if ($etq) {
+        while ($er = $etq->fetch_assoc()) {
+            $eventTypesLabels[] = $er['t'];
+            $eventTypesData[] = (int)$er['cnt'];
+        }
+    }
+}
+
+// March event highlight value (explicitly requested)
+$marchEventPercent = 82;
+
 ?>
 
 <!DOCTYPE html>
@@ -142,6 +284,24 @@ body { font-family: 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; }
   #calendar { width: 100% !important; max-width: none !important; font-size: 1rem; }
   #calendar th, #calendar td { padding: 8px 4px; }
 }
+
+/* Chart fixed heights to prevent overly tall charts */
+.chart-fixed { height: 220px; max-height: 320px; }
+.chart-fixed-sm { height: 160px; max-height: 220px; }
+.chart-fixed .chart-canvas { height: 100% !important; width: 100% !important; }
+
+@media (max-width: 767px) {
+    .chart-fixed { height: 180px; }
+    .chart-fixed-sm { height: 140px; }
+}
+
+/* smaller stacked charts inside right column */
+.small-chart { height: 110px; max-height: 140px; }
+.small-chart .chart-canvas { height: 100% !important; width: 100% !important; }
+
+@media (max-width: 767px) {
+    .small-chart { height: 90px; }
+}
 </style>
 </head>
 <body>
@@ -206,6 +366,59 @@ body { font-family: 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; }
                 </div>
             </div>
         </a>
+    </div>
+</div>
+
+<!-- Member Analytics Panel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card event-card p-3">
+            <div class="card-body">
+                <h5 class="mb-3">Member Analytics (Last 6 months)</h5>
+                <div class="row gy-3">
+                    <div class="col-lg-6">
+                        <div class="card p-2 h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">Monthly New Members</h6>
+                                <div class="chart-fixed">
+                                    <canvas id="monthlyNewMembersChart" class="chart-canvas"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card p-2 h-100">
+                            <div class="card-body">
+                                <h6 class="card-title">Active vs Inactive (Trend)</h6>
+                                <div class="chart-fixed">
+                                    <canvas id="activeTrendChart" class="chart-canvas"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4 mt-3 d-lg-none"></div>
+                    <div class="col-12 col-lg-4 mt-3">
+                        <div class="card p-2 h-100 text-center">
+                            <div class="card-body">
+                                <h6 class="card-title">Event Analytics</h6>
+                                <div class="small-chart mb-2">
+                                    <label class="small d-block text-muted">Events / Month</label>
+                                    <canvas id="eventsPerMonthChart" class="chart-canvas"></canvas>
+                                </div>
+                                <div class="small-chart mb-2">
+                                    <label class="small d-block text-muted">Types of Events</label>
+                                    <canvas id="eventTypesChart" class="chart-canvas"></canvas>
+                                </div>
+                                <div class="small-chart">
+                                    <label class="small d-block text-muted">March Event (% Achievement)</label>
+                                    <canvas id="marchEventChart" class="chart-canvas"></canvas>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -337,6 +550,93 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 
     renderCalendar();
+});
+</script>
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        // Monthly new members
+        const monthLabels = <?php echo json_encode($memberMonthLabels); ?> || [];
+        const monthlyNew = <?php echo json_encode($monthlyNewData); ?> || [];
+
+        const monthlyCtx = document.getElementById('monthlyNewMembersChart');
+        if (monthlyCtx) {
+            new Chart(monthlyCtx, {
+                type: 'bar',
+                data: {
+                    labels: monthLabels,
+                    datasets: [{
+                        label: 'New Members',
+                        data: monthlyNew,
+                        backgroundColor: 'rgba(54,162,235,0.85)'
+                    }]
+                },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+            });
+        }
+
+        // Active vs Inactive trend
+        const activeData = <?php echo json_encode($activeTrendActive); ?> || [];
+        const inactiveData = <?php echo json_encode($activeTrendInactive); ?> || [];
+        const activeCtx = document.getElementById('activeTrendChart');
+        if (activeCtx) {
+            new Chart(activeCtx, {
+                type: 'line',
+                data: {
+                    labels: monthLabels,
+                    datasets: [
+                        { label: 'Active', data: activeData, borderColor: 'rgba(40,167,69,0.9)', backgroundColor: 'rgba(40,167,69,0.15)', tension:0.3, fill:true },
+                        { label: 'Inactive', data: inactiveData, borderColor: 'rgba(220,53,69,0.9)', backgroundColor: 'rgba(220,53,69,0.12)', tension:0.3, fill:true }
+                    ]
+                },
+                options: { responsive:true, maintainAspectRatio:false }
+            });
+        }
+
+        // Events per month (bar)
+        const eventMonthLabels = <?php echo json_encode($eventMonthLabels); ?> || [];
+        const eventMonthData = <?php echo json_encode($eventMonthData); ?> || [];
+        const eventsPerMonthCtx = document.getElementById('eventsPerMonthChart');
+        if (eventsPerMonthCtx) {
+            new Chart(eventsPerMonthCtx, {
+                type: 'bar',
+                data: { labels: eventMonthLabels, datasets:[{ label:'Events', data: eventMonthData, backgroundColor: '#2cd1e7' }] },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
+            });
+        }
+
+        // Types of events (bar) if available
+        const evtTypesLabels = <?php echo json_encode($eventTypesLabels); ?> || [];
+        const evtTypesData = <?php echo json_encode($eventTypesData); ?> || [];
+        const evtTypesCtx = document.getElementById('eventTypesChart');
+        if (evtTypesCtx) {
+            new Chart(evtTypesCtx, {
+                type: 'bar',
+                data: { labels: evtTypesLabels, datasets:[{ label:'Count', data: evtTypesData, backgroundColor: '#FF7043' }] },
+                options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{autoSkip:false}}} }
+            });
+        }
+
+        // March Event percent bar (highlight)
+        const marchPercent = <?php echo json_encode($marchEventPercent); ?> || 0;
+        const marchCtx = document.getElementById('marchEventChart');
+        if (marchCtx) {
+            const ctx = marchCtx.getContext('2d');
+            // create gradient using theme colors
+            const grad = ctx.createLinearGradient(0,0, marchCtx.width, 0);
+            grad.addColorStop(0, '#2cd1e7');
+            grad.addColorStop(1, '#FF7043');
+            new Chart(marchCtx, {
+                type: 'bar',
+                data: { labels: ['March'], datasets:[{ label: 'Achievement %', data: [marchPercent], backgroundColor: grad }] },
+                options: { indexAxis: 'y', responsive:true, maintainAspectRatio:false, scales:{x:{max:100, ticks:{callback: v => v + '%'}}}, plugins:{legend:{display:false}} }
+            });
+        }
+
+    } catch (err) { console.error('Member charts error', err); }
 });
 </script>
 
