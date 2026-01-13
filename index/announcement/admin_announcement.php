@@ -105,7 +105,63 @@ if (isset($_GET['archive'])) {
     }
 }
 
-$announcements = $conn->query("SELECT * FROM announcements ORDER BY date_posted DESC");
+// -------------------------
+// Search & Filter params
+// -------------------------
+$search = trim($_GET['q'] ?? '');
+$date_from = trim($_GET['from'] ?? '');
+$date_to = trim($_GET['to'] ?? '');
+$has_image = isset($_GET['has_image']) ? $_GET['has_image'] : 'all';
+
+// Build query with safe bindings
+$where = [];
+$params = [];
+$types = '';
+
+if ($search !== '') {
+    $where[] = "(title LIKE ? OR content LIKE ?)";
+    $params[] = "%{$search}%";
+    $params[] = "%{$search}%";
+    $types .= 'ss';
+}
+if ($date_from !== '') {
+    // expect YYYY-MM-DD
+    $where[] = "date_posted >= ?";
+    $params[] = $date_from . " 00:00:00";
+    $types .= 's';
+}
+if ($date_to !== '') {
+    $where[] = "date_posted <= ?";
+    $params[] = $date_to . " 23:59:59";
+    $types .= 's';
+}
+if ($has_image === '1') {
+    $where[] = "image IS NOT NULL AND image <> ''";
+} elseif ($has_image === '0') {
+    $where[] = "(image IS NULL OR image = '')";
+}
+
+$sql = "SELECT * FROM announcements";
+if (!empty($where)) $sql .= " WHERE " . implode(' AND ', $where);
+$sql .= " ORDER BY date_posted DESC";
+
+$announcements = null;
+if (!empty($params)) {
+    $stmt = $conn->prepare($sql);
+    // bind params dynamically (safe)
+    $bind_names = [];
+    $bind_names[] = $types;
+    for ($i = 0; $i < count($params); $i++) {
+        $bind_names[] = &$params[$i];
+    }
+    if (!empty($bind_names)) {
+        call_user_func_array([$stmt, 'bind_param'], $bind_names);
+    }
+    $stmt->execute();
+    $announcements = $stmt->get_result();
+} else {
+    $announcements = $conn->query($sql);
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -130,39 +186,75 @@ body { font-family: 'Segoe UI', sans-serif; background: #fff; }
 .btn-primary { background-color: #ff7043; border-color: #ff7043; }
 .btn-primary:hover { background-color: #00897b; border-color: #00897b; }
 .modal-header { background-color: #ff7043; color: #fff; }
+.filter-row .form-control, .filter-row .form-select { height: calc(2.25rem + 6px); }
 </style>
 </head>
 <body>
 <?php include('../navbar.php'); ?>
 
 <div class="main-content">
-    <div class="d-flex justify-content-between align-items-center mb-3">
-        <h4 class="fw-bold">Announcements</h4>
-        <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
-            <i class="bi bi-plus-circle me-1"></i> Add Announcement
-        </button>
+    <div class="d-flex justify-content-between align-items-start mb-3">
+        <div>
+            <h4 class="fw-bold">Announcements</h4>
+            <p class="text-muted mb-0">Manage announcements. Use search and filters to find items.</p>
+        </div>
+        <div class="d-flex gap-2 align-items-center">
+            <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
+                <i class="bi bi-plus-circle me-1"></i> Add Announcement
+            </button>
+        </div>
     </div>
 
-    <?php while ($row = $announcements->fetch_assoc()): ?>
-        <div class="announcement-item">
-            <h6><?= htmlspecialchars($row['title']) ?></h6>
-            <p class="mb-1"><small>Posted on <?= date("F j, Y", strtotime($row['date_posted'])) ?></small></p>
-            <p><?= nl2br(htmlspecialchars(substr($row['content'], 0, 90))) ?>...</p>
-            <div class="link-group">
-                <a href="#" class="view-btn" 
-                   data-title="<?= htmlspecialchars($row['title']) ?>"
-                   data-content="<?= htmlspecialchars($row['content']) ?>"
-                   data-image="<?= htmlspecialchars($row['image'] ?? '') ?>"
-                   data-bs-toggle="modal" data-bs-target="#viewAnnouncementModal">View</a>
-                <a class="edit-btn" 
-                   data-id="<?= $row['id'] ?>"
-                   data-title="<?= htmlspecialchars($row['title']) ?>"
-                   data-content="<?= htmlspecialchars($row['content']) ?>"
-                   data-bs-toggle="modal" data-bs-target="#editAnnouncementModal">Edit</a>
-                <a href="#" class="archive-announcement" data-id="<?= $row['id'] ?>">Archive</a>
-            </div>
+    <!-- Search & Filters -->
+    <form class="row g-2 align-items-center mb-4 filter-row" method="GET">
+        <div class="col-auto" style="min-width:260px;">
+            <input name="q" class="form-control form-control-sm" type="search" placeholder="Search title or content" value="<?= htmlspecialchars($search) ?>">
         </div>
-    <?php endwhile; ?>
+        <div class="col-auto">
+            <input type="date" name="from" class="form-control form-control-sm" value="<?= htmlspecialchars($date_from) ?>" title="From">
+        </div>
+        <div class="col-auto">
+            <input type="date" name="to" class="form-control form-control-sm" value="<?= htmlspecialchars($date_to) ?>" title="To">
+        </div>
+        <div class="col-auto">
+            <select name="has_image" class="form-select form-select-sm">
+                <option value="all" <?= $has_image === 'all' ? 'selected' : '' ?>>All</option>
+                <option value="1" <?= $has_image === '1' ? 'selected' : '' ?>>With Image</option>
+                <option value="0" <?= $has_image === '0' ? 'selected' : '' ?>>Without Image</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i> Filter</button>
+            <a href="admin_announcement.php" class="btn btn-sm btn-secondary ms-1">Reset</a>
+        </div>
+    </form>
+
+    <?php if ($announcements && $announcements->num_rows > 0): ?>
+        <?php while ($row = $announcements->fetch_assoc()): ?>
+            <div class="announcement-item">
+                <h6><?= htmlspecialchars($row['title']) ?></h6>
+                <p class="mb-1"><small>Posted on <?= date("F j, Y", strtotime($row['date_posted'])) ?></small></p>
+                <p><?= nl2br(htmlspecialchars(substr($row['content'], 0, 90))) ?>...</p>
+                <div class="link-group">
+                    <a href="#" class="view-btn" 
+                       data-title="<?= htmlspecialchars($row['title']) ?>"
+                       data-content="<?= htmlspecialchars($row['content']) ?>"
+                       data-image="<?= htmlspecialchars($row['image'] ?? '') ?>"
+                       data-bs-toggle="modal" data-bs-target="#viewAnnouncementModal">View</a>
+                    <a class="edit-btn" 
+                       data-id="<?= $row['id'] ?>"
+                       data-title="<?= htmlspecialchars($row['title']) ?>"
+                       data-content="<?= htmlspecialchars($row['content']) ?>"
+                       data-bs-toggle="modal" data-bs-target="#editAnnouncementModal">Edit</a>
+                    <a href="#" class="archive-announcement" data-id="<?= $row['id'] ?>">Archive</a>
+                </div>
+            </div>
+        <?php endwhile; ?>
+    <?php else: ?>
+        <div class="card p-4 text-center">
+            <p class="mb-0">No announcements found.</p>
+        </div>
+    <?php endif; ?>
 </div>
 
 <!-- 🟠 Add Modal -->
@@ -253,6 +345,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #fff; }
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
 // 🔹 Fill edit modal fields
 document.querySelectorAll('.edit-btn').forEach(btn => {

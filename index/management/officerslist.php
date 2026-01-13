@@ -170,8 +170,10 @@ $sql = "
     ORDER BY r.role_name ASC
 ";
 $result = $conn->query($sql);
-?>
 
+/* add explicit count (used for quick debug / display) */
+$officers_count = ($result) ? $result->num_rows : 0;
+?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -204,7 +206,7 @@ $result = $conn->query($sql);
 <div class="main-content">
     <div class="d-flex justify-content-between align-items-center mb-4">
         <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addOfficerModal">+ Assign New Officer</button>
-        <h2 class="fw-bold mb-0 text-center flex-grow-1">Admin Panel — Officers List</h2>
+        <h2 class="fw-bold mb-0 text-center flex-grow-1">Admin Panel — Officers List <small class="text-muted">(&nbsp;<?php echo $officers_count; ?> assigned&nbsp;)</small></h2>
     </div>
 
     <div class="table-responsive shadow-sm rounded-4">
@@ -442,7 +444,7 @@ document.getElementById('edit_image')?.addEventListener('change', function(e) {
 // SweetAlert messages after server response
 <?php if ($alertMsg): ?>
 Swal.fire({
-    icon: '<?= $alertType ?>',
+    icon: '<?= ucfirst($alertType) ?>',
     title: '<?= ucfirst($alertType) ?>',
     text: '<?= addslashes($alertMsg) ?>',
     confirmButtonColor: '<?= $alertType === "success" ? "#43a047" : "#e53935" ?>'
