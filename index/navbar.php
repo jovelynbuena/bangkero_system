@@ -136,6 +136,8 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
 
 <!-- Sidebar -->
 <div class="sidebar d-flex flex-column">
+
+    <!-- Logo + Name -->
     <div class="text-center mb-4 px-3">
         <div class="logo-wrapper d-inline-flex align-items-center justify-content-center">
             <img src="<?= $assocLogo ?>" alt="<?= $assocName ?> Logo" class="hero-logo">
@@ -145,83 +147,144 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
 
     <h4><?= ucfirst($role); ?> Menu</h4>
 
-    <!-- Common Links -->
-    <a href="<?= BASE_URL; ?>admin.php" class="<?= ($current_page == 'admin.php') ? 'active' : ''; ?>"><i class="bi bi-house-door"></i> Dashboard</a>
-    <a href="<?= BASE_URL; ?>announcement/admin_announcement.php" class="<?= ($current_page == 'admin_announcement.php') ? 'active' : ''; ?>"><i class="bi bi-megaphone"></i> Announcements</a>
-    <a href="<?= BASE_URL; ?>event.php" class="<?= ($current_page == 'event.php') ? 'active' : ''; ?>"><i class="bi bi-calendar4-week"></i> All Events</a>
-    <a href="<?= BASE_URL; ?>management/galleries.php" class="<?= ($current_page == 'galleries.php') ? 'active' : ''; ?>"><i class="bi bi-images"></i> Galleries</a>
+    <!-- Dashboard + Main Shortcuts -->
+    <a href="<?= BASE_URL; ?>admin.php" class="<?= ($current_page == 'admin.php') ? 'active' : ''; ?>">
+        <i class="bi bi-house-door"></i> Dashboard
+    </a>
+    <a href="<?= BASE_URL; ?>announcement/admin_announcement.php" class="<?= ($current_page == 'admin_announcement.php') ? 'active' : ''; ?>">
+        <i class="bi bi-megaphone"></i> Announcements
+    </a>
+    <a href="<?= BASE_URL; ?>event.php" class="<?= ($current_page == 'event.php') ? 'active' : ''; ?>">
+        <i class="bi bi-calendar4-week"></i> All Events
+    </a>
+    <a href="<?= BASE_URL; ?>management/galleries.php" class="<?= ($current_page == 'galleries.php') ? 'active' : ''; ?>">
+        <i class="bi bi-images"></i> Galleries
+    </a>
 
     <?php if (in_array($role, ['admin','officer'])): ?>
-        <a href="<?= BASE_URL; ?>officers.php" class="<?= ($current_page == 'officers.php') ? 'active' : ''; ?>"><i class="bi bi-people"></i> Officers</a>
 
-        <!-- Management Dropdown -->
-        <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#managementMenu" role="button" aria-expanded="<?= $isManagementOpen ? 'true' : 'false'; ?>" aria-controls="managementMenu">
-            <i class="bi bi-folder"></i> Management <i class="bi bi-caret-down-fill float-end"></i>
-        </a>
-        <div class="collapse ps-3 <?= $isManagementOpen ? 'show' : ''; ?>" id="managementMenu">
-            <a href="<?= BASE_URL; ?>management/officerslist.php" class="<?= ($current_page == 'officerslist.php') ? 'active' : ''; ?>"><i class="bi bi-person-badge"></i> Officers List</a>
-            <a href="<?= BASE_URL; ?>management/memberlist.php" class="<?= ($current_page == 'memberlist.php') ? 'active' : ''; ?>"><i class="bi bi-people-fill"></i> Member List</a>
-
-            <?php if ($role === 'admin'): ?>
-                <a href="<?= BASE_URL; ?>management/manage_officer.php" class="<?= ($current_page == 'manage_officer.php') ? 'active' : ''; ?>"><i class="bi bi-shield-lock"></i> Manage Officers</a>
-                <a href="<?= BASE_URL; ?>management/officer_roles.php" class="<?= ($current_page == 'officer_roles.php') ? 'active' : ''; ?>"><i class="bi bi-person-check"></i> Manage Roles</a>
-            <?php endif; ?>
-
-            <a href="<?= BASE_URL; ?>management/gallery_add.php" class="<?= ($current_page == 'gallery_add.php') ? 'active' : ''; ?>"><i class="bi bi-image"></i> Add Gallery</a>
-            <a href="<?= BASE_URL; ?>management/contact_messages.php" class="<?= ($current_page == 'contact_messages.php') ? 'active' : ''; ?>"><i class="bi bi-envelope"></i> Contact Messages</a>
-        </div>
-    <?php endif; ?>
-    <?php if ($role === 'admin'): ?>
-
-   <!-- Utilities Dropdown -->
-<a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#utilitiesMenu" role="button" aria-expanded="<?= $isUtilitiesOpen ? 'true' : 'false'; ?>" aria-controls="utilitiesMenu">
-    <i class="bi bi-hammer"></i> Utilities <i class="bi bi-caret-down-fill float-end"></i>
-</a>
-<div class="collapse ps-3 <?= $isUtilitiesOpen ? 'show' : ''; ?>" id="utilitiesMenu">
-    <a href="<?= BASE_URL; ?>utilities/backup.php" class="<?= ($current_page == 'backup.php') ? 'active' : ''; ?>">
-        <i class="bi bi-cloud-arrow-up"></i> Backup
-    </a>
-    <a href="<?= BASE_URL; ?>utilities/logs.php" class="<?= ($current_page == 'logs.php') ? 'active' : ''; ?>">
-        <i class="bi bi-journal-text"></i> Logs
+    
+    <!-- ================= MANAGEMENT SECTION ================= -->
+    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#managementMenu"
+       aria-expanded="<?= $isManagementOpen ? 'true' : 'false'; ?>">
+        <i class="bi bi-folder"></i> Management
+        <i class="bi bi-caret-down-fill float-end"></i>
     </a>
 
-    <!-- Archive Submenu inside Utilities -->
-    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#archiveSubMenu" role="button" aria-expanded="<?= $isArchiveOpen ? 'true' : 'false'; ?>" aria-controls="archiveSubMenu">
-        <i class="bi bi-archive"></i> Archive <i class="bi bi-caret-down-fill float-end"></i>
-    </a>
-    <div class="collapse ps-3 <?= $isArchiveOpen ? 'show' : ''; ?>" id="archiveSubMenu">
-        <a href="<?= BASE_URL; ?>management/archives_members.php" class="<?= ($current_page == 'archives_members.php') ? 'active' : ''; ?>">
-            <i class="bi bi-person-x"></i> Archived Members
-        </a>
-        <a href="<?= BASE_URL; ?>management/archives_officers.php" class="<?= ($current_page == 'archives_officers.php') ? 'active' : ''; ?>">
-            <i class="bi bi-person-badge-x"></i> Archived Officers
-        </a>
-        <a href="<?= BASE_URL; ?>management/archived_events.php" class="<?= ($current_page == 'archived_events.php') ? 'active' : ''; ?>">
-            <i class="bi bi-calendar-x"></i> Archived Events
-        </a>
-        <a href="<?= BASE_URL; ?>announcement/archived_announcement.php" class="<?= ($current_page == 'archived_announcement.php') ? 'active' : ''; ?>">
-            <i class="bi bi-megaphone-off"></i> Archived Announcement
-        </a>
-    </div>
-</div>
+    <div class="collapse ps-3 <?= $isManagementOpen ? 'show' : ''; ?>" id="managementMenu">
 
-<?php endif; ?>
+        <a href="<?= BASE_URL; ?>management/officerslist.php"
+           class="<?= ($current_page == 'officerslist.php') ? 'active' : ''; ?>">
+           <i class="bi bi-person-badge"></i> Officers List
+        </a>
 
+        <a href="<?= BASE_URL; ?>management/memberlist.php"
+           class="<?= ($current_page == 'memberlist.php') ? 'active' : ''; ?>">
+           <i class="bi bi-people-fill"></i> Member List
+        </a>
 
-    <!-- Settings Dropdown -->
-    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#settingsMenu" role="button" aria-expanded="<?= $isSettingsOpen ? 'true' : 'false'; ?>" aria-controls="settingsMenu">
-        <i class="bi bi-gear"></i> Settings <i class="bi bi-caret-down-fill float-end"></i>
-    </a>
-    <div class="collapse ps-3 <?= $isSettingsOpen ? 'show' : ''; ?>" id="settingsMenu">
-        <a href="<?= BASE_URL; ?>settings/profile_settings.php" class="<?= ($current_page == 'profile_settings.php') ? 'active' : ''; ?>"><i class="bi bi-person-circle"></i> Profile Settings</a>
         <?php if ($role === 'admin'): ?>
-            <a href="<?= BASE_URL; ?>settings/config.php" class="<?= ($current_page == 'config.php') ? 'active' : ''; ?>"><i class="bi bi-sliders"></i> System Configuration</a>
+        <a href="<?= BASE_URL; ?>management/manage_officer.php"
+           class="<?= ($current_page == 'manage_officer.php') ? 'active' : ''; ?>">
+           <i class="bi bi-shield-lock"></i> Manage Officers
+        </a>
+
+        <a href="<?= BASE_URL; ?>management/officer_roles.php"
+           class="<?= ($current_page == 'officer_roles.php') ? 'active' : ''; ?>">
+           <i class="bi bi-person-check"></i> Manage Roles
+        </a>
         <?php endif; ?>
+
+        <a href="<?= BASE_URL; ?>management/contact_messages.php"
+           class="<?= ($current_page == 'contact_messages.php') ? 'active' : ''; ?>">
+           <i class="bi bi-envelope"></i> Contact Messages
+        </a>
+
+    </div>
+    <?php endif; ?>
+
+    <!-- ================= ADMIN UTILITIES ================= -->
+    <?php if ($role === 'admin'): ?>
+    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#utilitiesMenu"
+       aria-expanded="<?= $isUtilitiesOpen ? 'true' : 'false'; ?>">
+        <i class="bi bi-hammer"></i> Utilities
+        <i class="bi bi-caret-down-fill float-end"></i>
+    </a>
+
+    <div class="collapse ps-3 <?= $isUtilitiesOpen ? 'show' : ''; ?>" id="utilitiesMenu">
+
+        <a href="<?= BASE_URL; ?>utilities/backup.php"
+           class="<?= ($current_page == 'backup.php') ? 'active' : ''; ?>">
+           <i class="bi bi-cloud-arrow-up"></i> Backup
+        </a>
+
+        <a href="<?= BASE_URL; ?>utilities/logs.php"
+           class="<?= ($current_page == 'logs.php') ? 'active' : ''; ?>">
+           <i class="bi bi-journal-text"></i> Logs
+        </a>
+
+        <!-- ARCHIVE INSIDE UTILITIES -->
+        <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#archiveSubMenu"
+           aria-expanded="<?= $isArchiveOpen ? 'true' : 'false'; ?>">
+           <i class="bi bi-archive"></i> Archive
+           <i class="bi bi-caret-down-fill float-end"></i>
+        </a>
+
+        <div class="collapse ps-3 <?= $isArchiveOpen ? 'show' : ''; ?>" id="archiveSubMenu">
+            <a href="<?= BASE_URL; ?>management/archives_members.php"
+               class="<?= ($current_page == 'archives_members.php') ? 'active' : ''; ?>">
+               <i class="bi bi-person-x"></i> Archived Members
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_officers.php"
+               class="<?= ($current_page == 'archives_officers.php') ? 'active' : ''; ?>">
+               <i class="bi bi-person-badge-x"></i> Archived Officers
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archived_events.php"
+               class="<?= ($current_page == 'archived_events.php') ? 'active' : ''; ?>">
+               <i class="bi bi-calendar-x"></i> Archived Events
+            </a>
+
+            <a href="<?= BASE_URL; ?>announcement/archived_announcement.php"
+               class="<?= ($current_page == 'archived_announcement.php') ? 'active' : ''; ?>">
+               <i class="bi bi-megaphone-off"></i> Archived Announcement
+            </a>
+        </div>
+
+    </div>
+    <?php endif; ?>
+
+    <!-- SETTINGS -->
+    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#settingsMenu"
+       aria-expanded="<?= $isSettingsOpen ? 'true' : 'false'; ?>">
+        <i class="bi bi-gear"></i> Settings
+        <i class="bi bi-caret-down-fill float-end"></i>
+    </a>
+
+    <div class="collapse ps-3 <?= $isSettingsOpen ? 'show' : ''; ?>" id="settingsMenu">
+
+        <a href="<?= BASE_URL; ?>settings/profile_settings.php"
+           class="<?= ($current_page == 'profile_settings.php') ? 'active' : ''; ?>">
+           <i class="bi bi-person-circle"></i> Profile Settings
+        </a>
+
+        <?php if ($role === 'admin'): ?>
+        <a href="<?= BASE_URL; ?>settings/config.php"
+           class="<?= ($current_page == 'config.php') ? 'active' : ''; ?>">
+           <i class="bi bi-sliders"></i> System Configuration
+        </a>
+        <?php endif; ?>
+
     </div>
 
-    <!-- Logout -->
-    <a href="<?= BASE_URL; ?>logout.php" class="text-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
+    <!-- LOGOUT -->
+    <a href="<?= BASE_URL; ?>logout.php" class="text-danger">
+        <i class="bi bi-box-arrow-right"></i> Logout
+    </a>
+
 </div>
+
 
 <!-- Top Navbar -->
 <nav class="navbar navbar-expand-lg navbar-light">

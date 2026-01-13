@@ -1,37 +1,75 @@
 <?php
 include('../../config/db_connect.php');
 
+//
+// Sa maraming kaso walang lumalabas dahil nagfa-fail ang SQL kapag
+// walang column/table tulad ng `archived` o `archived_events`.
+// Palitan ito ng mas robust logic: gumamit ng `is_archived` kung meron,
+// fallback sa "show all" kung wala, at i-check kung merong archived_events table.
+//
+$hasIsArchived = false;
+$hasArchivedEventsTable = false;
+
+// safe check columns/tables
+$colRes = $conn->query("SHOW COLUMNS FROM `events` LIKE 'is_archived'");
+if ($colRes && $colRes->num_rows > 0) $hasIsArchived = true;
+
+$tblRes = $conn->query("SHOW TABLES LIKE 'archived_events'");
+if ($tblRes && $tblRes->num_rows > 0) $hasArchivedEventsTable = true;
+
+// build conditions
+$archivedCondition = $hasIsArchived ? "events.is_archived = 0" : "1";
+$excludeArchivedTable = $hasArchivedEventsTable ? "events.id NOT IN (SELECT original_id FROM archived_events)" : "1";
+
 // Fetch Events for Carousel (Upcoming + Past 1 Month)
 $carousel_sql = "
-  SELECT * FROM events 
-  WHERE date >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH) 
-  ORDER BY date ASC
+  SELECT events.* FROM events
+  WHERE {$archivedCondition}
+    AND ({$excludeArchivedTable})
+    AND `date` >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+  ORDER BY `date` ASC
 ";
 $carousel_result = $conn->query($carousel_sql);
+if ($carousel_result === false) error_log("Carousel SQL error: " . $conn->error);
 
 // Fetch Upcoming Events (strictly future)
-$upcoming_sql = "SELECT * FROM events WHERE date >= CURDATE() ORDER BY date ASC";
+$upcoming_sql = "
+  SELECT events.* FROM events
+  WHERE {$archivedCondition}
+    AND ({$excludeArchivedTable})
+    AND `date` >= CURDATE()
+  ORDER BY `date` ASC
+";
 $upcoming_result = $conn->query($upcoming_sql);
-
+if ($upcoming_result === false) error_log("Upcoming SQL error: " . $conn->error);
 
 // Fetch Gallery
 $gallery_sql = "SELECT * FROM galleries ORDER BY created_at DESC";
 $gallery_result = $conn->query($gallery_sql);
 
-// Fetch unique categories
-$categories_sql = "SELECT DISTINCT category FROM events WHERE category IS NOT NULL AND category != ''";
-$categories_result = $conn->query($categories_sql);
+// Fetch unique categories (guard if column missing)
 $categories = [];
-if ($categories_result && $categories_result->num_rows > 0) {
-  while ($row = $categories_result->fetch_assoc()) {
-    $categories[] = $row['category'];
+$catCheck = $conn->query("SHOW COLUMNS FROM `events` LIKE 'category'");
+if ($catCheck && $catCheck->num_rows > 0) {
+  $categories_sql = "SELECT DISTINCT `category` FROM events WHERE category IS NOT NULL AND category != ''";
+  $categories_result = $conn->query($categories_sql);
+  if ($categories_result) {
+    while ($row = $categories_result->fetch_assoc()) $categories[] = $row['category'];
   }
 }
 
 // Kunin yung pinaka next event (yung pinaka malapit na hindi pa tapos)
-$sql = "SELECT * FROM events WHERE date >= CURDATE() ORDER BY date ASC LIMIT 1";
+$sql = "
+  SELECT * FROM events
+  WHERE {$archivedCondition}
+    AND ({$excludeArchivedTable})
+    AND `date` >= CURDATE()
+  ORDER BY `date` ASC
+  LIMIT 1
+";
 $result = $conn->query($sql);
-$event = $result->fetch_assoc();
+if ($result === false) error_log("Next event SQL error: " . $conn->error);
+$event = $result ? $result->fetch_assoc() : null;
 
 $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
 ?>
@@ -301,21 +339,28 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
         <section class="gallery-section mt-5">
           <h4 class="text-center mb-4">Event Memories</h4>
 
-          <?php if($gallery_result && $gallery_result->num_rows > 0):
+          <?php
+          // filesystem dir and public url for gallery images (from this file location)
+          $gallery_fs_dir = realpath(__DIR__ . '/../../uploads/gallery') ? realpath(__DIR__ . '/../../uploads/gallery') . '/' : __DIR__ . '/../../uploads/gallery/';
+          $gallery_url_base = '../../uploads/gallery/';
+
+          if ($gallery_result && $gallery_result->num_rows > 0):
             $modalIndex = 0;
+            // rewind in case result was used earlier
+            mysqli_data_seek($gallery_result, 0);
             while($row = $gallery_result->fetch_assoc()):
+              $images = array_filter(array_map('trim', explode(",", $row['images'])));
+              // filter out images that no longer exist on disk
+              $images = array_values(array_filter($images, function($img) use ($gallery_fs_dir) {
+                return $img !== '' && file_exists($gallery_fs_dir . $img);
+              }));
+              if (empty($images)) continue;
               $modalIndex++;
-              $images = array_filter(explode(",", $row['images']));
-              if(empty($images)) continue;
+              $firstImage = $images[0];
+              $imgPath = $gallery_url_base . $firstImage;
           ?>
-              <?php 
-                $firstImage = trim($images[0]);
-                $imgPath = (!empty($firstImage) && file_exists('../uploads/gallery/'.$firstImage))
-                            ? '../uploads/gallery/'.$firstImage
-                            : '../uploads/gallery/default.jpg';
-              ?>
               <div class="text-center mb-4">
-                <img src="<?= $imgPath ?>" class="img-fluid rounded shadow-sm" 
+                <img src="<?= htmlspecialchars($imgPath) ?>" class="img-fluid rounded shadow-sm" 
                      style="max-width:300px; cursor:pointer;" 
                      data-bs-toggle="modal" data-bs-target="#modal<?= $modalIndex ?>" alt="Gallery Preview">
               </div>
@@ -328,13 +373,10 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
                       <div id="carouselGallery<?= $modalIndex ?>" class="carousel slide" data-bs-ride="false">
                         <div class="carousel-inner">
                           <?php foreach($images as $i => $img):
-                            $img = trim($img);
-                            $imgPath = (!empty($img) && file_exists('../uploads/gallery/'.$img))
-                                        ? '../uploads/gallery/'.$img
-                                        : '../uploads/gallery/default.jpg';
+                            $imgUrl = $gallery_url_base . $img;
                           ?>
                             <div class="carousel-item <?= $i === 0 ? 'active' : '' ?>">
-                              <img src="<?= $imgPath ?>" class="d-block w-100" alt="Gallery Image" style="height:500px; object-fit:cover;">
+                              <img src="<?= htmlspecialchars($imgUrl) ?>" class="d-block w-100" alt="Gallery Image" style="height:500px; object-fit:cover;">
                             </div>
                           <?php endforeach; ?>
                         </div>

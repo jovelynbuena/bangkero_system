@@ -7,42 +7,48 @@ if ($_SESSION['role'] !== 'admin') {
 
 include('../../config/db_connect.php');
 
-// Handle Approve/Reject/Delete actions for officers
+// Handle Approve/Reject/Delete/Demote actions for officers (server-side now redirects with notice)
 if (isset($_GET['action']) && isset($_GET['id'])) {
     $id = intval($_GET['id']);
     $action = $_GET['action'];
     $statusMessage = "";
 
-    if ($action == 'approve') {
-        $sql = "UPDATE users SET status='approved' WHERE id=$id AND role='officer'";
+    if ($action === 'approve') {
+        $sql = "UPDATE users SET status='approved' WHERE id=$id";
         $statusMessage = "Officer approved successfully!";
-    } elseif ($action == 'reject') {
-        $sql = "UPDATE users SET status='rejected' WHERE id=$id AND role='officer'";
+    } elseif ($action === 'reject') {
+        $sql = "UPDATE users SET status='rejected' WHERE id=$id";
         $statusMessage = "Officer rejected successfully!";
-    } elseif ($action == 'delete') {
-        $sql = "DELETE FROM users WHERE id=$id AND role='officer'";
+    } elseif ($action === 'delete') {
+        $sql = "DELETE FROM users WHERE id=$id";
         $statusMessage = "Officer deleted successfully!";
-    } elseif ($action == 'demote') {
-        $sql = "UPDATE users SET is_admin=0 WHERE id=$id";
+    } elseif ($action === 'demote') {
+        $sql = "UPDATE users SET is_admin=0, role='officer' WHERE id=$id";
         $statusMessage = "Admin privileges removed successfully!";
+    } else {
+        header("Location: manage_officer.php?notice=" . urlencode("Invalid action") . "&type=error");
+        exit;
     }
 
     if ($conn->query($sql)) {
-        echo "<script>alert('$statusMessage'); window.location='manage_officer.php';</script>";
+        header("Location: manage_officer.php?notice=" . urlencode($statusMessage) . "&type=success");
     } else {
-        echo "<script>alert('Error: " . $conn->error . "');</script>";
+        header("Location: manage_officer.php?notice=" . urlencode("Error: " . $conn->error) . "&type=error");
     }
+    exit;
 }
 
-// Handle Promote to Admin
+// Handle Promote to Admin (POST) — redirect with notice
 if (isset($_POST['promote_admin'])) {
     $user_id = intval($_POST['user_id']);
-    $sql = "UPDATE users SET is_admin=1 WHERE id=$user_id AND role='officer' AND status='approved'";
+    $sql = "UPDATE users SET is_admin=1, role='admin' WHERE id=$user_id AND status='approved'";
+
     if ($conn->query($sql)) {
-        echo "<script>alert('Officer promoted to admin successfully!'); window.location='manage_officer.php';</script>";
+        header("Location: manage_officer.php?notice=" . urlencode("Officer promoted to admin successfully!") . "&type=success");
     } else {
-        echo "<script>alert('Error: " . $conn->error . "');</script>";
+        header("Location: manage_officer.php?notice=" . urlencode("Error: " . $conn->error) . "&type=error");
     }
+    exit;
 }
 
 // Fetch all officers
@@ -161,19 +167,19 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                                 <td><?= $row['created_at'] ?></td>
                                 <td>
                                     <?php if ($row['status'] == 'pending'): ?>
-                                        <a href="?action=approve&id=<?= $row['id'] ?>" class="btn btn-success btn-sm">Approve</a>
-                                        <a href="?action=reject&id=<?= $row['id'] ?>" class="btn btn-warning btn-sm">Reject</a>
+                                        <button class="btn btn-success btn-sm actionBtn" data-action="approve" data-id="<?= $row['id'] ?>">Approve</button>
+                                        <button class="btn btn-warning btn-sm actionBtn" data-action="reject" data-id="<?= $row['id'] ?>">Reject</button>
                                     <?php elseif ($row['status'] == 'approved'): ?>
-                                        <a href="?action=reject&id=<?= $row['id'] ?>" class="btn btn-warning btn-sm">Reject</a>
+                                        <button class="btn btn-warning btn-sm actionBtn" data-action="reject" data-id="<?= $row['id'] ?>">Reject</button>
                                     <?php elseif ($row['status'] == 'rejected'): ?>
-                                        <a href="?action=approve&id=<?= $row['id'] ?>" class="btn btn-success btn-sm">Approve</a>
+                                        <button class="btn btn-success btn-sm actionBtn" data-action="approve" data-id="<?= $row['id'] ?>">Approve</button>
                                     <?php endif; ?>
 
                                     <?php if($row['is_admin']==1): ?>
-                                        <a href="?action=demote&id=<?= $row['id'] ?>" class="btn btn-secondary btn-sm" onclick="return confirm('Remove admin privileges?')">Demote</a>
+                                        <button class="btn btn-secondary btn-sm actionBtn" data-action="demote" data-id="<?= $row['id'] ?>" title="Remove admin privileges">Demote</button>
                                     <?php endif; ?>
 
-                                    <a href="?action=delete&id=<?= $row['id'] ?>" class="btn btn-danger btn-sm" onclick="return confirm('Are you sure you want to delete this officer?')">Delete</a>
+                                    <button class="btn btn-danger btn-sm actionBtn" data-action="delete" data-id="<?= $row['id'] ?>" title="Delete officer">Delete</button>
                                 </td>
                             </tr>
                         <?php endwhile; ?>
@@ -187,8 +193,77 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
-// Live Search
+// read URL notice param and show toast
+(function(){
+    const params = new URLSearchParams(window.location.search);
+    const notice = params.get('notice');
+    const type = params.get('type') || 'info';
+    if (notice) {
+        Swal.fire({
+            toast: true,
+            position: 'top-end',
+            icon: type === 'success' ? 'success' : (type === 'error' ? 'error' : 'info'),
+            title: decodeURIComponent(notice),
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true
+        });
+        // remove params from URL without reload
+        history.replaceState(null, '', window.location.pathname);
+    }
+})();
+
+// bind action buttons to SweetAlert confirm dialogs
+document.querySelectorAll('.actionBtn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+        const action = btn.dataset.action;
+        const id = btn.dataset.id;
+        let title = '';
+        let text = '';
+        let confirmButton = 'Yes';
+
+        switch(action) {
+            case 'approve':
+                title = 'Approve officer?';
+                text = 'This will approve the officer account.';
+                break;
+            case 'reject':
+                title = 'Reject officer?';
+                text = 'This will reject the officer account.';
+                break;
+            case 'delete':
+                title = 'Delete officer?';
+                text = 'This will permanently delete the officer (cannot be undone).';
+                confirmButton = 'Delete';
+                break;
+            case 'demote':
+                title = 'Remove admin privileges?';
+                text = 'This will demote the user back to officer role.';
+                break;
+            default:
+                title = 'Confirm action';
+                text = 'Proceed?';
+        }
+
+        Swal.fire({
+            title: title,
+            text: text,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: (action === 'delete' ? '#d33' : '#3085d6'),
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: confirmButton
+        }).then((res) => {
+            if (res.isConfirmed) {
+                window.location.href = '?action=' + encodeURIComponent(action) + '&id=' + encodeURIComponent(id);
+            }
+        });
+    });
+});
+
+// Live Search (unchanged)
 document.getElementById('searchInput').addEventListener('keyup', function() {
     let filter = this.value.toLowerCase();
     let rows = document.querySelectorAll('#officersTable tbody tr');

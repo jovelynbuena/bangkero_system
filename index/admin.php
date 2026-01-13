@@ -14,8 +14,8 @@ $role = $_SESSION['role'] ?? 'member';
 $username = $_SESSION['username'] ?? '';
 $fullname = $_SESSION['fullname'] ?? ucfirst($role);
 
-// Fetch upcoming events
-$eventSql = "SELECT * FROM events WHERE date >= CURDATE() ORDER BY date ASC";
+// Fetch upcoming events (exclude archived)
+$eventSql = "SELECT * FROM events WHERE is_archived = 0 AND date >= CURDATE() ORDER BY date ASC";
 $eventResult = $conn->query($eventSql);
 if (!$eventResult) die("Query failed: " . $conn->error);
 
@@ -33,16 +33,28 @@ if ($eventResult && $eventResult->num_rows > 0) {
 
 // Quick stats for all roles
 $membersRow = $conn->query("SELECT COUNT(*) AS total FROM members")->fetch_assoc();
-$members = $membersRow ? $membersRow['total'] : 0;
+$members = $membersRow ? (int)$membersRow['total'] : 0;
 
-$officersRow = $conn->query("SELECT COUNT(*) AS total FROM officers")->fetch_assoc();
-$officers = $officersRow ? $officersRow['total'] : 0;
+/* --- REPLACED: count distinct members assigned as officers + assignments + archived distinct --- */
+$officersStats = $conn->query("SELECT COUNT(DISTINCT member_id) AS distinct_members, COUNT(*) AS assignments FROM officers")->fetch_assoc();
+$officersActive = $officersStats ? (int)$officersStats['distinct_members'] : 0;
+$officersAssignments = $officersStats ? (int)$officersStats['assignments'] : 0;
+
+$officersArchivedRow = $conn->query("SELECT COUNT(DISTINCT member_id) AS distinct_members FROM officers_archive")->fetch_assoc();
+$officersArchived = $officersArchivedRow ? (int)$officersArchivedRow['distinct_members'] : 0;
+
+/* legacy variable used elsewhere */
+$officers = $officersActive;
 
 $announcementsRow = $conn->query("SELECT COUNT(*) AS total FROM announcements")->fetch_assoc();
-$announcements = $announcementsRow ? $announcementsRow['total'] : 0;
+$announcements = $announcementsRow ? (int)$announcementsRow['total'] : 0;
 
-$eventsRow = $conn->query("SELECT COUNT(*) AS total FROM events WHERE date >= CURDATE()")->fetch_assoc();
-$events = $eventsRow ? $eventsRow['total'] : 0;
+// Events: compute total (includes archived) + upcoming for quick info
+$eventsTotalRow = $conn->query("SELECT COUNT(*) AS total FROM events")->fetch_assoc();
+$eventsTotal = $eventsTotalRow ? (int)$eventsTotalRow['total'] : 0;
+
+$eventsUpcomingRow = $conn->query("SELECT COUNT(*) AS total FROM events WHERE is_archived=0 AND date >= CURDATE()")->fetch_assoc();
+$eventsUpcoming = $eventsUpcomingRow ? (int)$eventsUpcomingRow['total'] : 0;
 
 // --- Member analytics: detect columns and prepare datasets ---
 $memberCols = [];
@@ -110,7 +122,7 @@ if ($dateCol) {
 
 // If no date column, attempt an overall active/inactive split (no trend)
 if (!$dateCol && $statusCol) {
-    $overall = $conn->query("SELECT $statusCol AS st, COUNT(*) AS cnt FROM members GROUP BY st");
+    $overall = $conn->query("SELECT $statusCol AS st, COUNT(*) FROM members GROUP BY st");
     if ($overall) {
         while ($r = $overall->fetch_assoc()) {
             $st = $r['st']; $cnt = (int)$r['cnt'];
@@ -347,7 +359,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; }
                     <span class="icon-box bg-warning"><i class="bi bi-calendar-event"></i></span>
                     <div>
                         <div class="card-title">Upcoming Events</div>
-                        <div class="card-text fs-4 fw-semibold"><?php echo $events; ?></div>
+                        <div class="card-text fs-4 fw-semibold"><?php echo $eventsUpcoming; ?></div>
                     </div>
                 </div>
             </div>
@@ -386,16 +398,7 @@ body { font-family: 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; }
                             </div>
                         </div>
                     </div>
-                    <div class="col-lg-6">
-                        <div class="card p-2 h-100">
-                            <div class="card-body">
-                                <h6 class="card-title">Active vs Inactive (Trend)</h6>
-                                <div class="chart-fixed">
-                                    <canvas id="activeTrendChart" class="chart-canvas"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                  
                     <div class="col-lg-4 mt-3 d-lg-none"></div>
                     <div class="col-12 col-lg-4 mt-3">
                         <div class="card p-2 h-100 text-center">

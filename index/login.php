@@ -99,8 +99,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     }
 }
 ?>
-
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -111,116 +109,164 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
+        :root{
+          --primary:#2367b7;
+          --card-bg: rgba(255,255,255,0.85);
+          --glass: rgba(255,255,255,0.18);
+        }
+        html,body { height:100%; }
         body {
-            background: url('../images/background.jpg') no-repeat center center fixed;
-            background-size: cover;
-            background-color: #f4f4f4;
-            height: 100vh;
+            background: linear-gradient(135deg,#0fb8ad 0%, #1fc8db 50%, #2cb5e8 100%);
+            font-family: 'Segoe UI', sans-serif;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-family: 'Segoe UI', sans-serif;
+            padding: 24px;
         }
         .login-card {
             width: 100%;
             max-width: 420px;
-            background: rgba(255, 255, 255, 0.25);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            padding: 32px;
-            border-radius: 16px;
-            box-shadow: 0 6px 20px rgba(0,0,0,0.25);
+            background: var(--card-bg);
+            padding: 28px;
+            border-radius: 14px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.18);
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.3);
+            border: 1px solid rgba(255,255,255,0.35);
+        }
+        .login-card .logo-wrap {
+            display:flex; align-items:center; gap:12px; justify-content:center; margin-bottom:10px;
         }
         .login-card img {
-            width: 70px;
-            height: 70px;
-            border-radius: 50%;
-            margin-bottom: 15px;
+            width:64px; height:64px; border-radius:10px; object-fit:cover;
+            box-shadow: 0 6px 14px rgba(0,0,0,0.12);
         }
-        .login-card h3 {
-            font-weight: bold;
-            margin-bottom: 6px;
-            color: #2367b7;
-        }
-        .login-card p {
-            font-size: 0.95rem;
-            color: #666;
-            margin-bottom: 20px;
-        }
+        .login-card h3 { font-weight:700; margin:0; color: #0b3f69; }
+        .login-card p { margin:0 0 16px 0; color:#08324b; opacity:0.9; }
         .form-control {
-            border-radius: 8px;
+            border-radius:10px;
+            height:44px;
+            box-shadow:none;
+            border:1px solid rgba(11,63,105,0.08);
         }
+        .input-group .form-control:focus { box-shadow: 0 0 0 0.15rem rgba(35,103,183,0.12); border-color: var(--primary); }
         .btn-login {
-            background-color: #2367b7;
+            background: linear-gradient(90deg,var(--primary), #1c5498);
             border: none;
             padding: 10px;
             width: 100%;
-            border-radius: 8px;
-            font-weight: bold;
+            border-radius: 10px;
+            font-weight: 700;
             color: #fff;
-            transition: 0.3s;
+            transition: transform .08s ease, box-shadow .08s ease;
+            box-shadow: 0 6px 14px rgba(11,63,105,0.12);
         }
-        .btn-login:hover {
-            background-color: #1c5498;
+        .btn-login:active { transform: translateY(1px); box-shadow: 0 4px 10px rgba(11,63,105,0.12); }
+        .options-row { display:flex; justify-content:space-between; align-items:center; margin:12px 0; font-size:0.95rem; }
+        .options-row a { color:var(--primary); text-decoration:none; }
+        .options-row a:hover { text-decoration:underline; }
+        .remember-label { user-select:none; }
+        .small-muted { font-size:.9rem; color:#2b4b60; opacity:.8; margin-top:10px; }
+
+        /* password toggle button */
+        .btn-toggle-pass {
+          background: transparent;
+          border: none;
+          color: #576b7a;
+          font-size: 1.05rem;
         }
-        .options-container {
-            display: flex;
-            justify-content: space-between;
-            font-size: 0.9rem;
-            margin-bottom: 15px;
-        }
-        .options-container a {
-            text-decoration: none;
-            color: #2367b7;
-        }
-        .options-container a:hover {
-            text-decoration: underline;
+        .btn-toggle-pass:focus { outline: none; box-shadow:none; }
+
+        @media (max-width:420px){
+            .login-card { padding:18px; border-radius:12px; }
+            .login-card img { width:56px; height:56px; }
         }
     </style>
 </head>
 <body>
     <div class="login-card">
-        <img src="images/logo1.png" alt="Association Logo" class="hero-logo">
-        <h3>Bankero & Fishermen</h3>
-        <p>Barangay Barretto, Olongapo City</p>
-
-        <form method="POST" action="">
-            <div class="mb-3">
-                <input type="text" name="username" class="form-control" placeholder="Username" 
-                    value="<?php echo isset($_COOKIE['remembered_user']) ? htmlspecialchars($_COOKIE['remembered_user']) : ''; ?>" required>
+        <div class="logo-wrap">
+            <img src="images/logo1.png" alt="Association Logo" class="hero-logo">
+            <div style="text-align:left;">
+              <h3>Bankero & Fishermen</h3>
+              <div class="small-muted">Barangay Barretto, Olongapo City</div>
             </div>
+        </div>
+
+        <form method="POST" action="" id="loginForm" class="mt-3">
             <div class="mb-3">
-                <input type="password" name="password" class="form-control" placeholder="Password" required>
+                <input id="username" type="text" name="username" class="form-control" placeholder="Username"
+                    value="<?php echo isset($_COOKIE['remembered_user']) ? htmlspecialchars($_COOKIE['remembered_user']) : ''; ?>" required autofocus>
             </div>
 
-            <div class="options-container">
-                <div>
-                    <input type="checkbox" name="remember" id="remember" 
-                        <?php echo isset($_COOKIE['remembered_user']) ? 'checked' : ''; ?>>
-                    <label for="remember">Remember Me</label>
+            <div class="mb-3">
+                <label class="visually-hidden" for="password">Password</label>
+                <div class="input-group">
+                    <input id="password" type="password" name="password" class="form-control" placeholder="Password" required aria-describedby="togglePass">
+                    <button class="btn btn-toggle-pass" type="button" id="togglePass" aria-pressed="false" title="Show password">
+                        <i class="bi bi-eye" id="togglePassIcon" aria-hidden="true"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="options-row">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="remember" id="remember" <?php echo isset($_COOKIE['remembered_user']) ? 'checked' : ''; ?>>
+                    <label class="form-check-label remember-label" for="remember">Remember me</label>
                 </div>
                 <a href="forgot-password.php">Forgot Password?</a>
             </div>
 
             <button type="submit" class="btn-login mb-2">Login</button>
-            <a href="register.php" class="btn btn-outline-primary w-100 fw-bold" style="border-radius: 8px;">Register as Officer</a>
+
+            <a href="register.php" class="btn btn-outline-light w-100 fw-bold" style="border-radius: 10px; border:1px solid rgba(255,255,255,0.18); color:#07385a;">Register as Officer</a>
         </form>
+
+        <?php if (isset($_GET['login']) && $_GET['login'] === 'failed' && !empty($_GET['message'])): ?>
+        <script>
+            Swal.fire({
+                toast: true,
+                icon: 'error',
+                title: "<?php echo htmlspecialchars($_GET['message']); ?>",
+                position: 'top-end',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true
+            });
+        </script>
+        <?php endif; ?>
     </div>
 
-    <?php if (isset($_GET['login']) && $_GET['login'] === 'failed' && !empty($_GET['message'])): ?>
-    <script>
-        Swal.fire({
-            toast: true,
-            icon: 'error',
-            title: "<?php echo htmlspecialchars($_GET['message']); ?>",
-            position: 'top-end',
-            showConfirmButton: false,
-            timer: 3000,
-            timerProgressBar: true
-        });
-    </script>
-    <?php endif; ?>
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const pass = document.getElementById('password');
+  const toggle = document.getElementById('togglePass');
+  const icon = document.getElementById('togglePassIcon');
+
+  toggle.addEventListener('click', function(){
+    const showing = pass.type === 'text';
+    pass.type = showing ? 'password' : 'text';
+    icon.classList.toggle('bi-eye');
+    icon.classList.toggle('bi-eye-slash');
+    toggle.setAttribute('aria-pressed', (!showing).toString());
+    toggle.title = showing ? 'Show password' : 'Hide password';
+  });
+
+  // Enter key on username focuses password for quicker login
+  document.getElementById('username').addEventListener('keydown', function(e){
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      pass.focus();
+    }
+  });
+
+  // small improvement: disable submit button briefly on submit to avoid double-post
+  const form = document.getElementById('loginForm');
+  form.addEventListener('submit', function(){
+    const btn = form.querySelector('button[type="submit"]');
+    btn.disabled = true;
+    btn.textContent = 'Signing in...';
+  });
+});
+</script>
 </body>
 </html>
