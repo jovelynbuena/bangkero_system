@@ -49,7 +49,7 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
     width: 260px;
     height: 100vh;
     position: fixed;
-    background: linear-gradient(180deg, #2cd1e7ff 0%, #2C3E50 100%);
+    background: #2C3E50;
     color: #FFF;
     padding-top: 24px;
     box-shadow: 3px 0 15px rgba(0,0,0,0.1);
@@ -58,7 +58,7 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
     overflow-y: auto;
     transition: width 0.3s;
 }
-.sidebar h4 { color: #FF7043; font-weight: 500; padding-left: 1rem; margin-bottom: 1rem; }
+.sidebar h4 { color: #34495E; font-weight: 500; padding-left: 1rem; margin-bottom: 1rem; }
 .sidebar a {
     color: #FFF;
     display: block;
@@ -69,8 +69,8 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
     transition: all 0.3s ease;
 }
 .sidebar a:hover, .sidebar a.active {
-    background: linear-gradient(90deg, #FF7043 80%, transparent 100%);
-    color: #1F2A38;
+    background: #34495E;
+    color: #ECF0F1;
 }
 .sidebar a.sidebar-dropdown-toggle {
     cursor: pointer;
@@ -87,17 +87,17 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
     border-radius: 8px 0 0 8px;
 }
 .sidebar .collapse a:hover {
-    background: linear-gradient(90deg, #FFA040 80%, transparent 100%);
-    color: #1F2A38;
+    background: #34495E;
+    color: #ECF0F1;
 }
 .sidebar a i {
     margin-right: 0.75rem;
     font-size: 1.25rem;
-    color: #FF7043;
+    color: #95A5A6;
     transition: color 0.3s;
 }
-.sidebar a.active i { color: #1F2A38; }
-.sidebar .collapse a.active { background-color: #FFB74D; color: #1F2A38; }
+.sidebar a.active i { color: #ECF0F1; }
+.sidebar .collapse a.active { background-color: #34495E; color: #ECF0F1; }
 .sidebar a.text-danger { margin-top: auto; display: block; }
 
 /* Navbar */

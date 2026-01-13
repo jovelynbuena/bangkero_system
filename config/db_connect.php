@@ -1,21 +1,22 @@
 <?php
-$servername = "localhost";
-$username = "root";  // Default XAMPP username
-$password = "";      // Default is empty
-$database = "bangkero_association";
+$servername = "sql12.freesqldatabase.com";
+$username   = "sql12814263";
+$password   = "W2VRUwnFv4";
+$dbname     = "sql12814263";
+$port       = 3306;
 
-// Create connection with error handling
-$conn = new mysqli($servername, $username, $password, $database);
+// Create connection
+$conn = new mysqli($servername, $username, $password, $dbname, $port);
 
 // Check connection
 if ($conn->connect_error) {
     die("Database connection failed: " . $conn->connect_error);
 }
 
-// Set character encoding to UTF-8 for better compatibility
+// Set charset
 $conn->set_charset("utf8");
 
-// Enable error reporting for debugging (remove in production)
+// Debug (pwede mo alisin pag ok na)
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 ?>

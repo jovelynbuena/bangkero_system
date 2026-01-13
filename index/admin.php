@@ -216,19 +216,19 @@ body { font-family: 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; }
 
 /* Dashboard Cards */
 .dashboard-card { 
-  border-radius: 18px;
-  box-shadow: 0 2px 16px rgba(0,0,0,0.08);
-  transition: transform 0.13s, box-shadow 0.13s;
-  border: none;
-  background: linear-gradient(145deg, #fbe9e7, #80cbc4 70%);
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 1px solid #E0E0E0;
+  background: #FFFFFF;
 }
 .dashboard-card:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 6px 32px rgba(2,136,209,0.13);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 .icon-box {
-  border-radius: 10px;
-  background: #ff7043;
+  border-radius: 8px;
+  background: #5B6B7A;
   color: #fff;
   padding: 14px;
   display: flex;
@@ -239,16 +239,16 @@ body { font-family: 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; }
 
 /* Event Cards */
 .event-card {
-  border-radius: 18px;
-  box-shadow: 0 2px 14px rgba(2,136,209,0.08);
-  border: none;
-  background: #fff;
-  color: #4e342e;
-  transition: box-shadow 0.13s, transform 0.13s;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #E0E0E0;
+  background: #FFFFFF;
+  color: #2C3E50;
+  transition: box-shadow 0.2s, transform 0.2s;
 }
 .event-card:hover {
-  transform: translateY(-2px) scale(1.01);
-  box-shadow: 0 8px 36px rgba(2,136,209,0.13);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
 }
 .event-card img { 
   border-top-left-radius: 18px; 
@@ -265,30 +265,31 @@ body { font-family: 'Segoe UI', sans-serif; background: #f9f9f9; margin: 0; }
 }
 
 /* Buttons */
-.btn-primary { background-color: #ff7043; border-color: #ff7043; }
-.btn-primary:hover { background-color: #00897b; border-color: #00897b; }
+.btn-primary { background-color: #5B6B7A; border-color: #5B6B7A; }
+.btn-primary:hover { background-color: #3E4A54; border-color: #3E4A54; }
 
 /* Calendar */
 #calendar-container {
-  background: #ade2e9ff;
-  border-radius: 16px;
-  box-shadow: 0 2px 14px rgba(0,0,0,0.08);
+  background: #FFFFFF;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  border: 1px solid #E0E0E0;
   padding: 18px;
   max-width: 360px;
   margin: 0 auto;
 }
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-.calendar-header h5 { font-size: 1.2rem; font-weight: 700; color: #00897b; margin: 0; }
-.calendar-header button { background-color: #ff7043; color: white; border: none; border-radius: 8px; font-size: 1.1rem; padding: 4px 10px; cursor: pointer; transition: background-color 0.2s ease; }
-.calendar-header button:hover { background-color: #e64a19; }
+.calendar-header h5 { font-size: 1.2rem; font-weight: 700; color: #2C3E50; margin: 0; }
+.calendar-header button { background-color: #5B6B7A; color: white; border: none; border-radius: 6px; font-size: 1.1rem; padding: 4px 10px; cursor: pointer; transition: background-color 0.2s ease; }
+.calendar-header button:hover { background-color: #3E4A54; }
 #calendar { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; user-select: none; max-width: 100%; overflow-x: auto; font-size: 1.05rem; }
 #calendar table { width: 100%; border-collapse: collapse; table-layout: fixed; }
 #calendar th, #calendar td { text-align: center; padding: 12px 6px; word-wrap: break-word; }
-#calendar th { color: #00897b; font-size: 1.1rem; font-weight: 700; }
-#calendar td { border-radius: 8px; transition: background-color 0.3s ease; }
-#calendar td.today { border: 2px solid #ff7043; font-weight: bold; background-color: #fff3e0; }
-#calendar td.event { background-color: #ff7043; color: #fff; font-weight: 600; cursor: pointer; text-decoration: underline; }
-#calendar td.event:hover { background-color: #e64a19; }
+#calendar th { color: #2C3E50; font-size: 1.1rem; font-weight: 700; }
+#calendar td { border-radius: 6px; transition: background-color 0.2s ease; }
+#calendar td.today { border: 2px solid #5B6B7A; font-weight: bold; background-color: #ECF0F1; }
+#calendar td.event { background-color: #5B6B7A; color: #fff; font-weight: 600; cursor: pointer; text-decoration: underline; }
+#calendar td.event:hover { background-color: #3E4A54; }
 
 @media (max-width: 991px) {
   .d-flex.flex-column.flex-lg-row.gap-4 { flex-direction: column !important; }
@@ -574,7 +575,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     datasets: [{
                         label: 'New Members',
                         data: monthlyNew,
-                        backgroundColor: 'rgba(54,162,235,0.85)'
+                        backgroundColor: '#7F8C8D'
                     }]
                 },
                 options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
@@ -591,8 +592,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 data: {
                     labels: monthLabels,
                     datasets: [
-                        { label: 'Active', data: activeData, borderColor: 'rgba(40,167,69,0.9)', backgroundColor: 'rgba(40,167,69,0.15)', tension:0.3, fill:true },
-                        { label: 'Inactive', data: inactiveData, borderColor: 'rgba(220,53,69,0.9)', backgroundColor: 'rgba(220,53,69,0.12)', tension:0.3, fill:true }
+                        { label: 'Active', data: activeData, borderColor: '#5B6B7A', backgroundColor: 'rgba(91,107,122,0.1)', tension:0.3, fill:true },
+                        { label: 'Inactive', data: inactiveData, borderColor: '#95A5A6', backgroundColor: 'rgba(149,165,166,0.1)', tension:0.3, fill:true }
                     ]
                 },
                 options: { responsive:true, maintainAspectRatio:false }
@@ -606,7 +607,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (eventsPerMonthCtx) {
             new Chart(eventsPerMonthCtx, {
                 type: 'bar',
-                data: { labels: eventMonthLabels, datasets:[{ label:'Events', data: eventMonthData, backgroundColor: '#2cd1e7' }] },
+                data: { labels: eventMonthLabels, datasets:[{ label:'Events', data: eventMonthData, backgroundColor: '#7F8C8D' }] },
                 options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}} }
             });
         }
@@ -618,7 +619,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (evtTypesCtx) {
             new Chart(evtTypesCtx, {
                 type: 'bar',
-                data: { labels: evtTypesLabels, datasets:[{ label:'Count', data: evtTypesData, backgroundColor: '#FF7043' }] },
+                data: { labels: evtTypesLabels, datasets:[{ label:'Count', data: evtTypesData, backgroundColor: '#95A5A6' }] },
                 options: { responsive:true, maintainAspectRatio:false, plugins:{legend:{display:false}}, scales:{x:{ticks:{autoSkip:false}}} }
             });
         }
@@ -627,14 +628,9 @@ document.addEventListener('DOMContentLoaded', function() {
         const marchPercent = <?php echo json_encode($marchEventPercent); ?> || 0;
         const marchCtx = document.getElementById('marchEventChart');
         if (marchCtx) {
-            const ctx = marchCtx.getContext('2d');
-            // create gradient using theme colors
-            const grad = ctx.createLinearGradient(0,0, marchCtx.width, 0);
-            grad.addColorStop(0, '#2cd1e7');
-            grad.addColorStop(1, '#FF7043');
             new Chart(marchCtx, {
                 type: 'bar',
-                data: { labels: ['March'], datasets:[{ label: 'Achievement %', data: [marchPercent], backgroundColor: grad }] },
+                data: { labels: ['March'], datasets:[{ label: 'Achievement %', data: [marchPercent], backgroundColor: '#5B6B7A' }] },
                 options: { indexAxis: 'y', responsive:true, maintainAspectRatio:false, scales:{x:{max:100, ticks:{callback: v => v + '%'}}}, plugins:{legend:{display:false}} }
             });
         }
