@@ -22,8 +22,8 @@ if (isset($_GET['archive'])) {
 
             if ($announcement) {
                 // Insert into archived_announcements
-                $stmt = $conn->prepare("INSERT INTO archived_announcements (original_id, title, content, date_posted) VALUES (?, ?, ?, ?)");
-                $stmt->bind_param("isss", $announcement['id'], $announcement['title'], $announcement['content'], $announcement['date_posted']);
+                $stmt = $conn->prepare("INSERT INTO archived_announcements (original_id, title, content, image, date_posted) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("issss", $announcement['id'], $announcement['title'], $announcement['content'], $announcement['image'], $announcement['date_posted']);
                 $stmt->execute();
                 $stmt->close();
 
@@ -62,9 +62,9 @@ if (isset($_GET['retrieve'])) {
             $stmt->close();
 
             if ($announcement) {
-                // Insert back into announcements
-                $stmt = $conn->prepare("INSERT INTO announcements (title, content, date_posted) VALUES (?, ?, ?)");
-                $stmt->bind_param("sss", $announcement['title'], $announcement['content'], $announcement['date_posted']);
+                // Insert back into announcements with the original_id
+                $stmt = $conn->prepare("INSERT INTO announcements (id, title, content, image, date_posted) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param("issss", $announcement['original_id'], $announcement['title'], $announcement['content'], $announcement['image'], $announcement['date_posted']);
                 $stmt->execute();
                 $stmt->close();
 
@@ -90,11 +90,16 @@ if (isset($_GET['retrieve'])) {
 
 // Fetch all archived announcements
 $search = $_GET['search'] ?? '';
-$search_sql = $conn->real_escape_string($search);
-$sql = "SELECT * FROM archived_announcements 
-        WHERE title LIKE '%$search_sql%' OR content LIKE '%$search_sql%'
-        ORDER BY date_posted DESC";
-$result = $conn->query($sql);
+if (!empty($search)) {
+    $stmt = $conn->prepare("SELECT * FROM archived_announcements WHERE title LIKE ? OR content LIKE ? ORDER BY date_posted DESC");
+    $search_param = "%{$search}%";
+    $stmt->bind_param("ss", $search_param, $search_param);
+    $stmt->execute();
+    $result = $stmt->get_result();
+} else {
+    $sql = "SELECT * FROM archived_announcements ORDER BY date_posted DESC";
+    $result = $conn->query($sql);
+}
 ?>
 
 <!DOCTYPE html>

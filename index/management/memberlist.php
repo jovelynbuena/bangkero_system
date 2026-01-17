@@ -34,11 +34,7 @@ if (isset($_GET['archive'])) {
 }
 
 // Fetch members
-$search = $_GET['search'] ?? '';
-$searchEscaped = $conn->real_escape_string($search);
-$sql = $search
-    ? "SELECT * FROM members WHERE name LIKE '%$searchEscaped%' OR phone LIKE '%$searchEscaped%' OR address LIKE '%$searchEscaped%'"
-    : "SELECT * FROM members";
+$sql = "SELECT * FROM members ORDER BY name ASC";
 $result = $conn->query($sql);
 ?>
 
@@ -76,16 +72,13 @@ $result = $conn->query($sql);
     <div class="d-flex justify-content-between align-items-center mb-4">
         <a href="add_member.php" class="btn btn-primary">+ Add New Member</a>
         <div class="d-flex align-items-center">
-            <a href="export_members_csv.php<?= $search ? ('?search=' . urlencode($search)) : '' ?>" class="btn btn-outline-success me-2" title="Export to Excel (CSV)" target="_blank">
+            <a href="export_members_csv.php" class="btn btn-outline-success me-2" title="Export to Excel (CSV)" target="_blank">
                 <i class="bi bi-file-earmark-excel"></i>
             </a>
-            <a href="export_members_print.php<?= $search ? ('?search=' . urlencode($search)) : '' ?>" class="btn btn-outline-danger me-3" title="Print / Save as PDF" target="_blank">
+            <a href="export_members_print.php" class="btn btn-outline-danger me-3" title="Print / Save as PDF" target="_blank">
                 <i class="bi bi-file-earmark-pdf"></i>
             </a>
-            <form class="d-flex" method="GET" action="memberlist.php">
-                <input type="text" name="search" class="form-control me-2" placeholder="Search members..." value="<?= htmlspecialchars($search) ?>">
-                <button type="submit" class="btn btn-outline-primary">Search</button>
-            </form>
+            <input type="text" id="searchInput" class="form-control" placeholder="Search members...">
         </div>
     </div>
 
@@ -101,7 +94,7 @@ $result = $conn->query($sql);
                     <th>Actions</th>
                 </tr>
             </thead>
-            <tbody>
+            <tbody id="membersTableBody">
                 <?php if ($result->num_rows > 0): $count = 1; ?>
                     <?php while ($row = $result->fetch_assoc()): ?>
                         <tr>
@@ -130,6 +123,7 @@ $result = $conn->query($sql);
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <script>
+// Archive buttons
 document.addEventListener('DOMContentLoaded', function() {
     const archiveButtons = document.querySelectorAll('.archive-btn');
 
@@ -164,21 +158,34 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 
+// Live search/filter
+const searchInput = document.getElementById('searchInput');
+const tableBody = document.getElementById('membersTableBody');
+const rows = tableBody.getElementsByTagName('tr');
+
+searchInput.addEventListener('input', function() {
+    const filter = this.value.toLowerCase();
+
+    Array.from(rows).forEach(row => {
+        const cells = row.getElementsByTagName('td');
+        const name = cells[1].textContent.toLowerCase();
+        const phone = cells[2].textContent.toLowerCase();
+        const address = cells[3].textContent.toLowerCase();
+
+        if (name.includes(filter) || phone.includes(filter) || address.includes(filter)) {
+            row.style.display = '';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+});
+
+// Flash messages
 <?php if (isset($_GET['archived'])): ?>
 Swal.fire({
     icon: 'success',
     title: 'Archived!',
     text: 'Member moved to archive.',
-    timer: 2000,
-    showConfirmButton: false
-});
-<?php endif; ?>
-
-<?php if (isset($_GET['restored'])): ?>
-Swal.fire({
-    icon: 'success',
-    title: 'Restored!',
-    text: 'Member has been successfully restored.',
     timer: 2000,
     showConfirmButton: false
 });
