@@ -5,13 +5,13 @@ if (empty($_SESSION['username'])) {
     exit;
 }
 
-include('../config/db_connect.php'); // your DB connection
+include('../config/db_connect.php');
 
-$flash = ['type' => '', 'message' => ''];
+$flash = ['type'=>'','message'=>''];
 
 // Handle Add/Edit POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $event_id = intval($_POST['event_id'] ?? 0);
+  $event_id = isset($_POST['event_id']) && $_POST['event_id'] !== '' ? intval($_POST['event_id']) : null;
     $event_name = trim($_POST['event_name'] ?? '');
     $category = trim($_POST['event_category'] ?? 'General');
     $date = $_POST['event_date'] ?? '';
@@ -43,8 +43,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (!$event_name || !$date || !$time || !$location || !$description) {
         if ($flash['type'] !== 'error') $flash = ['type'=>'error','message'=>'Fill all required fields.'];
     } else {
-        if ($event_id > 0) {
-            // Update
+        if ($event_id) {
+            // ✅ Update existing event
             if ($uploadedPoster) {
                 $stmt = $conn->prepare("UPDATE events SET event_name=?, category=?, date=?, time=?, location=?, description=?, event_poster=? WHERE id=?");
                 $stmt->bind_param("sssssssi",$event_name,$category,$date,$time,$location,$description,$uploadedPoster,$event_id);
@@ -52,20 +52,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $conn->prepare("UPDATE events SET event_name=?, category=?, date=?, time=?, location=?, description=? WHERE id=?");
                 $stmt->bind_param("ssssssi",$event_name,$category,$date,$time,$location,$description,$event_id);
             }
-            if ($stmt->execute()) $flash = ['type'=>'success','message'=>'Event updated successfully.'];
-            else $flash = ['type'=>'error','message'=>'Update failed: '.$conn->error];
+            $flash = $stmt->execute() ? 
+                ['type'=>'success','message'=>'Event updated successfully.'] : 
+                ['type'=>'error','message'=>'Update failed: '.$conn->error];
             $stmt->close();
         } else {
-            // Insert
-            $stmt = $conn->prepare("INSERT INTO events (event_poster,event_name,description,date,time,location,category,is_archived) VALUES (?,?,?,?,?,?,?,0)");
+            // ✅ Insert new event, AUTO_INCREMENT handles ID
+            $stmt = $conn->prepare("INSERT INTO events (event_name, description, date, time, location, category, event_poster, is_archived) VALUES (?,?,?,?,?,?,?,0)");
             $posterValue = $uploadedPoster ?: '';
-            $stmt->bind_param("sssssss",$posterValue,$event_name,$description,$date,$time,$location,$category);
-            if ($stmt->execute()) $flash = ['type'=>'success','message'=>'Event added successfully.'];
-            else $flash = ['type'=>'error','message'=>'Insert failed: '.$conn->error];
+            $stmt->bind_param("sssssss",$event_name,$description,$date,$time,$location,$category,$posterValue);
+            $flash = $stmt->execute() ? 
+                ['type'=>'success','message'=>'Event added successfully.'] : 
+                ['type'=>'error','message'=>'Insert failed: '.$conn->error];
             $stmt->close();
         }
     }
 }
+
 
 // Handle Archive
 if (isset($_GET['archive'])) {
@@ -125,7 +128,7 @@ body { font-family:'Segoe UI',sans-serif; background:#fff; }
   width: 100%;
   max-width: 190px;
   position: relative;
-  z-index: 2000; /* keep above sidebar overlay */
+  z-index: 100; /* keep above sidebar overlay */
 }
 .event-tabs-left .btn {
   display: block;
@@ -406,149 +409,142 @@ body { font-family:'Segoe UI',sans-serif; background:#fff; }
     }
   </style>
 
-  <script>
-  $(document).ready(function() {
-    // Show flash messages
-    const flash = <?php echo json_encode($flash); ?>;
-    if (flash && flash.type) {
-      if (flash.type === 'success') {
-        Swal.fire({ icon: 'success', title: 'Success', text: flash.message, timer: 1600, showConfirmButton: false });
-      } else if (flash.type === 'error') {
-        Swal.fire({ icon: 'error', title: 'Error', text: flash.message });
+ <script>
+$(document).ready(function() {
+  // --- Flash messages ---
+  const flash = <?php echo json_encode($flash); ?>;
+  if (flash && flash.type) {
+    Swal.fire({
+      icon: flash.type,
+      title: flash.type === 'success' ? 'Success' : 'Error',
+      text: flash.message,
+      timer: flash.type === 'success' ? 1600 : undefined,
+      showConfirmButton: flash.type === 'error'
+    });
+  }
+
+  // --- Initialize DataTables once ---
+  const tableUpcoming = $('#eventsTableUpcoming').DataTable({
+    responsive: true,
+    dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+    pageLength: 10,
+    buttons: [ 'csv', 'excel', 'pdf', 'print' ],
+    columnDefs: [{ orderable: false, targets: [1,8] }],
+    language: { search: "", searchPlaceholder: "Search events..." }
+  });
+
+  const tableCompleted = $('#eventsTableCompleted').DataTable({
+    responsive: true,
+    dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
+    pageLength: 10,
+    buttons: [ 'csv', 'excel', 'pdf', 'print' ],
+    columnDefs: [{ orderable: false, targets: [1,8] }],
+    language: { search: "", searchPlaceholder: "Search events..." }
+  });
+
+  // --- Shared search ---
+  $('#tableSearch').on('input', function() {
+    tableUpcoming.search(this.value).draw();
+    tableCompleted.search(this.value).draw();
+  });
+
+  // --- Category filter ---
+  $('#categoryFilter').on('change', function() {
+    const val = this.value;
+    tableUpcoming.column(3).search(val ? '^' + val + '$' : '', val ? true : false, false).draw();
+    tableCompleted.column(3).search(val ? '^' + val + '$' : '', val ? true : false, false).draw();
+  });
+
+  // --- Tab switching ---
+  function showUpcoming() {
+    $('#tabUpcoming').addClass('active');
+    $('#tabCompleted').removeClass('active');
+    $('#upcomingSection').removeClass('d-none');
+    $('#completedSection').addClass('d-none');
+  }
+  function showCompleted() {
+    $('#tabCompleted').addClass('active');
+    $('#tabUpcoming').removeClass('active');
+    $('#completedSection').removeClass('d-none');
+    $('#upcomingSection').addClass('d-none');
+  }
+
+  $('#tabUpcoming').on('click', showUpcoming);
+  $('#tabCompleted').on('click', showCompleted);
+
+  // Show upcoming by default
+  showUpcoming();
+
+  // --- Add/Edit modal ---
+  const addEditModal = new bootstrap.Modal(document.getElementById('addEditModal'));
+  $('#openAdd').on('click', function() {
+    $('#modalTitle').text('Add Event');
+    $('#modalSubmit').text('Add Event');
+    $('#eventForm')[0].reset();
+    $('#event_id').val('');
+    $('#poster_preview').hide();
+    addEditModal.show();
+  });
+
+  $('.edit-btn').on('click', function() {
+    const btn = $(this);
+    $('#modalTitle').text('Edit Event');
+    $('#modalSubmit').text('Save Changes');
+    $('#event_id').val(btn.data('id'));
+    $('#event_name').val(btn.data('name'));
+    $('#event_category').val(btn.data('category') || 'General');
+    $('#event_date').val(btn.data('date'));
+    $('#event_time').val(btn.data('time'));
+    $('#event_location').val(btn.data('location'));
+    $('#event_description').val(btn.data('description'));
+    const poster = btn.data('poster');
+    if (poster) {
+      $('#poster_preview').attr('src','../uploads/'+poster).show();
+    } else $('#poster_preview').hide();
+    addEditModal.show();
+  });
+
+  // --- View modal ---
+  $('.view-btn').on('click', function() {
+    const btn = $(this);
+    $('#viewTitle').text(btn.data('name'));
+    $('#viewName').text(btn.data('name'));
+    $('#viewCategory').text(btn.data('category') || 'General');
+    $('#viewDate').text(btn.data('date'));
+    $('#viewTime').text(btn.data('time'));
+    $('#viewLocation').text(btn.data('location'));
+    $('#viewDescription').text(btn.data('description'));
+    const poster = btn.data('poster');
+    $('#viewPoster').attr('src', poster ? '../uploads/'+poster : '../uploads/default.jpg');
+    new bootstrap.Modal(document.getElementById('viewModal')).show();
+  });
+
+  // --- Archive with confirmation ---
+  $('.archive-btn').on('click', function() {
+    const id = $(this).data('id');
+    Swal.fire({
+      title: 'Archive this event?',
+      text: 'This will move the event to the archived list.',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#ff7043',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, archive it!'
+    }).then(result => {
+      if (result.isConfirmed) {
+        window.location.href = window.location.pathname + '?archive=' + id;
       }
-    }
-
-    // init DataTables for both tables
-    const tableUpcoming = $('#eventsTableUpcoming').DataTable({
-      responsive: true,
-      dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
-      pageLength: 10,
-      buttons: [ 'csv', 'excel', 'pdf', 'print' ],
-      columnDefs: [{ orderable: false, targets: [1,8] }],
-      language: { search: "", searchPlaceholder: "Search events..." }
-    });
-
-    const tableCompleted = $('#eventsTableCompleted').DataTable({
-      responsive: true,
-      dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
-      pageLength: 10,
-      buttons: [ 'csv', 'excel', 'pdf', 'print' ],
-      columnDefs: [{ orderable: false, targets: [1,8] }],
-      language: { search: "", searchPlaceholder: "Search events..." }
-    });
-
-    // shared search input applies to both
-    $('#tableSearch').on('input', function() {
-      tableUpcoming.search(this.value).draw();
-      tableCompleted.search(this.value).draw();
-    });
-
-    // category filter applies to column 3 on both tables
-    $('#categoryFilter').on('change', function() {
-      const val = this.value;
-      if (val) {
-        tableUpcoming.column(3).search('^' + val + '$', true, false).draw();
-        tableCompleted.column(3).search('^' + val + '$', true, false).draw();
-      } else {
-        tableUpcoming.column(3).search('').draw();
-        tableCompleted.column(3).search('').draw();
-      }
-    });
-
-    // Tab buttons
-    $('#tabUpcoming').on('click', function(){
-      $('#tabCompleted').removeClass('active');
-      $(this).addClass('active');
-      $('#completedSection').addClass('d-none');
-      $('#upcomingSection').removeClass('d-none');
-    });
-    $('#tabCompleted').on('click', function(){
-      $('#tabUpcoming').removeClass('active');
-      $(this).addClass('active');
-      $('#upcomingSection').addClass('d-none');
-      $('#completedSection').removeClass('d-none');
-    });
-
-    // re-hook edit/view/archive handlers (same as before)
-    // (keep existing handlers or reattach here)
-    // ...existing JS for modals, archive, preview...
-    // Add/Edit modal handlers
-    document.getElementById('openAdd').addEventListener('click', () => {
-      document.getElementById('modalTitle').textContent = 'Add Event';
-      document.getElementById('modalSubmit').textContent = 'Add Event';
-      document.getElementById('eventForm').reset();
-      document.getElementById('event_id').value = '';
-      document.getElementById('poster_preview').style.display = 'none';
-    });
-
-    document.querySelectorAll('.edit-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.getElementById('modalTitle').textContent = 'Edit Event';
-        document.getElementById('modalSubmit').textContent = 'Save Changes';
-        document.getElementById('event_id').value = btn.dataset.id;
-        document.getElementById('event_name').value = btn.dataset.name;
-        document.getElementById('event_category').value = btn.dataset.category || 'General';
-        document.getElementById('event_date').value = btn.dataset.date;
-        document.getElementById('event_time').value = btn.dataset.time;
-        document.getElementById('event_location').value = btn.dataset.location;
-        document.getElementById('event_description').value = btn.dataset.description;
-        const poster = btn.dataset.poster;
-        const img = document.getElementById('poster_preview');
-        if (poster) {
-          img.src = '../uploads/' + poster;
-          img.style.display = 'block';
-        } else img.style.display = 'none';
-        new bootstrap.Modal(document.getElementById('addEditModal')).show();
-      });
-    });
-
-    // View modal
-    document.querySelectorAll('.view-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.getElementById('viewTitle').textContent = btn.dataset.name;
-        document.getElementById('viewName').textContent = btn.dataset.name;
-        document.getElementById('viewCategory').textContent = btn.dataset.category || 'General';
-        document.getElementById('viewDate').textContent = btn.dataset.date;
-        document.getElementById('viewTime').textContent = btn.dataset.time;
-        document.getElementById('viewLocation').textContent = btn.dataset.location;
-        document.getElementById('viewDescription').textContent = btn.dataset.description;
-        const poster = btn.dataset.poster;
-        document.getElementById('viewPoster').src = poster ? '../uploads/' + poster : '../uploads/default.jpg';
-        new bootstrap.Modal(document.getElementById('viewModal')).show();
-      });
-    });
-
-    // Archive with SweetAlert confirm
-    document.querySelectorAll('.archive-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const id = btn.dataset.id;
-        Swal.fire({
-          title: 'Archive this event?',
-          text: 'This will move the event to the archived list.',
-          icon: 'warning',
-          showCancelButton: true,
-          confirmButtonColor: '#ff7043',
-          cancelButtonColor: '#6c757d',
-          confirmButtonText: 'Yes, archive it!'
-        }).then(result => {
-          if (result.isConfirmed) {
-            window.location.href = window.location.pathname + '?archive=' + id;
-          }
-        });
-      });
-    });
-
-    // Poster preview
-    document.getElementById('event_poster').addEventListener('change', function() {
-      const file = this.files[0];
-      const img = document.getElementById('poster_preview');
-      if (file) {
-        img.style.display = 'block';
-        img.src = URL.createObjectURL(file);
-      } else img.style.display = 'none';
     });
   });
-  </script>
+
+  // --- Poster preview ---
+  $('#event_poster').on('change', function() {
+    const file = this.files[0];
+    if (file) $('#poster_preview').attr('src', URL.createObjectURL(file)).show();
+    else $('#poster_preview').hide();
+  });
+});
+</script>
 
 </body>
 </html>

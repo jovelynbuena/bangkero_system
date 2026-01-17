@@ -1,4 +1,4 @@
-<?php
+<?php 
 session_start();
 
 if ($_SESSION['username'] == "") {
@@ -62,50 +62,18 @@ $rolesResult = $conn->query("SELECT * FROM officer_roles ORDER BY id ASC");
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <style>
-    body {
-        background: #f6f9fc;
-        font-family: 'Segoe UI', sans-serif;
-    }
-    .main-content {
-        margin-left: 250px;
-        padding: 40px;
-    }
-    .card {
-        border: none;
-        border-radius: 16px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-        transition: 0.3s;
-    }
-    .card:hover {
-        transform: translateY(-2px);
-    }
-    .card-header {
-        border-bottom: none;
-        font-weight: 600;
-    }
-    .btn-primary {
-        background-color: #ff7043;
-        border: none;
-        border-radius: 8px;
-    }
-    .btn-primary:hover {
-        background-color: #00897b;
-    }
-    .btn-warning, .btn-danger {
-        border-radius: 8px;
-    }
-    .alert {
-        border-radius: 10px;
-    }
-    table th {
-        background-color: #e3f2fd;
-    }
-    table td, table th {
-        vertical-align: middle;
-    }
-    @media (max-width: 992px) {
-        .main-content { margin-left: 0; padding: 20px; }
-    }
+    body { background: #f6f9fc; font-family: 'Segoe UI', sans-serif; }
+    .main-content { margin-left: 250px; padding: 40px; }
+    .card { border: none; border-radius: 16px; box-shadow: 0 4px 10px rgba(0,0,0,0.08); transition: 0.3s; }
+    .card:hover { transform: translateY(-2px); }
+    .card-header { border-bottom: none; font-weight: 600; }
+    .btn-primary { background-color: #ff7043; border: none; border-radius: 8px; }
+    .btn-primary:hover { background-color: #00897b; }
+    .btn-warning, .btn-danger { border-radius: 8px; }
+    .alert { border-radius: 10px; }
+    table th { background-color: #e3f2fd; }
+    table td, table th { vertical-align: middle; }
+    @media (max-width: 992px) { .main-content { margin-left: 0; padding: 20px; } }
 </style>
 </head>
 <body>
@@ -119,10 +87,10 @@ $rolesResult = $conn->query("SELECT * FROM officer_roles ORDER BY id ASC");
     </div>
 
     <?php if ($successMsg): ?>
-        <div class="alert alert-success text-center fw-semibold"><?= $successMsg ?></div>
+        <div class="alert alert-success text-center fw-semibold"><?= htmlspecialchars($successMsg ?? '') ?></div>
     <?php endif; ?>
     <?php if ($errorMsg): ?>
-        <div class="alert alert-danger text-center fw-semibold"><?= $errorMsg ?></div>
+        <div class="alert alert-danger text-center fw-semibold"><?= htmlspecialchars($errorMsg ?? '') ?></div>
     <?php endif; ?>
 
     <div class="row g-4">
@@ -172,23 +140,23 @@ $rolesResult = $conn->query("SELECT * FROM officer_roles ORDER BY id ASC");
                                 <?php if ($rolesResult->num_rows > 0): ?>
                                     <?php while ($row = $rolesResult->fetch_assoc()): ?>
                                         <tr>
-                                            <td><?= $row['id'] ?></td>
-                                            <td><?= htmlspecialchars($row['role_name']) ?></td>
-                                            <td><?= htmlspecialchars($row['description']) ?></td>
+                                            <td><?= htmlspecialchars($row['id'] ?? '') ?></td>
+                                            <td><?= htmlspecialchars($row['role_name'] ?? '') ?></td>
+                                            <td><?= htmlspecialchars($row['description'] ?? '') ?></td>
                                             <td>
                                                 <button class="btn btn-sm btn-warning me-1" 
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#editModal"
-                                                    data-id="<?= $row['id'] ?>"
-                                                    data-name="<?= htmlspecialchars($row['role_name']) ?>"
-                                                    data-description="<?= htmlspecialchars($row['description']) ?>">
+                                                    data-id="<?= htmlspecialchars($row['id'] ?? '') ?>"
+                                                    data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>"
+                                                    data-description="<?= htmlspecialchars($row['description'] ?? '') ?>">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
                                                 <button class="btn btn-sm btn-danger" 
                                                     data-bs-toggle="modal"
                                                     data-bs-target="#deleteModal"
-                                                    data-id="<?= $row['id'] ?>"
-                                                    data-name="<?= htmlspecialchars($row['role_name']) ?>">
+                                                    data-id="<?= htmlspecialchars($row['id'] ?? '') ?>"
+                                                    data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>">
                                                     <i class="bi bi-trash"></i>
                                                 </button>
                                             </td>
@@ -262,15 +230,15 @@ $rolesResult = $conn->query("SELECT * FROM officer_roles ORDER BY id ASC");
 const editModal = document.getElementById('editModal');
 editModal.addEventListener('show.bs.modal', e => {
     const b = e.relatedTarget;
-    document.getElementById('edit_id').value = b.getAttribute('data-id');
-    document.getElementById('edit_name').value = b.getAttribute('data-name');
-    document.getElementById('edit_description').value = b.getAttribute('data-description');
+    document.getElementById('edit_id').value = b.getAttribute('data-id') ?? '';
+    document.getElementById('edit_name').value = b.getAttribute('data-name') ?? '';
+    document.getElementById('edit_description').value = b.getAttribute('data-description') ?? '';
 });
 const deleteModal = document.getElementById('deleteModal');
 deleteModal.addEventListener('show.bs.modal', e => {
     const b = e.relatedTarget;
-    document.getElementById('delete_id').value = b.getAttribute('data-id');
-    document.getElementById('delete_name').innerText = b.getAttribute('data-name');
+    document.getElementById('delete_id').value = b.getAttribute('data-id') ?? '';
+    document.getElementById('delete_name').innerText = b.getAttribute('data-name') ?? '';
 });
 </script>
 </body>
