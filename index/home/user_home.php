@@ -180,19 +180,17 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
         font-size: 2.1rem;
       }
 
-    /* Footer */
-    footer {
-      background: var(--dark);
-      color: #fff;
-      padding: 20px 0;
-      text-align: center;
-      font-size: 1rem;
-      letter-spacing: 1px;
-      margin-top: 40px;
+   /* Footer spacing */
+    .bottom-space{height:32px}
+    @media (max-width:575px){
+      .hero{padding:40px 12px;border-radius:0 0 14px 14px}
+      .icon-wrap{width:48px;height:48px;font-size:1.15rem;border-radius:8px}
+      .btn-download{padding:8px 12px}
     }
   </style>
 </head>
 <body>
+  <main>
   <?php include("partials/navbar.php"); ?>
 
 <!-- Hero Carousel -->
@@ -409,7 +407,7 @@ document.addEventListener("DOMContentLoaded", () => {
     </div>
   </div>
 </section>
-
+</main>
 <style>
   .partnerships img {
     max-height: 80px;
@@ -423,8 +421,8 @@ document.addEventListener("DOMContentLoaded", () => {
     opacity: 1;
   }
 </style>
+<div class="mb-5"></div>
 
-<!-- Footer -->
 
 
 <!-- Bootstrap JS -->
@@ -440,7 +438,7 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
 </script>
-
+        
 <?php include("partials/footer.php"); ?>
 </body>
 </html>
