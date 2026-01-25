@@ -440,5 +440,8 @@ document.addEventListener("DOMContentLoaded", () => {
 </script>
         
 <?php include("partials/footer.php"); ?>
+
+<?php include 'chatbox.php'; ?>
+
 </body>
 </html>
