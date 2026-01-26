@@ -664,6 +664,7 @@ document.addEventListener("DOMContentLoaded", () => {
 </section>
 
 <?php include("partials/footer.php"); ?>
+<?php include 'chatbox.php'; ?>
 
 </body>
 </html>

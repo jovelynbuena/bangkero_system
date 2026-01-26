@@ -287,5 +287,7 @@ $announcement_result = $conn->query($announcement_sql);
       }
     });
   </script>
+  <?php include 'chatbox.php'; ?>
+
 </body>
 </html>
