@@ -151,6 +151,7 @@ $event = $result->fetch_assoc();
       <a href="#" class="btn btn-success">✔ Register / Join Event</a>
     </div>
   </div>
+<?php include 'chatbox.php'; ?>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </body>
