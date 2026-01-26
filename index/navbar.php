@@ -44,92 +44,262 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <style>
+/* Google Font */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+body {
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+}
+
 /* Sidebar */
 .sidebar {
-    width: 260px;
+    width: 270px;
     height: 100vh;
     position: fixed;
-    background: #2C3E50;
-    color: #FFF;
-    padding-top: 24px;
-    box-shadow: 3px 0 15px rgba(0,0,0,0.1);
+    background: #FFFFFF;
+    color: #333;
+    padding-top: 0;
+    box-shadow: 2px 0 24px rgba(0,0,0,0.08);
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    transition: width 0.3s;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-right: 1px solid #E8E8E8;
 }
-.sidebar h4 { color: #34495E; font-weight: 500; padding-left: 1rem; margin-bottom: 1rem; }
-.sidebar a {
-    color: #FFF;
+
+/* Scrollbar */
+.sidebar::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar::-webkit-scrollbar-track {
+    background: #f8f9fa;
+}
+.sidebar::-webkit-scrollbar-thumb {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 10px;
+}
+.sidebar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(135deg, #5568d3 0%, #6a3f8f 100%);
+}
+
+/* Logo Section */
+.sidebar-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 24px 16px;
+    margin-bottom: 20px;
+    border-bottom: 3px solid rgba(255,255,255,0.2);
+}
+
+.sidebar h4 { 
+    color: #555; 
+    font-weight: 700; 
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding-left: 1.2rem; 
+    margin-bottom: 0.75rem;
+    margin-top: 1rem;
+}
+
+/* Logo */
+.hero-logo {
+    height: 80px;
+    width: auto;
     display: block;
-    padding: 12px 24px;
+    filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+}
+.logo-wrapper {
+    width: auto;
+    height: auto;
+    background-color: rgba(255,255,255,0.15);
+    padding: 12px;
+    border-radius: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    backdrop-filter: blur(10px);
+}
+
+.sidebar-header h5 {
+    color: white;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
+    margin-top: 12px;
+    margin-bottom: 0;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    line-height: 1.4;
+}
+
+/* Sidebar Links */
+.sidebar a {
+    color: #555;
+    display: block;
+    padding: 12px 20px;
     text-decoration: none;
-    font-size: 1.04rem;
-    border-radius: 10px 0 0 10px;
-    transition: all 0.3s ease;
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    margin: 2px 12px;
+    position: relative;
 }
-.sidebar a:hover, .sidebar a.active {
-    background: #34495E;
-    color: #ECF0F1;
+
+.sidebar a:hover {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    color: #667eea;
+    transform: translateX(4px);
 }
+
+.sidebar a.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #FFFFFF;
+    font-weight: 600;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
 .sidebar a.sidebar-dropdown-toggle {
     cursor: pointer;
     display: flex;
     align-items: center;
     justify-content: space-between;
+    font-weight: 600;
+}
+
+.sidebar .collapse a {
+    font-size: 0.9rem;
+    padding: 10px 20px 10px 48px;
+    margin: 2px 12px;
+    border-radius: 10px;
     font-weight: 500;
 }
-.sidebar .collapse a {
-    font-size: 0.96rem;
-    padding-left: 50px;
-    padding-top: 7px;
-    padding-bottom: 7px;
-    border-radius: 8px 0 0 8px;
-}
+
 .sidebar .collapse a:hover {
-    background: #34495E;
-    color: #ECF0F1;
+    background: linear-gradient(90deg, #f0f2f5 0%, #e9ecef 100%);
+    color: #667eea;
 }
+
 .sidebar a i {
-    margin-right: 0.75rem;
-    font-size: 1.25rem;
+    margin-right: 12px;
+    font-size: 1.15rem;
     color: #95A5A6;
-    transition: color 0.3s;
+    transition: all 0.3s;
+    width: 20px;
+    text-align: center;
 }
-.sidebar a.active i { color: #ECF0F1; }
-.sidebar .collapse a.active { background-color: #34495E; color: #ECF0F1; }
-.sidebar a.text-danger { margin-top: auto; display: block; }
+
+.sidebar a:hover i {
+    color: #667eea;
+    transform: scale(1.1);
+}
+
+.sidebar a.active i { 
+    color: #FFFFFF;
+}
+
+.sidebar .collapse a.active { 
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #FFFFFF;
+    font-weight: 600;
+    box-shadow: 0 3px 8px rgba(102, 126, 234, 0.25);
+}
+
+.sidebar .collapse a.active i {
+    color: #FFFFFF;
+}
+
+/* Logout Button */
+.sidebar a.text-danger { 
+    margin-top: auto;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #fee 0%, #fdd 100%);
+    color: #dc3545 !important;
+    border: 2px solid #dc354520;
+}
+
+.sidebar a.text-danger:hover {
+    background: linear-gradient(135deg, #dc3545 0%, #c82333 100%);
+    color: #FFFFFF !important;
+    transform: translateX(0);
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+}
+
+.sidebar a.text-danger:hover i {
+    color: #FFFFFF;
+}
+
+.sidebar a.text-danger i {
+    color: #dc3545;
+}
 
 /* Navbar */
 .navbar {
-    margin-left: 260px;
-    background-color: #F8F9FA;
-    color: #2C3E50;
-    border-bottom: 1px solid #DDE2E5;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    margin-left: 270px;
+    background: #FFFFFF;
+    color: #333;
+    border-bottom: 1px solid #E8E8E8;
+    box-shadow: 0 2px 16px rgba(0,0,0,0.06);
+    padding: 16px 24px;
+    min-height: 70px;
 }
-.navbar-text { color: #2C3E50; font-weight: 500; }
 
-/* Logo */
-.hero-logo {
-    height: 120px;
-    width: auto;
-    display: block;
-}
-.logo-wrapper {
-    width: auto;
-    height: auto;
-    background-color: transparent;
-    padding: 0;
-    box-shadow: none;
-    display: flex;
+.navbar-text { 
+    color: #555; 
+    font-weight: 500;
+    font-size: 0.95rem;
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    padding: 10px 20px;
+    border-radius: 25px;
+    border: 1px solid #E0E0E0;
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
+    gap: 8px;
 }
 
-@media (max-width: 991.98px) { .sidebar, .navbar { margin-left: 0 !important; } }
-.sidebar-dropdown-toggle i.float-end { transition: transform 0.3s ease; }
-.sidebar-dropdown-toggle[aria-expanded="true"] i.float-end { transform: rotate(180deg); }
+.navbar-text strong {
+    color: #667eea;
+    font-weight: 700;
+}
+
+.navbar-text::before {
+    content: "👤";
+    font-size: 1.2rem;
+}
+
+/* Dropdown Caret Animation */
+.sidebar-dropdown-toggle i.float-end { 
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.9rem;
+}
+.sidebar-dropdown-toggle[aria-expanded="true"] i.float-end { 
+    transform: rotate(180deg);
+}
+
+/* Responsive */
+@media (max-width: 991.98px) { 
+    .sidebar, .navbar { 
+        margin-left: 0 !important; 
+    }
+    .sidebar {
+        width: 250px;
+    }
+}
+
+/* Animation */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateX(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+.sidebar a {
+    animation: slideIn 0.3s ease-out;
+}
 </style>
 </head>
 <body>
@@ -137,12 +307,14 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
 <!-- Sidebar -->
 <div class="sidebar d-flex flex-column">
 
-    <!-- Logo + Name -->
-    <div class="text-center mb-4 px-3">
-        <div class="logo-wrapper d-inline-flex align-items-center justify-content-center">
-            <img src="<?= $assocLogo ?>" alt="<?= $assocName ?> Logo" class="hero-logo">
+    <!-- Logo + Name Header -->
+    <div class="sidebar-header">
+        <div class="text-center">
+            <div class="logo-wrapper d-inline-flex align-items-center justify-content-center">
+                <img src="<?= $assocLogo ?>" alt="<?= $assocName ?> Logo" class="hero-logo">
+            </div>
+            <h5 class="mt-3"><?= $assocName ?></h5>
         </div>
-        <h5 class="mt-2 fw-bold text-white"><?= $assocName ?> (<?= ucfirst($role); ?> Panel)</h5>
     </div>
 
     <h4><?= ucfirst($role); ?> Menu</h4>

@@ -20,59 +20,96 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
   <!-- Bootstrap CSS & Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
-      --primary: #1976d2;
-      --secondary: #ff7043;
-      --accent: #ffa726;
-      --success: #28a745;
-      --info: #42a5f5;
+      --primary: #2c3e50;
+      --secondary: #34495e;
+      --accent: #5a6c7d;
+      --light: #ecf0f1;
+      --success: #27ae60;
+      --info: #3498db;
       --bg: #f8f9fa;
-      --dark: #003366;
-      --gray: #f9f9f9;
+      --dark: #1a252f;
+      --gray: #95a5a6;
+      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
     }
     body {
-      font-family: 'Open Sans', 'Segoe UI', Arial, sans-serif;
+      font-family: 'Inter', sans-serif;
       background-color: var(--bg);
-      color: #222;
+      color: #2c3e50;
+      overflow-x: hidden;
     }
-    /* Navbar */
+    * {
+      scroll-behavior: smooth;
+    }
+    * {
+      scroll-behavior: smooth;
+    }
+    
+    /* Enhanced Navbar */
     .navbar {
-      background: #fff;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-      padding: 1rem 0;
-      transition: all 0.3s;
+      background: rgba(255, 255, 255, 0.98);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 2px 20px rgba(0,0,0,0.06);
+      padding: 1.2rem 0;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
     }
     .navbar.shrink {
-      padding: 0.5rem 0;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+      padding: 0.6rem 0;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.1);
     }
     .navbar-brand img {
-      height: 48px;
-      transition: height 0.3s;
+      height: 52px;
+      transition: all 0.4s ease;
+      filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
     }
     .navbar.shrink .navbar-brand img {
-      height: 36px;
+      height: 40px;
     }
     .navbar-nav .nav-link {
-      font-weight: 500;
-      color: var(--primary) !important;
-      margin: 0 8px;
-      padding: 8px 12px;
-      border-bottom: 2px solid transparent;
-      transition: color 0.2s, border-bottom 0.2s;
+      font-weight: 600;
+      color: var(--dark) !important;
+      margin: 0 10px;
+      padding: 10px 16px;
+      border-radius: 10px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+    .navbar-nav .nav-link::after {
+      content: '';
+      position: absolute;
+      bottom: 6px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 0;
+      height: 3px;
+      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
+      border-radius: 2px;
+      transition: width 0.3s ease;
+    }
+    .navbar-nav .nav-link:hover::after,
+    .navbar-nav .nav-link.active::after {
+      width: 70%;
     }
     .navbar-nav .nav-link:hover,
     .navbar-nav .nav-link.active {
-      color: var(--secondary) !important;
-      border-bottom: 2px solid var(--secondary);
-      background: transparent;
+      color: var(--primary-orange) !important;
+      background: var(--light-orange);
     }
-    /* Hero Carousel */
+    .navbar-nav .nav-link:hover,
+    .navbar-nav .nav-link.active {
+      color: var(--primary-orange) !important;
+      background: var(--light-orange);
+    }
+    
+    /* Modern Hero Carousel */
     .carousel-item {
-      height: 70vh;
-      min-height: 340px;
+      height: 75vh;
+      min-height: 400px;
       background-size: cover;
       background-position: center;
       position: relative;
@@ -82,7 +119,7 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0,0,0,0.38);
+      background: linear-gradient(135deg, rgba(44, 62, 80, 0.75) 0%, rgba(26, 37, 47, 0.85) 100%);
       z-index: 1;
     }
     .carousel-caption {
@@ -91,101 +128,495 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       left: 0; right: 0;
       transform: translateY(-50%);
       z-index: 2;
-      text-shadow: 1px 1px 6px rgba(0,0,0,0.5);
+      text-shadow: 2px 2px 12px rgba(0,0,0,0.4);
     }
     .carousel-caption h1 {
-      font-size: 2.5rem;
-      font-weight: 700;
+      font-size: 3.5rem;
+      font-weight: 800;
       color: #fff;
-      font-family: 'Lora', serif;
-      letter-spacing: 1px;
+      font-family: 'Poppins', sans-serif;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+      animation: fadeInUp 0.8s ease-out;
     }
     .carousel-caption p {
-      font-size: 1.15rem;
-      margin-top: 10px;
-      color: #f3f3f3;
+      font-size: 1.3rem;
+      margin-top: 16px;
+      color: #ffffff;
+      font-weight: 400;
+      animation: fadeInUp 0.8s ease-out 0.2s backwards;
     }
-    /* Intro Section */
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* Modern Intro Section */
     .intro-section {
-      background: #fff;
-      padding: 56px 0 40px 0;
-      border-bottom: 1px solid #eaeaea;
+      background: linear-gradient(180deg, #ffffff 0%, #fff5f0 100%);
+      padding: 50px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .intro-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(44, 62, 80, 0.05) 0%, transparent 70%);
+      border-radius: 50%;
     }
     .intro-section h2 {
-      font-family: 'Lora', serif;
+      font-family: 'Poppins', sans-serif;
       color: var(--dark);
       font-weight: 700;
-      margin-bottom: 1.2rem;
-      font-size: 2.1rem;
+      margin-bottom: 1.5rem;
+      font-size: 2.8rem;
+      position: relative;
+      display: inline-block;
+    }
+    .intro-section h2::after {
+      content: '';
+      position: absolute;
+      bottom: -10px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 80px;
+      height: 4px;
+      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
+      border-radius: 2px;
     }
     .intro-section p {
-      color: #444;
-      font-size: 1.08rem;
-      line-height: 1.7;
-      max-width: 800px;
+      color: #4b5563;
+      font-size: 1.15rem;
+      line-height: 1.8;
+      max-width: 900px;
       margin: 0 auto;
+      position: relative;
+    }
+    .intro-section p {
+      color: #4b5563;
+      font-size: 1.15rem;
+      line-height: 1.8;
+      max-width: 900px;
+      margin: 0 auto;
+      position: relative;
     }
    
-    /* Event Highlight */
+    /* Enhanced Event Highlight */
     .event-highlight {
-      background: #fff;
-      padding: 60px 20px;
-      text-align: center;
-      border-top: 1px solid #eee;
+      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      padding: 50px 20px;
+      position: relative;
+    }
+    .event-highlight::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 6px;
+      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
     }
     .event-highlight h2 {
-      font-family: 'Lora', serif;
+      font-family: 'Poppins', sans-serif;
       color: var(--dark);
-      margin-bottom: 20px;
+      margin-bottom: 35px;
+      font-weight: 800;
+      font-size: 2.8rem;
+      position: relative;
+      display: inline-block;
+      letter-spacing: -0.5px;
+    }
+    .event-highlight h2::after {
+      content: '';
+      position: absolute;
+      bottom: -12px;
+      left: 0;
+      width: 60%;
+      height: 5px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      border-radius: 3px;
+    }
+    .event-card {
+      border-radius: 24px;
+      overflow: hidden;
+      box-shadow: 0 12px 48px rgba(44, 62, 80, 0.12);
+      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      background: white;
+      position: relative;
+    }
+    .event-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 5px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .event-card:hover::before {
+      opacity: 1;
+    }
+    .event-card:hover {
+      transform: translateY(-12px);
+      box-shadow: 0 24px 80px rgba(44, 62, 80, 0.18);
+    }
+    .event-poster-wrapper {
+      position: relative;
+      overflow: hidden;
+      height: 100%;
+      min-height: 450px;
+    }
+    .event-poster-wrapper::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 50px;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1));
+      pointer-events: none;
+    }
+    .event-card img {
+      height: 100%;
+      width: 100%;
+      object-fit: cover;
+      transition: transform 0.6s ease;
+    }
+    .event-card:hover img {
+      transform: scale(1.08);
+    }
+    .event-details {
+      padding: 50px 45px;
+      position: relative;
+    }
+    .event-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 8px 20px;
+      border-radius: 50px;
+      font-size: 0.85rem;
       font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+    }
+    .event-details h3 {
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 2.2rem;
+      margin-bottom: 20px;
+      font-family: 'Poppins', sans-serif;
+      line-height: 1.3;
+      letter-spacing: -0.5px;
+    }
+    .event-description {
+      color: #64748b;
+      font-size: 1.05rem;
+      line-height: 1.75;
+      margin-bottom: 25px;
+      font-weight: 400;
+    }
+    .event-info-grid {
+      display: grid;
+      gap: 12px;
+      margin-bottom: 25px;
+    }
+    .event-details .icon-text {
+      display: flex;
+      align-items: center;
+      padding: 12px 18px;
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      border-radius: 14px;
+      transition: all 0.3s ease;
+      border-left: 4px solid var(--primary);
+    }
+    .event-details .icon-text:hover {
+      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
+      transform: translateX(6px);
+      box-shadow: 0 4px 16px rgba(44, 62, 80, 0.1);
+    }
+    .event-details .icon-text i {
+      color: var(--primary);
+      margin-right: 16px;
+      font-size: 1.4rem;
+      width: 32px;
+      text-align: center;
+    }
+    .event-details .icon-text span {
+      color: var(--dark);
+      font-weight: 600;
+      font-size: 1.05rem;
+    }
+    .event-empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      border-radius: 24px;
+      border: 2px dashed #cbd5e1;
+    }
+    .event-empty-state i {
+      font-size: 5rem;
+      color: #cbd5e1;
+      margin-bottom: 24px;
+    }
+    .event-empty-state p {
+      color: #94a3b8;
+      font-size: 1.15rem;
+      font-weight: 500;
+    }
+    
+    /* Modern Countdown */
+    .countdown-wrapper {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 25px;
+      border-radius: 20px;
+      margin-top: 25px;
+      border: 1px solid #e2e8f0;
+      position: relative;
+      overflow: hidden;
+    }
+    .countdown-wrapper::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+    }
+    .countdown-label {
+      text-align: center;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 0.9rem;
+      text-transform: uppercase;
+      letter-spacing: 1.5px;
+      margin-bottom: 15px;
+      opacity: 0.7;
     }
     .countdown {
       display: flex;
       justify-content: center;
       gap: 20px;
-      margin-top: 20px;
       flex-wrap: wrap;
     }
     .countdown div {
-      background: var(--primary);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: #fff;
-      padding: 20px;
-      border-radius: 10px;
-      min-width: 90px;
+      padding: 28px 24px;
+      border-radius: 18px;
+      min-width: 100px;
+      box-shadow: 0 8px 24px rgba(44, 62, 80, 0.25);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .countdown div::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      left: -50%;
+      width: 200%;
+      height: 200%;
+      background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .countdown div:hover::before {
+      opacity: 1;
+    }
+    .countdown div:hover {
+      transform: translateY(-6px) scale(1.05);
+      box-shadow: 0 16px 40px rgba(44, 62, 80, 0.35);
     }
     .countdown div span {
       display: block;
-      font-size: 1.8rem;
-      font-weight: bold;
+      font-size: 2.5rem;
+      font-weight: 900;
+      font-family: 'Poppins', sans-serif;
+      line-height: 1;
+      margin-bottom: 8px;
+      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
     }
-          /* Announcement Card Styling */
-      .announcement-card {
-        background-color: #ffffff;          
-        border: 1px solid #e0e0e0;         
-        border-radius: 12px;               
-        box-shadow: 0 2px 6px rgba(0,0,0,0.05); /* Subtle shadow */
-        transition: all 0.3s ease;
-      }
+    .countdown div small {
+      font-size: 0.8rem;
+      opacity: 0.95;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    
+    /* Modern Announcement Cards */
+    .announcements-section {
+      padding: 50px 0;
+      background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+    }
+    .announcements-section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 700;
+      margin-bottom: 35px;
+      font-size: 2.5rem;
+    }
+    .announcement-card {
+      background: #ffffff;
+      border: none;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      transition: all 0.4s ease;
+      overflow: hidden;
+      position: relative;
+    }
+    .announcement-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 4px;
+      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
+      transform: scaleX(0);
+      transition: transform 0.4s ease;
+    }
+    .announcement-card:hover::before {
+      transform: scaleX(1);
+    }
+    .announcement-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 12px 40px rgba(255, 107, 53, 0.2);
+    }
+    .announcement-card h5 {
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 1.2rem;
+    }
+    .announcement-card .badge {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-weight: 600;
+    }
+    .announcement-card .btn {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      border: none;
+      color: white;
+      font-weight: 600;
+      padding: 10px 24px;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+    .announcement-card .btn:hover {
+      transform: translateX(4px);
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+    }
+    .view-all-btn {
+      background: transparent;
+      border: 2px solid var(--primary);
+      color: var(--primary);
+      font-weight: 600;
+      padding: 12px 32px;
+      border-radius: 12px;
+      transition: all 0.3s ease;
+    }
+    .view-all-btn:hover {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.25);
+    }
 
-      .announcement-card:hover {
-        background-color: #f9f9f9;        
-        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
-      }
-
-      .announcements-section h2 {
-        font-family: 'Lora', serif;
-        color: var(--dark);
-        font-weight: 700;
-        margin-bottom: 20px;
-        font-size: 2.1rem;
-      }
+    .view-all-btn:hover {
+      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--dark-orange) 100%);
+      color: white;
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+    }
+    
+    /* Partnerships Section */
+    .partnerships {
+      padding: 50px 0;
+      background: linear-gradient(135deg, #ecf0f1 0%, #ffffff 100%);
+    }
+    .partnerships h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+    }
+    .partnerships img {
+      max-height: 90px;
+      transition: all 0.4s ease;
+      filter: grayscale(100%) brightness(0.9);
+      opacity: 0.7;
+    }
+    .partnerships img:hover {
+      transform: scale(1.12);
+      filter: grayscale(0%) brightness(1);
+      opacity: 1;
+    }
+    .partner-card {
+      background: white;
+      padding: 30px;
+      border-radius: 16px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+      transition: all 0.3s ease;
+      height: 100%;
+    }
+    .partner-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.12);
+    }
 
    /* Footer spacing */
-    .bottom-space{height:32px}
-    @media (max-width:575px){
-      .hero{padding:40px 12px;border-radius:0 0 14px 14px}
-      .icon-wrap{width:48px;height:48px;font-size:1.15rem;border-radius:8px}
-      .btn-download{padding:8px 12px}
+    .bottom-space { height: 40px; }
+    
+    /* Responsive */
+    @media (max-width: 768px) {
+      .carousel-caption h1 {
+        font-size: 2rem;
+      }
+      .carousel-caption p {
+        font-size: 1rem;
+      }
+      .intro-section h2,
+      .event-highlight h2,
+      .announcements-section h2,
+      .partnerships h2 {
+        font-size: 2rem;
+      }
+      .countdown div {
+        min-width: 70px;
+        padding: 16px;
+      }
+      .countdown div span {
+        font-size: 1.5rem;
+      }
     }
   </style>
 </head>
@@ -237,105 +668,133 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
 
 
 <!-- Event Highlight Section -->
-<section class="event-highlight container my-5">
-    <h2 class="mb-4">Upcoming Major Event</h2>
-    <?php if ($nextEvent): ?>
-    <div class="card shadow-lg border-0 rounded-4">
-        <div class="row g-0 align-items-center">
-            <!-- Poster -->
-            <div class="col-md-5">
-                <img src="../../uploads/<?php echo htmlspecialchars($nextEvent['event_poster'] ?: 'default.jpg'); ?>" 
-                     class="img-fluid rounded-start" alt="Event Poster">
-            </div>
-            <!-- Details -->
-            <div class="col-md-7 p-4">
-                <h3 class="fw-bold text-primary"><?php echo htmlspecialchars($nextEvent['event_name']); ?></h3>
-                <p class="text-muted">
-    <?php 
-        $desc = htmlspecialchars($nextEvent['description']);
-        $maxLength = 150; // max number of characters
-        if (strlen($desc) > $maxLength) {
-            $desc = substr($desc, 0, $maxLength) . '...';
-        }
-        echo $desc;
-    ?>
-</p>
-
-                <p>
-                    <i class="bi bi-calendar"></i> <?php echo $nextEvent['date']; ?><br>
-                    <i class="bi bi-clock"></i> <?php echo $nextEvent['time']; ?><br>
-                    <i class="bi bi-geo-alt"></i> <?php echo htmlspecialchars($nextEvent['location']); ?>
-                </p>
-                <div class="countdown d-flex gap-3 mt-3" 
-                     data-event-date="<?php echo $nextEvent['date'] . ' ' . $nextEvent['time']; ?>">
-                    <div><span class="days">0</span><small class="d-block">Days</small></div>
-                    <div><span class="hours">0</span><small class="d-block">Hours</small></div>
-                    <div><span class="minutes">0</span><small class="d-block">Minutes</small></div>
-                    <div><span class="seconds">0</span><small class="d-block">Seconds</small></div>
+<section class="event-highlight">
+    <div class="container">
+        <h2 class="text-center">🎉 Upcoming Major Event</h2>
+        <?php if ($nextEvent): ?>
+        <div class="card event-card shadow-lg border-0">
+            <div class="row g-0 align-items-stretch">
+                <!-- Event Poster -->
+                <div class="col-md-5">
+                    <div class="event-poster-wrapper">
+                        <img src="../../uploads/<?php echo htmlspecialchars($nextEvent['event_poster'] ?: 'default.jpg'); ?>" 
+                             class="img-fluid" alt="Event Poster">
+                    </div>
+                </div>
+                
+                <!-- Event Details -->
+                <div class="col-md-7 event-details">
+                    <!-- Event Badge -->
+                    <span class="event-badge">
+                        <i class="bi bi-star-fill me-1"></i> Featured Event
+                    </span>
+                    
+                    <!-- Event Title -->
+                    <h3><?php echo htmlspecialchars($nextEvent['event_name']); ?></h3>
+                    
+                    <!-- Event Description -->
+                    <p class="event-description">
+                        <?php 
+                            $desc = htmlspecialchars($nextEvent['description']);
+                            $maxLength = 200;
+                            if (strlen($desc) > $maxLength) {
+                                $desc = substr($desc, 0, $maxLength) . '...';
+                            }
+                            echo $desc;
+                        ?>
+                    </p>
+                    
+                    <!-- Event Info Grid -->
+                    <div class="event-info-grid">
+                        <div class="icon-text">
+                            <i class="bi bi-calendar-event-fill"></i>
+                            <span><?php echo date('l, F d, Y', strtotime($nextEvent['date'])); ?></span>
+                        </div>
+                        <div class="icon-text">
+                            <i class="bi bi-clock-fill"></i>
+                            <span><?php echo date('g:i A', strtotime($nextEvent['time'])); ?></span>
+                        </div>
+                        <div class="icon-text">
+                            <i class="bi bi-geo-alt-fill"></i>
+                            <span><?php echo htmlspecialchars($nextEvent['location']); ?></span>
+                        </div>
+                    </div>
+                    
+                    <!-- Countdown Timer -->
+                    <div class="countdown-wrapper">
+                        <div class="countdown-label">
+                            <i class="bi bi-hourglass-split me-2"></i>Event Starts In
+                        </div>
+                        <div class="countdown" data-event-date="<?php echo $nextEvent['date'] . ' ' . $nextEvent['time']; ?>">
+                            <div><span class="days">0</span><small>Days</small></div>
+                            <div><span class="hours">0</span><small>Hours</small></div>
+                            <div><span class="minutes">0</span><small>Minutes</small></div>
+                            <div><span class="seconds">0</span><small>Seconds</small></div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+        <?php else: ?>
+        <div class="event-empty-state">
+            <i class="bi bi-calendar-x"></i>
+            <p class="mb-0">No upcoming events scheduled at the moment.</p>
+            <p class="text-muted small mt-2">Check back soon for exciting announcements!</p>
+        </div>
+        <?php endif; ?>
     </div>
-    <?php else: ?>
-    <p class="text-muted">No upcoming events yet. Stay tuned!</p>
-    <?php endif; ?>
 </section>
 <section class="container my-5">
-   <section class="container my-5 announcements-section">
-    <!-- Title -->
-     <section class="event-highlight container my-5">
-    <h2 class="mb-4 text-center">Latest Announcements</h2>
-    
-    <div class="row justify-content-center">
-        <?php while ($row = $latestAnnouncements->fetch_assoc()): ?>
-            <div class="col-md-4 mb-4">
-    <div class="announcement-card h-100 d-flex flex-column p-3">
-        <!-- Announcement Title -->
-        <h5 class="fw-bold text-dark mb-2" style="font-size: 1.1rem;">
-            <?= htmlspecialchars($row['title']) ?>
-        </h5>
+   <section class="announcements-section">
+    <div class="container">
+        <h2 class="text-center">📢 Latest Announcements</h2>
         
-        <!-- Date -->
-        <p class="text-muted small mb-3">
-            <?= date("F j, Y", strtotime($row['date_posted'])) ?>
-        </p>
-        
-        <!-- Short Content -->
-        <p class="flex-grow-1 text-secondary" style="min-height: 70px; max-height: 90px; overflow: hidden;">
-            <?= nl2br(htmlspecialchars(substr($row['content'], 0, 120))) ?>...
-        </p>
-        
-        <!-- Read More Button -->
-        <div class="mt-auto">
-            <a href="announcement.php" 
-               class="btn btn-primary btn-sm rounded-3 px-3">
-                Read More
+        <div class="row justify-content-center">
+            <?php while ($row = $latestAnnouncements->fetch_assoc()): ?>
+                <div class="col-md-4 mb-4">
+                    <div class="announcement-card h-100 d-flex flex-column p-4">
+                        <!-- Badge -->
+                        <span class="badge mb-3 align-self-start">
+                            <i class="bi bi-megaphone-fill me-1"></i> Announcement
+                        </span>
+                        
+                        <!-- Title -->
+                        <h5 class="mb-3">
+                            <?= htmlspecialchars($row['title']) ?>
+                        </h5>
+                        
+                        <!-- Date -->
+                        <p class="text-muted small mb-3">
+                            <i class="bi bi-calendar3 me-1"></i>
+                            <?= date("F j, Y", strtotime($row['date_posted'])) ?>
+                        </p>
+                        
+                        <!-- Content Preview -->
+                        <p class="flex-grow-1 text-secondary" style="min-height: 80px; line-height: 1.6;">
+                            <?= nl2br(htmlspecialchars(substr($row['content'], 0, 130))) ?>...
+                        </p>
+                        
+                        <!-- Read More Button -->
+                        <div class="mt-auto pt-3">
+                            <a href="announcement.php" class="btn w-100">
+                                Read More <i class="bi bi-arrow-right ms-2"></i>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            <?php endwhile; ?>
+        </div>
+
+        <!-- View All Button -->
+        <div class="text-center mt-5">
+            <a href="announcement.php" class="view-all-btn">
+                View All Announcements <i class="bi bi-arrow-right ms-2"></i>
             </a>
         </div>
     </div>
-</div>
-
-        <?php endwhile; ?>
-    </div>
-
-    <!-- View All Button -->
-    <div class="text-center mt-4">
-        <a href="announcement.php" class="btn btn-outline-dark fw-semibold px-4 py-2 rounded-3">
-            View All Announcements →
-        </a>
-    </div>
 </section>
 
-<style>
-    .hover-card {
-        transition: transform 0.2s ease, box-shadow 0.2s ease;
-    }
-    .hover-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
-    }
-    
-</style>
+
 
 
 
@@ -373,55 +832,51 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 <!-- Partnerships Section -->
-<section class="partnerships py-5 bg-light">
-  <div class="container text-center">
-    <h2 class="mb-4" style="font-family: 'Lora', serif; color: var(--dark); font-weight: 700;">
-      Our Partners
-    </h2>
-    <p class="text-muted mb-5">
-      We are proud to collaborate with institutions and organizations that share our vision of 
-      supporting local fishermen and preserving marine resources.
-    </p>
+<section class="partnerships">
+  <div class="container">
+    <div class="text-center mb-5">
+      <h2>🤝 Our Partners</h2>
+      <p class="text-muted" style="font-size: 1.1rem; max-width: 700px; margin: 0 auto;">
+        We are proud to collaborate with institutions and organizations that share our vision of 
+        supporting local fishermen and preserving marine resources.
+      </p>
+    </div>
     
-    <div class="row justify-content-center align-items-center g-4">
+    <div class="row justify-content-center align-items-stretch g-4">
       <!-- Partner 1 -->
       <div class="col-6 col-md-3">
-        <img src="../uploads/partners/olongapo.png" class="img-fluid grayscale-hover" alt="Municipality of Subic">
-        <p class="mt-2 text-dark small">Municipality of Olongapo City </p>
+        <div class="partner-card text-center">
+          <img src="../uploads/partners/olongapo.png" class="img-fluid mb-3" alt="Municipality of Subic">
+          <p class="mt-2 text-dark small fw-semibold mb-0">Municipality of Olongapo City</p>
+        </div>
       </div>
       <!-- Partner 2 -->
       <div class="col-6 col-md-3">
-        <img src="../uploads/partners/bfar.png" class="img-fluid grayscale-hover" alt="BFAR">
-        <p class="mt-2 text-dark small">Bureau of Fisheries & Aquatic Resources (BFAR)</p>
+        <div class="partner-card text-center">
+          <img src="../uploads/partners/bfar.png" class="img-fluid mb-3" alt="BFAR">
+          <p class="mt-2 text-dark small fw-semibold mb-0">Bureau of Fisheries & Aquatic Resources</p>
+        </div>
       </div>
       <!-- Partner 3 -->
       <div class="col-6 col-md-3">
-        <img src="../uploads/partners/agriculture.png" class="img-fluid grayscale-hover" alt="SBMA">
-        <p class="mt-2 text-dark small">Olongapo City Agriculture Department</p>
+        <div class="partner-card text-center">
+          <img src="../uploads/partners/agriculture.png" class="img-fluid mb-3" alt="SBMA">
+          <p class="mt-2 text-dark small fw-semibold mb-0">Olongapo City Agriculture Department</p>
+        </div>
       </div>
       <!-- Partner 4 -->
       <div class="col-6 col-md-3">
-        <img src="../uploads/partners/usaid.png" class="img-fluid grayscale-hover" alt="Local Business Sponsor">
-        <p class="mt-2 text-dark small">USAID</p>
+        <div class="partner-card text-center">
+          <img src="../uploads/partners/usaid.png" class="img-fluid mb-3" alt="Local Business Sponsor">
+          <p class="mt-2 text-dark small fw-semibold mb-0">USAID</p>
+        </div>
       </div>
     </div>
   </div>
 </section>
 </main>
-<style>
-  .partnerships img {
-    max-height: 80px;
-    transition: transform 0.3s ease, filter 0.3s ease;
-    filter: grayscale(100%);
-    opacity: 0.85;
-  }
-  .partnerships img:hover {
-    transform: scale(1.08);
-    filter: grayscale(0%);
-    opacity: 1;
-  }
-</style>
-<div class="mb-5"></div>
+
+<div class="bottom-space"></div>
 
 
 

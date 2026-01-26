@@ -38,204 +38,468 @@ while ($row = $result->fetch_assoc()) {
   <title>About Us - Bankero & Fishermen Association</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
-  <link href="https://fonts.googleapis.com/css2?family=Lora:wght@700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
-    body { font-family: 'Open Sans', sans-serif; background: #f8f9fa; }
+    :root {
+      --primary: #2c3e50;
+      --secondary: #34495e;
+      --accent: #5a6c7d;
+      --light: #ecf0f1;
+      --success: #27ae60;
+      --info: #3498db;
+      --bg: #f8f9fa;
+      --dark: #1a252f;
+      --gray: #95a5a6;
+    }
+    
+    body { 
+      font-family: 'Inter', sans-serif; 
+      background: var(--bg);
+      color: #2c3e50;
+    }
+    
+    /* Modern Hero Section */
     .hero-section {
-      background: linear-gradient(rgba(0,0,0,0.18),rgba(0,0,0,0.18)), url('../images/bg1.jpg') center/cover no-repeat;
-      min-height: 380px;
+      background: linear-gradient(135deg, rgba(44, 62, 80, 0.85) 0%, rgba(26, 37, 47, 0.90) 100%), url('../images/bg1.jpg') center/cover no-repeat;
+      min-height: 320px;
       display: flex;
       align-items: center;
       justify-content: center;
       color: #fff;
-      text-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      text-shadow: 0 4px 12px rgba(0,0,0,0.3);
       flex-direction: column;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
     }
     .hero-section h1 {
-      font-family: 'Lora', serif;
-      font-size: 3.2rem;
-      font-weight: 700;
-      letter-spacing: 2px;
+      font-family: 'Poppins', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      letter-spacing: 1px;
       margin-bottom: 0.5rem;
+      animation: fadeInUp 0.8s ease-out;
     }
     .hero-section .subtitle {
-      font-size: 1.3rem;
+      font-size: 1.2rem;
       opacity: 0.95;
+      font-weight: 500;
+      animation: fadeInUp 0.8s ease-out 0.2s backwards;
     }
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(30px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    /* About Content Section */
     .about-content {
       background: #fff;
-      border-radius: 18px;
-      box-shadow: 0 2px 16px rgba(2,136,209,0.06);
-      padding: 48px 32px 32px 32px;
-      margin-top: -70px;
-      margin-bottom: 32px;
+      border-radius: 24px;
+      box-shadow: 0 8px 32px rgba(44, 62, 80, 0.1);
+      padding: 40px 35px;
+      margin-top: -60px;
+      margin-bottom: 30px;
       position: relative;
       z-index: 2;
+      border: 1px solid #e2e8f0;
     }
     .about-content h2 {
-      font-family: 'Lora', serif;
-      color: #01579b;
-      font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      color: var(--primary);
+      font-weight: 800;
       margin-bottom: 1rem;
-      letter-spacing: 1px;
+      letter-spacing: -0.5px;
+      font-size: 2.2rem;
     }
     .about-content p {
-      color: #333;
-      font-size: 1.08rem;
-      line-height: 1.6;
+      color: #4b5563;
+      font-size: 1.05rem;
+      line-height: 1.75;
+      font-weight: 400;
     }
     .divider {
-      width: 80px;
+      width: 70px;
       height: 4px;
-      background: #ff7043;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
       border-radius: 2px;
-      margin: 1.5rem auto 2rem auto;
-      opacity: 0.8;
+      margin: 1rem auto 1.5rem auto;
     }
+    
+    /* Officer Section */
     .officer-section-title {
-      font-family: 'Lora', serif;
-      color: #01579b;
-      font-weight: 700;
-      margin-top: 3rem;
-      margin-bottom: 2rem;
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      margin-top: 2.5rem;
+      margin-bottom: 1.5rem;
       text-align: center;
       font-size: 2.2rem;
-      letter-spacing: 1px;
+      letter-spacing: -0.5px;
     }
     .officer-card {
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-      padding: 28px 18px 18px 18px;
+      border-radius: 20px;
+      box-shadow: 0 6px 24px rgba(44, 62, 80, 0.1);
+      padding: 25px 18px 20px 18px;
       margin-bottom: 24px;
       text-align: center;
-      transition: transform 0.2s, box-shadow 0.2s;
-      min-height: 340px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      min-height: 320px;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
+      border: 1px solid #e2e8f0;
+      position: relative;
+    }
+    .officer-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .officer-card:hover::before {
+      opacity: 1;
     }
     .officer-card:hover {
-      transform: translateY(-4px) scale(1.03);
-      box-shadow: 0 8px 32px rgba(255,112,67,0.13);
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(44, 62, 80, 0.15);
     }
     .officer-frame {
-      width: 140px;
-      height: 140px;
+      width: 130px;
+      height: 130px;
       border-radius: 50%;
-      background: conic-gradient(from 0deg, #ff7043 0deg 120deg, #fff 120deg 240deg, #1976d2 240deg 360deg);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 18px;
-      box-shadow: 0 4px 18px rgba(0,0,0,0.08);
+      margin-bottom: 16px;
+      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.2);
+      position: relative;
+    }
+    .officer-frame::after {
+      content: '';
+      position: absolute;
+      inset: -3px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent));
+      filter: blur(8px);
+      opacity: 0;
+      transition: opacity 0.4s ease;
+      z-index: -1;
+    }
+    .officer-card:hover .officer-frame::after {
+      opacity: 0.6;
     }
     .officer-frame img {
-      width: 120px;
-      height: 120px;
+      width: 112px;
+      height: 112px;
       object-fit: cover;
       border-radius: 50%;
       border: 4px solid #fff;
       background: #fff;
     }
     .officer-card h5 {
-      font-family: 'Lora', serif;
-      color: #01579b;
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
       font-weight: 700;
-      font-size: 1.18rem;
-      margin-bottom: 0.2rem;
+      font-size: 1.15rem;
+      margin-bottom: 0.3rem;
       margin-top: 0.5rem;
     }
     .officer-card p {
-      color: #ff7043;
+      color: var(--primary);
       font-weight: 600;
       margin-bottom: 0.5rem;
-      font-size: 1rem;
+      font-size: 0.95rem;
       letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
     .officer-card .desc {
-      font-size: 0.97rem;
-      color: #444;
+      font-size: 0.92rem;
+      color: #64748b;
       margin-top: 0.5rem;
-      font-family: 'Open Sans', sans-serif;
+      line-height: 1.6;
       min-height: 40px;
     }
-      /* Stats Section */
+    
+    /* Stats Section */
     .stats-section {
-      background: var(--gray);
-      padding: 56px 0 40px 0;
+      background: linear-gradient(180deg, var(--light) 0%, #ffffff 100%);
+      padding: 40px 0;
     }
     .stats-section h2 {
-      font-family: 'Lora', serif;
-      color: var(--primary);
-      font-weight: 700;
-      margin-bottom: 2.5rem;
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      margin-bottom: 2rem;
       font-size: 2rem;
-      letter-spacing: 1px;
+      letter-spacing: -0.5px;
     }
     .stat-card {
       background: #fff;
-      border-radius: 16px;
-      box-shadow: 0 2px 12px rgba(33,150,243,0.06);
-      padding: 2.2rem 1.2rem 1.2rem 1.2rem;
+      border-radius: 18px;
+      box-shadow: 0 6px 24px rgba(44, 62, 80, 0.08);
+      padding: 30px 20px;
       margin-bottom: 24px;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 180px;
-      transition: box-shadow 0.2s, transform 0.2s;
+      min-height: 170px;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid #e2e8f0;
+      transform: translateY(30px);
+      opacity: 0;
+    }
+    .stat-card.animate {
+      transform: translateY(0);
+      opacity: 1;
     }
     .stat-card:hover {
-      box-shadow: 0 8px 32px rgba(33,150,243,0.10);
-      transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
+      transform: translateY(-6px);
     }
     .stat-card .stat-icon {
       font-size: 2.5rem;
-      margin-bottom: 0.7rem;
+      margin-bottom: 0.8rem;
       border-radius: 50%;
-      background: #f3f7fa;
-      padding: 18px;
+      background: linear-gradient(135deg, var(--light) 0%, #f1f5f9 100%);
+      padding: 20px;
       display: flex;
       align-items: center;
       justify-content: center;
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.1);
     }
     .stat-card .stat-title {
-      font-size: 1.1rem;
-      color: #888;
+      font-size: 1rem;
+      color: #64748b;
       margin-bottom: 0;
-      font-weight: 500;
+      font-weight: 600;
       letter-spacing: 0.5px;
+      text-transform: uppercase;
     }
     .stat-card .counter {
-      font-size: 2.1rem;
-      font-weight: 700;
-      margin-bottom: 0.2rem;
+      font-size: 2.5rem;
+      font-weight: 800;
+      margin-bottom: 0.3rem;
+      font-family: 'Poppins', sans-serif;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
+    
+    /* Mission & Vision Cards */
+    .mission-vision-section {
+      background: linear-gradient(180deg, #ffffff 0%, var(--light) 100%);
+      padding: 50px 0;
+    }
+    .mv-card {
+      background: #fff;
+      border-radius: 20px;
+      box-shadow: 0 8px 32px rgba(44, 62, 80, 0.1);
+      padding: 35px 30px;
+      height: 100%;
+      border: 1px solid #e2e8f0;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .mv-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+    }
+    .mv-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(44, 62, 80, 0.15);
+    }
+    .mv-card .icon-wrapper {
+      width: 70px;
+      height: 70px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.2);
+    }
+    .mv-card .icon-wrapper i {
+      font-size: 2rem;
+      color: white;
+    }
+    .mv-card h3 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 1.5rem;
+      margin-bottom: 15px;
+      text-align: center;
+    }
+    .mv-card p {
+      color: #64748b;
+      font-size: 1rem;
+      line-height: 1.75;
+      text-align: center;
+      margin-bottom: 0;
+    }
+    
+    /* Core Values Section */
+    .values-section {
+      background: #fff;
+      padding: 50px 0;
+    }
+    .values-section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      margin-bottom: 2rem;
+      font-size: 2.2rem;
+      letter-spacing: -0.5px;
+    }
+    .value-card {
+      text-align: center;
+      padding: 25px 20px;
+      background: linear-gradient(135deg, var(--light) 0%, #f1f5f9 100%);
+      border-radius: 18px;
+      margin-bottom: 24px;
+      transition: all 0.3s ease;
+      border: 1px solid #e2e8f0;
+      height: 100%;
+    }
+    .value-card:hover {
+      background: white;
+      box-shadow: 0 8px 24px rgba(44, 62, 80, 0.12);
+      transform: translateY(-4px);
+    }
+    .value-card .value-icon {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 15px;
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
+    }
+    .value-card .value-icon i {
+      font-size: 1.5rem;
+      color: white;
+    }
+    .value-card h4 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 1.1rem;
+      margin-bottom: 10px;
+    }
+    .value-card p {
+      color: #64748b;
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 0;
+    }
+    
+    /* Call to Action Section */
+    .cta-section {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      padding: 60px 0;
+      color: white;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+    .cta-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
+    }
+    .cta-section h2 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+      font-size: 2.5rem;
+      margin-bottom: 20px;
+      color: white;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-section p {
+      font-size: 1.15rem;
+      margin-bottom: 30px;
+      opacity: 0.95;
+      max-width: 700px;
+      margin-left: auto;
+      margin-right: auto;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-btn {
+      background: white;
+      color: var(--primary);
+      padding: 15px 40px;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 1.1rem;
+      border: none;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      display: inline-block;
+      text-decoration: none;
+      position: relative;
+      z-index: 1;
+    }
+    .cta-btn:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+      color: var(--primary);
+    }
+    .cta-btn i {
+      margin-left: 8px;
+    }
+    
     @media (max-width: 991.98px) {
       .officer-frame { width: 110px; height: 110px; }
-      .officer-frame img { width: 90px; height: 90px; }
+      .officer-frame img { width: 92px; height: 92px; }
       .officer-card { min-height: 0; }
     }
     @media (max-width: 767.98px) {
-      .about-content { padding: 24px 8px; }
-      .hero-section h1 { font-size: 2.1rem; }
-      .officer-frame { width: 90px; height: 90px; }
-      .officer-frame img { width: 70px; height: 70px; }
+      .about-content { padding: 30px 20px; }
+      .hero-section h1 { font-size: 2.2rem; }
+      .officer-frame { width: 95px; height: 95px; }
+      .officer-frame img { width: 77px; height: 77px; }
+      .cta-section h2 { font-size: 2rem; }
+      .mv-card, .value-card { margin-bottom: 20px; }
     }
-   
-  .stat-card.animate {
-    transform: translateY(0);
-    opacity: 1;
-    transition: transform 0.6s ease-out, opacity 0.6s ease-out;
-  }
-
-  .stat-card {
-    transform: translateY(50px);
-    opacity: 0;
-  }
-
-
   </style>
 </head>
 <body>
@@ -261,22 +525,114 @@ while ($row = $result->fetch_assoc()) {
   <p class="mb-4 text-center">
     Through this modernization, the association continues its mission of empowering members, enhancing participation, and preserving the livelihood of the fishing community.
   </p>
+</div>
 
-  <h2 class="text-center mt-5 mb-2">Our Mission</h2>
+<!-- Mission & Vision Section -->
+<section class="mission-vision-section">
+  <div class="container">
+    <h2 class="text-center mb-2" style="font-family: 'Poppins', sans-serif; color: var(--dark); font-weight: 800; font-size: 2.2rem; letter-spacing: -0.5px;">Our Mission & Vision</h2>
+    <div class="divider"></div>
+    <div class="row justify-content-center mt-4">
+      <div class="col-md-6 mb-4">
+        <div class="mv-card">
+          <div class="icon-wrapper">
+            <i class="bi bi-bullseye"></i>
+          </div>
+          <h3>Mission</h3>
+          <p>To empower local fishermen and boatmen through collaboration, sustainable practices, training programs, and strong leadership, ensuring the welfare and continuous development of our members and their families.</p>
+        </div>
+      </div>
+      <div class="col-md-6 mb-4">
+        <div class="mv-card">
+          <div class="icon-wrapper">
+            <i class="bi bi-eye"></i>
+          </div>
+          <h3>Vision</h3>
+          <p>To be the leading fishermen association in the region, recognized for fostering unity, promoting sustainable fishing practices, and creating lasting opportunities for growth and prosperity in our community.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Core Values Section -->
+<section class="values-section">
+  <div class="container">
+    <h2 class="text-center mb-2">Our Core Values</h2>
+    <div class="divider"></div>
+    <div class="row mt-4">
+      <div class="col-md-4 col-sm-6 mb-3">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-people-fill"></i>
+          </div>
+          <h4>Unity</h4>
+          <p>We stand together as one community, supporting each other in times of need.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-3">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-shield-check"></i>
+          </div>
+          <h4>Integrity</h4>
+          <p>We uphold honesty and transparency in all our actions and decisions.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-3">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-arrow-repeat"></i>
+          </div>
+          <h4>Sustainability</h4>
+          <p>We promote responsible fishing practices to preserve marine resources for future generations.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-3">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-trophy"></i>
+          </div>
+          <h4>Excellence</h4>
+          <p>We strive for the highest standards in everything we do, from leadership to community service.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-3">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-hand-thumbs-up"></i>
+          </div>
+          <h4>Accountability</h4>
+          <p>We take responsibility for our commitments and deliver on our promises to members.</p>
+        </div>
+      </div>
+      <div class="col-md-4 col-sm-6 mb-3">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-heart-fill"></i>
+          </div>
+          <h4>Compassion</h4>
+          <p>We care deeply for our members' welfare and work to improve their quality of life.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- Stats Section with "At a Glance" intro -->
+<div class="container">
+  <h2 class="text-center mt-5 mb-2" style="font-family: 'Poppins', sans-serif; color: var(--dark); font-weight: 800; font-size: 2.2rem; letter-spacing: -0.5px;">Bankero & Fishermen Association at a Glance</h2>
   <div class="divider"></div>
-  <p class="text-center mb-5">To empower members through collaboration, training, and strong leadership.</p>
-  
-  <h2 class="text-center mt-5 mb-2">Bankero & Fishermen Association at a Glance</h2>
-  <div class="divider"></div>
-  <p class="text-center mb-5">Since its founding in 2009, the Bankero & Fishermen Association has grown to over 250 members, successfully implementing 35 community projects and organizing 50 events to support and empower the local fishing community.
-</p>
-  <!-- Stats Section -->
+  <p class="text-center mb-4">Since its founding in 2009, the Bankero & Fishermen Association has grown to over 250 members, successfully implementing 35 community projects and organizing 50 events to support and empower the local fishing community.</p>
+</div>
+
+<!-- Stats Section -->
 <section class="stats-section text-center">
   <div class="container">
     <div class="row justify-content-center">
       <div class="col-6 col-md-3 mb-4">
         <div class="stat-card">
-          <div class="stat-icon" style="color:#1976d2;">
+          <div class="stat-icon" style="color: var(--primary);">
             <i class="bi bi-calendar3"></i>
           </div>
           <div class="counter" data-target="2009">0</div>
@@ -285,7 +641,7 @@ while ($row = $result->fetch_assoc()) {
       </div>
       <div class="col-6 col-md-3 mb-4">
         <div class="stat-card">
-          <div class="stat-icon" style="color:#28a745;">
+          <div class="stat-icon" style="color: var(--success);">
             <i class="bi bi-people"></i>
           </div>
           <div class="counter" data-target="250">0</div>
@@ -294,7 +650,7 @@ while ($row = $result->fetch_assoc()) {
       </div>
       <div class="col-6 col-md-3 mb-4">
         <div class="stat-card">
-          <div class="stat-icon" style="color:#ff7043;">
+          <div class="stat-icon" style="color: var(--secondary);">
             <i class="bi bi-diagram-3"></i>
           </div>
           <div class="counter" data-target="35">0</div>
@@ -303,7 +659,7 @@ while ($row = $result->fetch_assoc()) {
       </div>
       <div class="col-6 col-md-3 mb-4">
         <div class="stat-card">
-          <div class="stat-icon" style="color:#ffa726;">
+          <div class="stat-icon" style="color: var(--accent);">
             <i class="bi bi-calendar2-event"></i>
           </div>
           <div class="counter" data-target="50">0</div>
@@ -312,7 +668,6 @@ while ($row = $result->fetch_assoc()) {
       </div>
     </div>
   </div>
-  
 </section>
   <!-- Officers Intro Section -->
   <h2 class="officer-section-title">Board of Officers</h2>
@@ -386,6 +741,7 @@ while ($row = $result->fetch_assoc()) {
     </div>
   </div>
 </div>
+
 <script>
 // Animate counters when in viewport
 document.addEventListener('DOMContentLoaded', () => {
@@ -427,16 +783,16 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 </script>
 
-<!-- Multi-layered Blue & Orange Wave SVG Background directly below officers -->
-<div style="position:relative; width:100%; height:180px; overflow:hidden; background:transparent; margin-top:-40px;">
-  <svg viewBox="0 0 1440 180" fill="none" xmlns="http://www.w3.org/2000/svg" style="position:absolute;top:0;left:0;width:100%;height:100%;">
-    <path d="M0,60 C360,140 1080,-20 1440,60 L1440,180 L0,180 Z" fill="#ff7043"/>
-    <path d="M0,100 C400,180 1040,20 1440,100 L1440,180 L0,180 Z" fill="#ffa726" opacity="0.85"/>
-    <path d="M0,130 C360,210 1080,50 1440,130 L1440,180 L0,180 Z" fill="#42a5f5" opacity="0.85"/>
-    <path d="M0,150 C400,230 1040,70 1440,150 L1440,180 L0,180 Z" fill="#1976d2" opacity="0.7"/>
-    <path d="M0,180 C360,260 1080,100 1440,180 L1440,180 L0,180 Z" fill="#90caf9" opacity="0.5"/>
-  </svg>
-</div>
+<!-- Call to Action Section -->
+<section class="cta-section">
+  <div class="container">
+    <h2>Join Our Community Today</h2>
+    <p>Become part of a thriving association dedicated to the welfare and development of local fishermen. Together, we create opportunities, share resources, and build a stronger future for our community.</p>
+    <a href="contact.php" class="cta-btn">
+      Get in Touch <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
+</section>
 
 <?php include("partials/footer.php"); ?>
 <?php include 'chatbox.php'; ?>

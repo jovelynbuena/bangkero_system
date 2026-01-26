@@ -18,81 +18,196 @@ $resources = [
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
+  <!-- Fonts & Icons -->
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
   <style>
-    :root{
-      --bg:#f6f8fb;
-      --card:#ffffff;
-      --muted:#6b7280;
-      --accent:#0d6efd;
-      --radius:12px;
-      --shadow: 0 6px 18px rgba(15,23,42,0.06);
+    :root {
+      --primary: #2c3e50;
+      --secondary: #34495e;
+      --accent: #5a6c7d;
+      --light: #ecf0f1;
+      --bg: #f8f9fa;
+      --dark: #1a252f;
+      --gray: #95a5a6;
     }
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: Inter, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-      background:var(--bg);
-      color:#0f172a;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      line-height:1.45;
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: #2c3e50;
+      margin: 0;
+      padding: 0;
     }
-    a{color:inherit;text-decoration:none}
-    main{padding-top:88px;padding-bottom:48px}
 
-    /* Hero */
-    .hero{
-      background: linear-gradient(90deg,#072f5f 0%, #0d6efd 100%);
-      color:#fff;
-      padding:64px 16px;
-      border-radius:0 0 20px 20px;
-      box-shadow: var(--shadow);
+    main {
+      padding-top: 0;
+      padding-bottom: 40px;
     }
-    .hero h1{font-weight:700;margin:0 0 8px;font-size:1.9rem}
-    .hero p{margin:0;color:rgba(255,255,255,0.9)}
 
-    /* Container */
-    .container-narrow{max-width:1100px;margin:0 auto;padding:32px 16px}
-
-    /* Search */
-    .search-wrap{
-      display:flex;gap:12px;align-items:center;margin:18px 0 28px;
+    /* Hero Section with Search */
+    .hero-section {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      padding: 60px 0 50px;
+      color: white;
+      position: relative;
+      overflow: hidden;
+      margin-top: 60px;
     }
-    .search-input{
-      flex:1;padding:12px 14px;border-radius:10px;border:1px solid #e6eef9;background:#fff;
-      box-shadow: 0 1px 2px rgba(2,6,23,0.02);
-      font-size:0.95rem;
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
     }
-    .search-input:focus{outline:none;box-shadow:0 6px 18px rgba(13,110,253,0.08);border-color:var(--accent)}
-
-    /* Resource list */
-    .resources-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:18px}
-    .resource-card{
-      background:var(--card);border-radius:var(--radius);padding:18px;display:flex;align-items:center;justify-content:space-between;
-      gap:12px;box-shadow:var(--shadow);transition:transform .16s ease,box-shadow .16s ease;
-      border:1px solid rgba(15,23,42,0.03);
+    .hero-section h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      letter-spacing: -1px;
+      position: relative;
+      z-index: 1;
     }
-    .resource-card:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(2,6,23,0.08)}
-    .resource-left{display:flex;gap:12px;align-items:center}
-    .icon-wrap{width:56px;height:56px;border-radius:10px;display:grid;place-items:center;color:#fff;font-size:1.4rem;flex-shrink:0}
-    .resource-title{font-weight:600;font-size:1rem}
-    .resource-sub{font-size:0.88rem;color:var(--muted);margin-top:4px}
-
-    /* Download button */
-    .btn-download{
-      display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;background:#0d6efd;color:#fff;border:none;
-      font-weight:600;font-size:0.95rem;box-shadow:0 6px 18px rgba(13,110,253,0.08);
+    .hero-section .search-box {
+      position: relative;
+      max-width: 600px;
+      margin: 30px auto 0;
+      z-index: 1;
     }
-    .btn-download svg{opacity:0.95}
-    .btn-download:focus{outline:3px solid rgba(13,110,253,0.12);outline-offset:2px}
-    .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .hero-section .search-box input {
+      width: 100%;
+      padding: 16px 50px 16px 20px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .hero-section .search-box button {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--primary);
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: white;
+      transition: background 0.3s;
+    }
+    .hero-section .search-box button:hover {
+      background: var(--dark);
+    }
 
-    /* Footer spacing */
-    .bottom-space{height:32px}
-    @media (max-width:575px){
-      .hero{padding:40px 12px;border-radius:0 0 14px 14px}
-      .icon-wrap{width:48px;height:48px;font-size:1.15rem;border-radius:8px}
-      .btn-download{padding:8px 12px}
+    /* Resources Container */
+    .resources-container {
+      max-width: 1200px;
+      margin: 25px auto;
+      padding: 0 15px;
+    }
+
+    /* Resources Grid */
+    .resources-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+
+    .resource-card {
+      background: white;
+      border-radius: 12px;
+      padding: 20px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+      transition: all 0.3s;
+      display: flex;
+      align-items: center;
+      gap: 15px;
+    }
+
+    .resource-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+    }
+
+    .icon-wrap {
+      width: 55px;
+      height: 55px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .resource-content {
+      flex: 1;
+    }
+
+    .resource-title {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--primary);
+      margin-bottom: 4px;
+      font-family: 'Poppins', sans-serif;
+    }
+
+    .resource-sub {
+      font-size: 0.85rem;
+      color: var(--gray);
+    }
+
+    .btn-download {
+      background: var(--primary);
+      color: white;
+      border: none;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-weight: 600;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.3s;
+      text-decoration: none;
+      font-size: 0.9rem;
+    }
+
+    .btn-download:hover {
+      background: var(--secondary);
+      color: white;
+      transform: translateY(-2px);
+    }
+
+    .btn-download i {
+      font-size: 1rem;
+    }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .hero-section {
+        padding: 40px 0 35px;
+      }
+      .hero-section h1 {
+        font-size: 2rem;
+      }
+      .resources-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      .resource-card {
+        padding: 18px;
+      }
+      .icon-wrap {
+        width: 50px;
+        height: 50px;
+        font-size: 1.4rem;
+      }
     }
   </style>
 </head>
@@ -100,99 +215,84 @@ $resources = [
 <?php include("partials/navbar.php"); ?>
 
 <main>
-  <header class="hero" role="banner" aria-labelledby="resourcesHeading">
-    <div class="container-narrow">
-      <h1 id="resourcesHeading"><span class="bi bi-folder2-open me-2" aria-hidden="true"></span>Resources</h1>
-      <p>Download official forms, guides, and templates. Files open in a new tab.</p>
-    </div>
-  </header>
-
-  <div class="container-narrow" role="main">
-    <!-- Search + actions -->
-    <div class="search-wrap" role="search" aria-label="Search resources">
-      <label for="search" class="sr-only">Search resources</label>
-      <input id="search" class="search-input" type="search" placeholder="Search resources (e.g. membership, attendance, officers)" aria-label="Search resources" />
-      <button id="clearBtn" class="btn btn-light" type="button" title="Clear search" aria-label="Clear search">
-        <span class="bi bi-x-lg"></span>
-      </button>
-    </div>
-
-    <!-- Resource grid -->
-    <section aria-labelledby="availableResources">
-      <h2 id="availableResources" class="sr-only">Available resources</h2>
-      <div id="resourcesGrid" class="resources-grid" aria-live="polite">
-        <?php foreach($resources as $r): ?>
-          <article class="resource-card" data-title="<?= htmlspecialchars(strtolower($r['title'])) ?>">
-            <div class="resource-left">
-              <div class="icon-wrap" style="background: <?= htmlspecialchars($r['color']) ?>;">
-                <i class="bi <?= htmlspecialchars($r['icon']) ?>" aria-hidden="true"></i>
-              </div>
-              <div>
-                <div class="resource-title"><?= htmlspecialchars($r['title']) ?></div>
-                <div class="resource-sub">PDF · Official</div>
-              </div>
-            </div>
-
-            <div class="resource-actions">
-              <a class="btn-download" href="generate_pdfs.php?file=<?= urlencode($r['id']) ?>" target="_blank" rel="noopener noreferrer" aria-label="Download <?= htmlspecialchars($r['title']) ?>">
-                <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M.75 11.5v2A1.75 1.75 0 0 0 2.5 15h11a1.75 1.75 0 0 0 1.75-1.5v-2" stroke="#fff" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M8 1v9" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M4.5 5.5L8 9l3.5-3.5" stroke="#fff" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                Download
-              </a>
-            </div>
-          </article>
-        <?php endforeach; ?>
+  <!-- Hero Section -->
+  <div class="hero-section">
+    <div class="container text-center">
+      <h1><i class="bi bi-folder2-open"></i> Resources</h1>
+      <div class="search-box">
+        <input 
+          id="search" 
+          type="search" 
+          placeholder="Search resources..." 
+          aria-label="Search resources"
+        />
+        <button id="clearBtn" type="button" title="Clear search">
+          <i class="bi bi-x-lg"></i>
+        </button>
       </div>
-    </section>
+    </div>
+  </div>
 
-    <div class="bottom-space" aria-hidden="true"></div>
+  <!-- Resources Grid -->
+  <div class="resources-container">
+    <div id="resourcesGrid" class="resources-grid">
+      <?php foreach($resources as $r): ?>
+        <div class="resource-card" data-title="<?= htmlspecialchars(strtolower($r['title'])) ?>">
+          <div class="icon-wrap" style="background: <?= htmlspecialchars($r['color']) ?>;">
+            <i class="bi <?= htmlspecialchars($r['icon']) ?>"></i>
+          </div>
+          <div class="resource-content">
+            <div class="resource-title"><?= htmlspecialchars($r['title']) ?></div>
+            <div class="resource-sub">PDF · Official</div>
+          </div>
+          <a class="btn-download" href="generate_pdfs.php?file=<?= urlencode($r['id']) ?>" target="_blank" rel="noopener noreferrer">
+            <i class="bi bi-download"></i>
+            Download
+          </a>
+        </div>
+      <?php endforeach; ?>
+    </div>
   </div>
 </main>
 
 <?php include("partials/footer.php"); ?>
 
-<!-- Scripts (deferred) -->
 <script>
-  (function(){
-    // DOM refs
-    const search = document.getElementById('search');
-    const grid = document.getElementById('resourcesGrid');
-    const clearBtn = document.getElementById('clearBtn');
-    const cards = Array.from(grid.querySelectorAll('.resource-card'));
+document.addEventListener('DOMContentLoaded', function() {
+  const search = document.getElementById('search');
+  const clearBtn = document.getElementById('clearBtn');
+  const cards = document.querySelectorAll('.resource-card');
 
-    // Debounce helper
-    function debounce(fn, delay){ let t; return (...args)=>{ clearTimeout(t); t=setTimeout(()=>fn(...args),delay); }; }
-
-    // Filter logic
-    const filter = debounce(function(ev){
-      const q = (ev?.target?.value || '').trim().toLowerCase();
-      cards.forEach(card => {
-        const title = card.getAttribute('data-title') || '';
-        card.style.display = (!q || title.includes(q)) ? '' : 'none';
-      });
-      grid.setAttribute('aria-busy','false');
-    }, 150);
-
-    // Events
-    search.addEventListener('input', function(e){
-      grid.setAttribute('aria-busy','true');
-      filter(e);
+  // Search functionality
+  search.addEventListener('input', function() {
+    const query = this.value.toLowerCase().trim();
+    
+    cards.forEach(card => {
+      const title = card.getAttribute('data-title');
+      if (title.includes(query)) {
+        card.style.display = '';
+      } else {
+        card.style.display = 'none';
+      }
     });
+  });
 
-    clearBtn.addEventListener('click', function(){
-      search.value = '';
-      search.dispatchEvent(new Event('input'));
-      search.focus();
+  // Clear button
+  clearBtn.addEventListener('click', function() {
+    search.value = '';
+    cards.forEach(card => {
+      card.style.display = '';
     });
+    search.focus();
+  });
 
-    // Accessibility: support Escape to clear
-    search.addEventListener('keydown', function(e){
-      if(e.key === 'Escape'){ clearBtn.click(); }
-    });
-  })();
+  // Escape key to clear
+  search.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+      clearBtn.click();
+    }
+  });
+});
 </script>
 <?php include 'chatbox.php'; ?>
 

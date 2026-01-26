@@ -21,12 +21,12 @@ if ($tblRes && $tblRes->num_rows > 0) $hasArchivedEventsTable = true;
 $archivedCondition = $hasIsArchived ? "events.is_archived = 0" : "1";
 $excludeArchivedTable = $hasArchivedEventsTable ? "events.id NOT IN (SELECT original_id FROM archived_events)" : "1";
 
-// Fetch Events for Carousel (Upcoming + Past 1 Month)
+// Fetch Events for Carousel (Upcoming Events Only - No Past Events)
 $carousel_sql = "
   SELECT events.* FROM events
   WHERE {$archivedCondition}
     AND ({$excludeArchivedTable})
-    AND `date` >= DATE_SUB(CURDATE(), INTERVAL 1 MONTH)
+    AND `date` >= CURDATE()
   ORDER BY `date` ASC
 ";
 $carousel_result = $conn->query($carousel_sql);
@@ -42,6 +42,28 @@ $upcoming_sql = "
 ";
 $upcoming_result = $conn->query($upcoming_sql);
 if ($upcoming_result === false) error_log("Upcoming SQL error: " . $conn->error);
+
+// Fetch Past Events (events that already happened)
+$past_sql = "
+  SELECT events.* FROM events
+  WHERE {$archivedCondition}
+    AND ({$excludeArchivedTable})
+    AND `date` < CURDATE()
+  ORDER BY `date` DESC
+";
+$past_result = $conn->query($past_sql);
+if ($past_result === false) error_log("Past SQL error: " . $conn->error);
+
+// Get specific event for modal (if id is set)
+$modal_event = null;
+if (isset($_GET['id']) && is_numeric($_GET['id'])) {
+    $event_id = (int)$_GET['id'];
+    $modal_sql = "SELECT * FROM events WHERE id = $event_id LIMIT 1";
+    $modal_result = $conn->query($modal_sql);
+    if ($modal_result && $modal_result->num_rows > 0) {
+        $modal_event = $modal_result->fetch_assoc();
+    }
+}
 
 // Fetch Gallery
 $gallery_sql = "SELECT * FROM galleries ORDER BY created_at DESC";
@@ -80,16 +102,31 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
   <title>Events | Bangkero & Fishermen Association</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <style>
-    body {
-      font-family: 'Segoe UI', sans-serif;
-      background-color: #f9fafb;
-      color: #333;
+    :root {
+      --primary: #2c3e50;
+      --secondary: #34495e;
+      --accent: #5a6c7d;
+      --light: #ecf0f1;
+      --success: #27ae60;
+      --info: #3498db;
+      --bg: #f8f9fa;
+      --dark: #1a252f;
+      --gray: #95a5a6;
     }
-    /* Carousel */
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: #2c3e50;
+    }
+    
+    /* Modern Carousel */
     .carousel-item {
-      height: 75vh;
-      min-height: 380px;
+      height: 70vh;
+      min-height: 400px;
       background-size: cover;
       background-position: center;
       position: relative;
@@ -99,8 +136,7 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: rgba(0, 76, 109, 0.55);
-      backdrop-filter: blur(2px);
+      background: linear-gradient(135deg, rgba(44, 62, 80, 0.80) 0%, rgba(26, 37, 47, 0.90) 100%);
       z-index: 1;
     }
     .carousel-caption {
@@ -108,115 +144,366 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
       top: 50%;
       transform: translateY(-50%);
       z-index: 2;
+      text-shadow: 0 4px 12px rgba(0,0,0,0.4);
     }
     .carousel-caption h2 {
       font-size: 2.8rem;
-      font-weight: 700;
+      font-weight: 800;
+      font-family: 'Poppins', sans-serif;
       color: #fff;
-      text-shadow: 0px 3px 12px rgba(0,0,0,0.7);
+      margin-bottom: 15px;
+      letter-spacing: -0.5px;
     }
     .carousel-caption p {
       font-size: 1rem;
       color: #f1f1f1;
-      max-width: 800px;
+      max-width: 700px;
       margin: auto;
+      line-height: 1.6;
     }
     .carousel-caption .btn {
-      margin-top: 15px;
-      padding: 10px 25px;
+      margin-top: 20px;
+      padding: 12px 30px;
       border: 2px solid #fff;
-      border-radius: 30px;
-      font-weight: 500;
-      transition: 0.3s;
+      border-radius: 50px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+      background: transparent;
     }
     .carousel-caption .btn:hover {
       background: #fff;
-      color: #004c6d;
+      color: var(--primary);
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(255,255,255,0.3);
     }
 
     /* Section Titles */
     .events-section h2,
     #events h3 {
-      font-family: 'Lora', serif;
-      color: #003366;
-      font-weight: 700;
-      font-size: 2rem;
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 2.2rem;
       position: relative;
       display: inline-block;
-      margin-bottom: 25px;
+      margin-bottom: 30px;
+      letter-spacing: -0.5px;
     }
     .events-section h2::after,
     #events h3::after {
       content: "";
       display: block;
-      width: 50px;
-      height: 3px;
-      background: #0f8fa9;
-      margin-top: 8px;
+      width: 60px;
+      height: 4px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      margin-top: 10px;
       border-radius: 2px;
+    }
+
+    /* Event Category Pills */
+    .nav-pills .nav-link {
+      color: var(--dark);
+      background: white;
+      border: 1px solid #e2e8f0;
+      border-radius: 50px;
+      padding: 10px 24px;
+      margin-right: 10px;
+      margin-bottom: 10px;
+      font-weight: 600;
+      transition: all 0.3s ease;
+    }
+    .nav-pills .nav-link:hover {
+      background: var(--light);
+      border-color: var(--primary);
+      color: var(--primary);
+    }
+    .nav-pills .nav-link.active {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      border-color: var(--primary);
+      color: white;
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
     }
 
     /* Event Cards */
     .event-box {
-      border-radius: 12px;
+      border-radius: 18px;
       overflow: hidden;
-      transition: all 0.3s ease;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       border: none;
       background: #fff;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.06);
+      box-shadow: 0 6px 24px rgba(44, 62, 80, 0.1);
+      border: 1px solid #e2e8f0;
+      position: relative;
+    }
+    .event-box::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    .event-box:hover::before {
+      opacity: 1;
     }
     .event-box:hover {
-      transform: translateY(-6px);
-      box-shadow: 0 8px 22px rgba(0,0,0,0.12);
+      transform: translateY(-8px);
+      box-shadow: 0 16px 48px rgba(44, 62, 80, 0.15);
     }
     .event-img {
       width: 100%;
-      height: 230px;
+      height: 220px;
       object-fit: cover;
-      transition: 0.4s ease;
+      transition: transform 0.6s ease;
     }
     .event-box:hover .event-img {
-      transform: scale(1.05);
+      transform: scale(1.08);
     }
     .event-title a {
       font-size: 1.15rem;
-      font-weight: 600;
-      color: #003366;
-      transition: 0.3s;
+      font-weight: 700;
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      transition: color 0.3s;
+      text-decoration: none;
     }
     .event-title a:hover {
-      color: #0f8fa9;
+      color: var(--primary);
     }
     .event-meta {
       font-size: 0.85rem;
-      color: #666;
+      color: #64748b;
+      font-weight: 500;
+    }
+    .event-meta i {
+      color: var(--primary);
+      margin-right: 5px;
     }
     .event-desc {
-      font-size: 0.9rem;
-      color: #555;
+      font-size: 0.95rem;
+      color: #64748b;
+      line-height: 1.6;
     }
 
     /* Sidebar */
     .sidebar-box {
-      background: linear-gradient(135deg, #0f8fa9, #006f87);
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
       color: #fff;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 6px 18px rgba(0,0,0,0.1);
+      padding: 30px;
+      border-radius: 18px;
+      box-shadow: 0 8px 24px rgba(44, 62, 80, 0.2);
+      position: relative;
+      overflow: hidden;
+    }
+    .sidebar-box::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 300px;
+      height: 300px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
     }
     .sidebar-box h4 {
-      font-family: 'Lora', serif;
+      font-family: 'Poppins', sans-serif;
       font-size: 1.5rem;
       margin-bottom: 15px;
+      font-weight: 700;
+      position: relative;
+      z-index: 1;
+    }
+    .sidebar-box p {
+      position: relative;
+      z-index: 1;
+      line-height: 1.7;
+    }
+    .sidebar-box .btn {
+      position: relative;
+      z-index: 1;
     }
 
-    /* Gallery */
+    /* Gallery / Event Memories */
+    .gallery-section {
+      background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+      padding: 40px 25px;
+      border-radius: 18px;
+      box-shadow: 0 6px 24px rgba(44, 62, 80, 0.08);
+      border: 1px solid #e2e8f0;
+    }
+    .gallery-section h4 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 1.5rem;
+      margin-bottom: 30px;
+      position: relative;
+      display: inline-block;
+      letter-spacing: -0.5px;
+    }
+    .gallery-section h4::after {
+      content: "";
+      display: block;
+      width: 50px;
+      height: 3px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      margin-top: 8px;
+      border-radius: 2px;
+    }
     .gallery-section img {
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border-radius: 16px;
+      border: 2px solid #e2e8f0;
+      cursor: pointer;
     }
     .gallery-section img:hover {
-      transform: scale(1.05);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      transform: scale(1.05) translateY(-4px);
+      box-shadow: 0 16px 40px rgba(44, 62, 80, 0.25);
+      border-color: var(--primary);
+    }
+    
+    /* Countdown Section */
+    .countdown-section {
+      background: linear-gradient(180deg, #ffffff 0%, var(--light) 100%);
+      padding: 50px 0;
+    }
+    .countdown-section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 2rem;
+      letter-spacing: -0.5px;
+    }
+    .countdown-box {
+      background: white;
+      border-radius: 16px;
+      padding: 25px;
+      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.1);
+      transition: all 0.3s ease;
+      border: 1px solid #e2e8f0;
+    }
+    .countdown-box:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 10px 30px rgba(44, 62, 80, 0.15);
+    }
+    .countdown-box h3 {
+      color: var(--primary);
+      font-size: 2.5rem;
+      font-weight: 800;
+      font-family: 'Poppins', sans-serif;
+      margin-bottom: 5px;
+    }
+    .countdown-box span {
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Stats Section */
+    .stats-glance {
+      background: linear-gradient(135deg, var(--light) 0%, #ffffff 100%);
+      padding: 50px 0;
+    }
+    .stats-glance h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 2.2rem;
+      letter-spacing: -0.5px;
+      margin-bottom: 40px;
+    }
+    .stat-box {
+      background: white;
+      border-radius: 18px;
+      padding: 30px;
+      box-shadow: 0 6px 24px rgba(44, 62, 80, 0.1);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1px solid #e2e8f0;
+      height: 100%;
+    }
+    .stat-box:hover {
+      transform: translateY(-6px);
+      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
+    }
+    .stat-box h3 {
+      font-size: 2.5rem;
+      font-weight: 800;
+      font-family: 'Poppins', sans-serif;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .stat-box p {
+      color: #64748b;
+      font-weight: 600;
+      margin-bottom: 0;
+      text-transform: uppercase;
+      font-size: 0.9rem;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Map Section */
+    .map-section {
+      background: #fff;
+      padding: 50px 0;
+    }
+    .map-section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 2.2rem;
+      letter-spacing: -0.5px;
+    }
+    #map {
+      border-radius: 18px;
+      border: 1px solid #e2e8f0;
+    }
+    
+    /* FAQ Section */
+    .faq-section {
+      background: linear-gradient(180deg, var(--light) 0%, #ffffff 100%);
+      padding: 50px 0;
+    }
+    .faq-section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 800;
+      font-size: 2.2rem;
+      letter-spacing: -0.5px;
+    }
+    .accordion-item {
+      border: 1px solid #e2e8f0;
+      margin-bottom: 12px;
+      border-radius: 12px;
+      overflow: hidden;
+      background: white;
+    }
+    .accordion-button {
+      font-weight: 600;
+      color: var(--dark);
+      background: white;
+      padding: 18px 24px;
+    }
+    .accordion-button:not(.collapsed) {
+      background: linear-gradient(135deg, var(--light), #f1f5f9);
+      color: var(--primary);
+      box-shadow: none;
+    }
+    .accordion-button:focus {
+      box-shadow: none;
+      border-color: var(--primary);
+    }
+    .accordion-body {
+      color: #64748b;
+      line-height: 1.7;
+      padding: 20px 24px;
     }
   </style>
 </head>
@@ -256,7 +543,7 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
             <p class="carousel-desc mx-auto">
               <?= htmlspecialchars(substr(strip_tags($row['description']), 0, 200)) ?>...
             </p>
-            <a href="events_details.php?id=<?= $row['id'] ?>" class="btn btn-outline-light px-4 py-2 mt-2">Read More</a>
+            <a href="#" class="btn btn-outline-light px-4 py-2 mt-2 event-detail-link" data-event-id="<?= $row['id'] ?>">Read More</a>
           </div>
         </div>
       <?php $active = false; }} ?>
@@ -293,7 +580,18 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
           <?php endforeach; ?>
         </ul>
 
+        <!-- Upcoming / Past Events Tabs -->
+        <ul class="nav nav-pills mb-4" id="eventTimeTabs">
+          <li class="nav-item">
+            <button class="nav-link active" data-time="upcoming">Upcoming Events</button>
+          </li>
+          <li class="nav-item">
+            <button class="nav-link" data-time="past">Past Events</button>
+          </li>
+        </ul>
+
         <!-- Upcoming Events -->
+        <div id="upcomingEventsContainer">
         <h3>Upcoming Events</h3>
         <div class="row">
           <?php if ($upcoming_result && $upcoming_result->num_rows > 0): ?>
@@ -304,12 +602,14 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
                        alt="Event Poster" class="event-img">
                   <div class="event-content p-3">
                     <h5 class="event-title">
-                      <a href="event-details.php?id=<?php echo $row['id']; ?>" class="text-decoration-none">
+                      <a href="#" class="text-decoration-none event-detail-link" data-event-id="<?php echo $row['id']; ?>">
                         <?php echo htmlspecialchars($row['event_name']); ?>
                       </a>
                     </h5>
                     <p class="event-meta mb-2">
-                      by admin | <?php echo date("M d, Y", strtotime($row['date'])); ?> | <?php echo htmlspecialchars($row['location']); ?>
+                      <i class="bi bi-person-circle"></i> by admin | 
+                      <i class="bi bi-calendar3"></i> <?php echo date("M d, Y", strtotime($row['date'])); ?> | 
+                      <i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($row['location']); ?>
                     </p>
                     <p class="event-desc">
                       <?php echo substr(strip_tags($row['description']), 0, 180); ?>...
@@ -321,6 +621,41 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
           <?php else: ?>
             <p class="text-muted">No upcoming events at the moment.</p>
           <?php endif; ?>
+        </div>
+        </div>
+
+        <!-- Past Events Section -->
+        <div id="pastEventsContainer" style="display:none;">
+        <h3>Past Events</h3>
+        <div class="row">
+          <?php if ($past_result && $past_result->num_rows > 0): ?>
+            <?php while ($row = $past_result->fetch_assoc()): ?>
+              <div class="col-md-6 mb-4">
+                <div class="event-box h-100" data-category="<?= htmlspecialchars($row['category'] ?? 'General') ?>">
+                  <img src="../../uploads/<?php echo !empty($row['event_poster']) ? htmlspecialchars($row['event_poster']) : 'default.jpg'; ?>" 
+                       alt="Event Poster" class="event-img">
+                  <div class="event-content p-3">
+                    <h5 class="event-title">
+                      <a href="#" class="text-decoration-none event-detail-link" data-event-id="<?php echo $row['id']; ?>">
+                        <?php echo htmlspecialchars($row['event_name']); ?>
+                      </a>
+                    </h5>
+                    <p class="event-meta mb-2">
+                      <i class="bi bi-person-circle"></i> by admin | 
+                      <i class="bi bi-calendar3"></i> <?php echo date("M d, Y", strtotime($row['date'])); ?> | 
+                      <i class="bi bi-geo-alt-fill"></i> <?php echo htmlspecialchars($row['location']); ?>
+                    </p>
+                    <p class="event-desc">
+                      <?php echo substr(strip_tags($row['description']), 0, 180); ?>...
+                    </p>
+                  </div>
+                </div>
+              </div>
+            <?php endwhile; ?>
+          <?php else: ?>
+            <p class="text-muted">No past events to display.</p>
+          <?php endif; ?>
+        </div>
         </div>
       </div>
     
@@ -337,7 +672,9 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
 
         <!-- Gallery -->
         <section class="gallery-section mt-5">
-          <h4 class="text-center mb-4">Event Memories</h4>
+          <div class="text-center">
+            <h4>Event Memories</h4>
+          </div>
 
           <?php
           // filesystem dir and public url for gallery images (from this file location)
@@ -360,32 +697,51 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
               $imgPath = $gallery_url_base . $firstImage;
           ?>
               <div class="text-center mb-4">
-                <img src="<?= htmlspecialchars($imgPath) ?>" class="img-fluid rounded shadow-sm" 
-                     style="max-width:300px; cursor:pointer;" 
+                <img src="<?= htmlspecialchars($imgPath) ?>" class="img-fluid" 
+                     style="max-width:100%; height: 220px; object-fit: cover;" 
                      data-bs-toggle="modal" data-bs-target="#modal<?= $modalIndex ?>" alt="Gallery Preview">
               </div>
 
               <!-- Modal -->
               <div class="modal fade" id="modal<?= $modalIndex ?>" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-lg modal-dialog-centered">
-                  <div class="modal-content bg-dark">
-                    <div class="modal-body p-0">
-                      <div id="carouselGallery<?= $modalIndex ?>" class="carousel slide" data-bs-ride="false">
-                        <div class="carousel-inner">
+                <div class="modal-dialog modal-xl modal-dialog-centered">
+                  <div class="modal-content" style="border-radius: 20px; border: none; overflow: hidden; box-shadow: 0 12px 48px rgba(44, 62, 80, 0.3);">
+                    <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border: none; padding: 20px 30px;">
+                      <h5 class="modal-title fw-bold" style="font-family: 'Poppins', sans-serif;">Event Memories Gallery</h5>
+                      <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-0" style="background: #f8f9fa; overflow: hidden;">
+                      <div id="carouselGallery<?= $modalIndex ?>" class="carousel slide" data-bs-ride="false" style="line-height: 0;">
+                        <div class="carousel-inner" style="line-height: 0;">
                           <?php foreach($images as $i => $img):
                             $imgUrl = $gallery_url_base . $img;
                           ?>
-                            <div class="carousel-item <?= $i === 0 ? 'active' : '' ?>">
-                              <img src="<?= htmlspecialchars($imgUrl) ?>" class="d-block w-100" alt="Gallery Image" style="height:500px; object-fit:cover;">
+                            <div class="carousel-item <?= $i === 0 ? 'active' : '' ?>" style="line-height: 0;">
+                              <img src="<?= htmlspecialchars($imgUrl) ?>" class="d-block w-100" alt="Gallery Image" style="max-height:85vh; width: 100%; height: auto; object-fit: contain; display: block;">
                             </div>
                           <?php endforeach; ?>
                         </div>
+                        
+                        <!-- Carousel Controls -->
                         <button class="carousel-control-prev" type="button" data-bs-target="#carouselGallery<?= $modalIndex ?>" data-bs-slide="prev">
-                          <span class="carousel-control-prev-icon"></span>
+                          <div style="background: rgba(44, 62, 80, 0.8); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; margin: auto;">
+                            <span class="carousel-control-prev-icon" aria-hidden="true"></span>
+                          </div>
+                          <span class="visually-hidden">Previous</span>
                         </button>
                         <button class="carousel-control-next" type="button" data-bs-target="#carouselGallery<?= $modalIndex ?>" data-bs-slide="next">
-                          <span class="carousel-control-next-icon"></span>
+                          <div style="background: rgba(44, 62, 80, 0.8); border-radius: 50%; width: 45px; height: 45px; display: flex; align-items: center; justify-content: center; margin: auto;">
+                            <span class="carousel-control-next-icon" aria-hidden="true"></span>
+                          </div>
+                          <span class="visually-hidden">Next</span>
                         </button>
+                        
+                        <!-- Indicators -->
+                        <div class="carousel-indicators">
+                          <?php foreach($images as $i => $img): ?>
+                            <button type="button" data-bs-target="#carouselGallery<?= $modalIndex ?>" data-bs-slide-to="<?= $i ?>" <?= $i === 0 ? 'class="active" aria-current="true"' : '' ?> aria-label="Slide <?= $i+1 ?>" style="width: 12px; height: 12px; border-radius: 50%; background: var(--primary);"></button>
+                          <?php endforeach; ?>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -399,15 +755,35 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
     </div>
   </div>
 
+  <!-- Event Details Modal -->
+  <div class="modal fade" id="eventDetailsModal" tabindex="-1" aria-labelledby="eventDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content" style="border-radius: 18px; border: none; box-shadow: 0 12px 48px rgba(44, 62, 80, 0.2);">
+        <div class="modal-header" style="background: linear-gradient(135deg, var(--primary), var(--secondary)); color: white; border-radius: 18px 18px 0 0;">
+          <h5 class="modal-title fw-bold" id="eventDetailsModalLabel" style="font-family: 'Poppins', sans-serif;">Event Details</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+        </div>
+        <div class="modal-body p-4" id="eventDetailsBody">
+          <div class="text-center">
+            <div class="spinner-border text-primary" role="status">
+              <span class="visually-hidden">Loading...</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script>
     document.addEventListener("DOMContentLoaded", () => {
-      const buttons = document.querySelectorAll("#eventCategories .nav-link");
+      // Category Filter
+      const categoryButtons = document.querySelectorAll("#eventCategories .nav-link");
       const eventCards = document.querySelectorAll(".event-box");
 
-      buttons.forEach(btn => {
+      categoryButtons.forEach(btn => {
         btn.addEventListener("click", () => {
-          buttons.forEach(b => b.classList.remove("active"));
+          categoryButtons.forEach(b => b.classList.remove("active"));
           btn.classList.add("active");
 
           const category = btn.getAttribute("data-category");
@@ -422,6 +798,105 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
           });
         });
       });
+
+      // Upcoming / Past Events Tab
+      const timeButtons = document.querySelectorAll("#eventTimeTabs .nav-link");
+      const upcomingContainer = document.getElementById("upcomingEventsContainer");
+      const pastContainer = document.getElementById("pastEventsContainer");
+
+      timeButtons.forEach(btn => {
+        btn.addEventListener("click", () => {
+          timeButtons.forEach(b => b.classList.remove("active"));
+          btn.classList.add("active");
+
+          const timeFilter = btn.getAttribute("data-time");
+
+          if (timeFilter === "upcoming") {
+            upcomingContainer.style.display = "block";
+            pastContainer.style.display = "none";
+          } else if (timeFilter === "past") {
+            upcomingContainer.style.display = "none";
+            pastContainer.style.display = "block";
+          }
+        });
+      });
+
+      // Event Details Modal
+      const eventModal = new bootstrap.Modal(document.getElementById('eventDetailsModal'));
+      const eventDetailLinks = document.querySelectorAll('.event-detail-link');
+      
+      eventDetailLinks.forEach(link => {
+        link.addEventListener('click', function(e) {
+          e.preventDefault();
+          const eventId = this.getAttribute('data-event-id');
+          
+          // Show modal with loading
+          document.getElementById('eventDetailsBody').innerHTML = `
+            <div class="text-center">
+              <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+              </div>
+            </div>
+          `;
+          eventModal.show();
+          
+          // Fetch event details
+          fetch(`get_event_details.php?id=${eventId}`)
+            .then(response => response.json())
+            .then(data => {
+              if (data.success) {
+                const event = data.event;
+                const posterUrl = event.event_poster ? `../../uploads/${event.event_poster}` : '../../uploads/default.jpg';
+                
+                document.getElementById('eventDetailsBody').innerHTML = `
+                  <div class="event-details-content">
+                    <img src="${posterUrl}" alt="Event Poster" class="img-fluid rounded mb-4" style="width: 100%; height: 400px; object-fit: cover; border-radius: 16px;">
+                    
+                    <h2 class="fw-bold mb-3" style="font-family: 'Poppins', sans-serif; color: var(--dark);">${event.event_name}</h2>
+                    
+                    <div class="event-meta mb-4" style="color: #64748b; font-weight: 500;">
+                      <span><i class="bi bi-person-circle" style="color: var(--primary);"></i> by Admin</span> | 
+                      <span><i class="bi bi-calendar3" style="color: var(--primary);"></i> ${event.date_formatted}</span> | 
+                      <span><i class="bi bi-tag" style="color: var(--primary);"></i> ${event.category}</span>
+                    </div>
+                    
+                    <div style="background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%); padding: 25px; border-radius: 16px; border: 1px solid #e2e8f0; margin-bottom: 25px;">
+                      <h5 class="fw-bold mb-3" style="color: var(--primary); font-family: 'Poppins', sans-serif;">About this Event</h5>
+                      <p style="line-height: 1.8; color: #64748b;">${event.description || 'No description provided.'}</p>
+                    </div>
+                    
+                    <div style="background: white; padding: 25px; border-radius: 16px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(44, 62, 80, 0.08);">
+                      <h5 class="fw-bold mb-3" style="color: var(--primary); font-family: 'Poppins', sans-serif;">Event Information</h5>
+                      <p class="mb-2"><strong>Date:</strong> ${event.date_long}</p>
+                      ${event.time ? `<p class="mb-2"><strong>Time:</strong> ${event.time}</p>` : ''}
+                      <p class="mb-2"><strong>Location:</strong> ${event.location}</p>
+                      <p class="mb-0"><strong>Category:</strong> ${event.category}</p>
+                    </div>
+                  </div>
+                `;
+              } else {
+                document.getElementById('eventDetailsBody').innerHTML = `
+                  <div class="alert alert-danger">Event not found.</div>
+                `;
+              }
+            })
+            .catch(error => {
+              document.getElementById('eventDetailsBody').innerHTML = `
+                <div class="alert alert-danger">Error loading event details.</div>
+              `;
+            });
+        });
+      });
+
+      // Check if modal should open on page load
+      const urlParams = new URLSearchParams(window.location.search);
+      const eventId = urlParams.get('id');
+      if (eventId) {
+        const link = document.querySelector(`[data-event-id="${eventId}"]`);
+        if (link) {
+          link.click();
+        }
+      }
     });
   </script>
   
@@ -498,40 +973,40 @@ const countdownFunction = setInterval(function() {
 <?php endif; ?>
 
   <!-- Stats Section -->
-<section class="py-5" style="background:#eef3f7;">
-  <div class="container text-center">
-    <h2 class="fw-bold mb-4" style="color:#004085;">Association at a Glance</h2>
+<section class="stats-glance text-center">
+  <div class="container">
+    <h2 class="mb-4">Association at a Glance</h2>
     <div class="row g-4">
       
       <!-- Members -->
-      <div class="col-md-3">
-        <div class="p-4 bg-white shadow-sm rounded-3 h-100">
-          <h3 class="fw-bold text-primary" data-count="250">0</h3>
-          <p class="mb-0 text-secondary">Active Members</p>
+      <div class="col-md-3 col-6">
+        <div class="stat-box">
+          <h3 data-count="250">0</h3>
+          <p>Active Members</p>
         </div>
       </div>
       
       <!-- Events -->
-      <div class="col-md-3">
-        <div class="p-4 bg-white shadow-sm rounded-3 h-100">
-          <h3 class="fw-bold text-success" data-count="45">0</h3>
-          <p class="mb-0 text-secondary">Events Organized</p>
+      <div class="col-md-3 col-6">
+        <div class="stat-box">
+          <h3 data-count="45">0</h3>
+          <p>Events Organized</p>
         </div>
       </div>
       
       <!-- Projects -->
-      <div class="col-md-3">
-        <div class="p-4 bg-white shadow-sm rounded-3 h-100">
-          <h3 class="fw-bold text-warning" data-count="12">0</h3>
-          <p class="mb-0 text-secondary">Community Projects</p>
+      <div class="col-md-3 col-6">
+        <div class="stat-box">
+          <h3 data-count="12">0</h3>
+          <p>Community Projects</p>
         </div>
       </div>
       
       <!-- Years -->
-      <div class="col-md-3">
-        <div class="p-4 bg-white shadow-sm rounded-3 h-100">
-          <h3 class="fw-bold text-danger" data-count="8">0</h3>
-          <p class="mb-0 text-secondary">Years of Service</p>
+      <div class="col-md-3 col-6">
+        <div class="stat-box">
+          <h3 data-count="8">0</h3>
+          <p>Years of Service</p>
         </div>
       </div>
       
@@ -560,15 +1035,13 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 </script>
 <!-- Map Section -->
-<section class="map-section py-5" style="background: #f8f9fa;">
+<section class="map-section">
   <div class="container text-center">
-    <h2 class="mb-4" style="font-family: 'Lora', serif; color: #003366; font-weight: 700;">
-      Visit Driftwood Beach
-    </h2>
-    <p class="mb-4 text-muted">Here’s our location — zoom in/out and explore the map.</p>
+    <h2 class="mb-3">Visit Driftwood Beach</h2>
+    <p class="mb-4 text-muted">Here's our location — zoom in/out and explore the map.</p>
 
     <!-- Map container -->
-    <div id="map" style="height: 450px; width: 100%;" class="shadow rounded"></div>
+    <div id="map" style="height: 450px; width: 100%;" class="shadow"></div>
   </div>
 </section>
 
@@ -594,11 +1067,9 @@ document.addEventListener("DOMContentLoaded", () => {
     .openPopup();
 </script>
 <!-- FAQ Section -->
-<section class="faq-section py-5" style="background-color: #f8f9fa;">
+<section class="faq-section">
   <div class="container">
-    <h2 class="text-center mb-4" style="font-family: 'Lora', serif; color: #003366; font-weight: 700;">
-      Frequently Asked Questions
-    </h2>
+    <h2 class="text-center mb-3">Frequently Asked Questions</h2>
     <p class="text-center mb-5 text-muted">
       Here are some common questions about our association and activities.
     </p>
@@ -641,7 +1112,7 @@ document.addEventListener("DOMContentLoaded", () => {
         </h2>
         <div id="faqCollapse3" class="accordion-collapse collapse" aria-labelledby="faqHeading3" data-bs-parent="#faqAccordion">
           <div class="accordion-body">
-            Yes! We regularly conduct training on sustainable fishing, eco-tourism, and alternative livelihood programs to help improve members’ income and skills.
+            Yes! We regularly conduct training on sustainable fishing, eco-tourism, and alternative livelihood programs to help improve members' income and skills.
           </div>
         </div>
       </div>
