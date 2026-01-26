@@ -43,6 +43,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION["user_id"] = $row["id"];
             $_SESSION["username"] = $row["username"];
             $_SESSION["role"] = $row["role"];
+            
+            // ✅ Use username as display name for now
+            // Extract first part of username (before @ if email, or full username)
+            $displayName = $row["username"];
+            if (strpos($displayName, '@') !== false) {
+                $displayName = explode('@', $displayName)[0];
+            }
+            // Capitalize first letter
+            $_SESSION["fullname"] = ucfirst($displayName);
 
             // Log successful login
             $action = "Logged in";

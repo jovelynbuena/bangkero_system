@@ -47,15 +47,14 @@ try {
         exit;
     }
 
-    // Ibalik sa members table (lahat kasama address)
-    $stmt = $conn->prepare("INSERT INTO members (id, name, address, email, phone) 
-                            VALUES (?, ?, ?, ?, ?)");
+    // Ibalik sa members table (let AUTO_INCREMENT handle the ID)
+    $stmt = $conn->prepare("INSERT INTO members (name, address, email, phone) 
+                            VALUES (?, ?, ?, ?)");
     if (!$stmt) {
         throw new Exception("SQL prepare failed (INSERT): " . $conn->error);
     }
     $stmt->bind_param(
-        "issss",
-        $archived['member_id'],
+        "ssss",
         $archived['name'],
         $archived['address'],
         $archived['email'],

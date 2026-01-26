@@ -200,17 +200,465 @@ if ($result && $result->num_rows > 0) {
 <head>
 <meta charset="utf-8">
 <title>Galleries — Admin</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-  body { background:#f4f6f9; font-family:"Segoe UI",system-ui,Arial; }
-  .content-wrapper { margin-left: 0; padding:30px; max-width:1200px; margin:30px auto; }
-  .gallery-card { border:none; border-radius:12px; overflow:hidden; box-shadow:0 6px 18px rgba(6,12,34,0.06); cursor:pointer; background:#fff; }
-  .gallery-card img { height:200px; width:100%; object-fit:cover; display:block; }
-  .upload-box { border:2px dashed #e2e8f0; padding:28px; text-align:center; cursor:pointer; border-radius:10px; background:#fff; }
-  .meta { color:#6b7280; font-size:.92rem; }
-  .thumb { height:120px; object-fit:cover; border-radius:8px; }
-  @media (min-width: 992px) { .content-wrapper { margin-left:260px; } }
+  /* Modern Layout */
+  body { 
+    background: #f9fafb; 
+    font-family: 'Inter', 'Segoe UI', system-ui, Arial; 
+    color: #333;
+  }
+  
+  .content-wrapper { 
+    margin-left: 270px; 
+    padding: 32px; 
+    min-height: 100vh; 
+  }
+
+  /* Page Header */
+  .page-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 32px;
+    border-radius: 20px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
+    color: white;
+  }
+
+  .page-header h2 {
+    font-weight: 700;
+    font-size: 2rem;
+    margin: 0 0 8px 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .page-header h2 i {
+    font-size: 2.5rem;
+  }
+
+  .page-header .meta {
+    color: rgba(255,255,255,0.95);
+    font-size: 1.05rem;
+    margin: 0;
+  }
+
+  /* Search Bar */
+  .search-container {
+    position: relative;
+  }
+
+  .search-container input {
+    border-radius: 12px;
+    border: 2px solid rgba(255,255,255,0.3);
+    padding: 10px 16px 10px 45px;
+    background: rgba(255,255,255,0.15);
+    color: white;
+    backdrop-filter: blur(10px);
+  }
+
+  .search-container input::placeholder {
+    color: rgba(255,255,255,0.7);
+  }
+
+  .search-container input:focus {
+    background: rgba(255,255,255,0.25);
+    border-color: rgba(255,255,255,0.5);
+    outline: none;
+    box-shadow: 0 0 0 4px rgba(255,255,255,0.1);
+  }
+
+  .search-container i {
+    position: absolute;
+    left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: rgba(255,255,255,0.8);
+    font-size: 1.1rem;
+  }
+
+  .btn-search {
+    background: rgba(255,255,255,0.25);
+    border: 2px solid rgba(255,255,255,0.4);
+    color: white;
+    border-radius: 12px;
+    padding: 10px 20px;
+    font-weight: 600;
+  }
+
+  .btn-search:hover {
+    background: rgba(255,255,255,0.35);
+    border-color: rgba(255,255,255,0.6);
+    color: white;
+  }
+
+  .btn-light {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  .btn-light:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    color: white;
+  }
+
+  /* Gallery Section */
+  .gallery-section {
+    background: white;
+    border-radius: 16px;
+    padding: 28px;
+    margin-bottom: 28px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    border: 1px solid #E8E8E8;
+  }
+
+  .gallery-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 24px;
+    padding-bottom: 16px;
+    border-bottom: 2px solid #f0f0f0;
+  }
+
+  .gallery-title {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: #333;
+    margin: 0;
+  }
+
+  .gallery-title i {
+    font-size: 1.6rem;
+    color: #f59e0b;
+  }
+
+  .image-count-badge {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 6px 16px;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+  }
+
+  .gallery-date {
+    color: #999;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  /* Gallery Cards */
+  .gallery-card { 
+    border: none; 
+    border-radius: 16px; 
+    overflow: hidden; 
+    box-shadow: 0 4px 16px rgba(0,0,0,0.08); 
+    cursor: pointer; 
+    background: #fff;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+  }
+
+  .gallery-card:hover { 
+    transform: translateY(-8px);
+    box-shadow: 0 12px 32px rgba(0,0,0,0.15);
+  }
+
+  .gallery-card img { 
+    height: 220px; 
+    width: 100%; 
+    object-fit: cover; 
+    display: block;
+    transition: all 0.4s ease;
+  }
+
+  .gallery-card:hover img {
+    transform: scale(1.1);
+  }
+
+  .gallery-card .card-body {
+    padding: 16px;
+  }
+
+  .image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(0deg, rgba(0,0,0,0.7) 0%, transparent 50%);
+    opacity: 0;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: flex-end;
+    padding: 16px;
+  }
+
+  .gallery-card:hover .image-overlay {
+    opacity: 1;
+  }
+
+  .overlay-info {
+    color: white;
+    font-size: 0.85rem;
+    font-weight: 600;
+  }
+
+  /* Action Buttons */
+  .btn-outline-primary {
+    border: 2px solid #667eea;
+    color: #667eea;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .btn-outline-primary:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: #667eea;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  }
+
+  .btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 8px 16px;
+    font-weight: 600;
+    transition: all 0.3s ease;
+  }
+
+  .btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+  }
+
+  .btn-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border: none;
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-weight: 600;
+  }
+
+  .btn-success:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+  }
+
+  .btn-secondary {
+    background: #6c757d;
+    border: none;
+    border-radius: 10px;
+    padding: 10px 24px;
+    font-weight: 600;
+  }
+
+  /* Upload Box */
+  .upload-box { 
+    border: 3px dashed #667eea; 
+    padding: 48px; 
+    text-align: center; 
+    cursor: pointer; 
+    border-radius: 16px; 
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    transition: all 0.3s ease;
+  }
+
+  .upload-box:hover {
+    border-color: #764ba2;
+    background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
+    transform: scale(1.02);
+  }
+
+  .upload-box i {
+    font-size: 3rem;
+    color: #667eea;
+    margin-bottom: 12px;
+  }
+
+  .upload-box p {
+    margin: 0;
+    font-weight: 600;
+    color: #555;
+    font-size: 1.05rem;
+  }
+
+  .upload-box small {
+    color: #999;
+    display: block;
+    margin-top: 8px;
+  }
+
+  /* Preview Thumbnails */
+  .thumb { 
+    height: 120px; 
+    width: 120px;
+    object-fit: cover; 
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+  }
+
+  .thumb:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+  }
+
+  /* Modals */
+  .modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+  }
+
+  .modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px 20px 0 0;
+    padding: 24px 32px;
+    border: none;
+  }
+
+  .modal-header .btn-close {
+    filter: brightness(0) invert(1);
+  }
+
+  .modal-body {
+    padding: 32px;
+  }
+
+  .modal-title {
+    font-weight: 700;
+    font-size: 1.5rem;
+  }
+
+  /* Form Controls */
+  .form-label {
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 8px;
+  }
+
+  .form-control {
+    border-radius: 10px;
+    border: 2px solid #E8E8E8;
+    padding: 10px 16px;
+    transition: all 0.3s ease;
+  }
+
+  .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+  }
+
+  /* Carousel Controls */
+  .carousel-control-prev,
+  .carousel-control-next {
+    width: 60px;
+    height: 60px;
+    background: rgba(102, 126, 234, 0.8);
+    border-radius: 50%;
+    top: 50%;
+    transform: translateY(-50%);
+  }
+
+  .carousel-control-prev:hover,
+  .carousel-control-next:hover {
+    background: rgba(102, 126, 234, 1);
+  }
+
+  /* Alerts */
+  .alert {
+    border-radius: 12px;
+    border: none;
+    padding: 16px 24px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+
+  .alert-success {
+    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
+    color: #065f46;
+  }
+
+  .alert-danger {
+    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
+    color: #991b1b;
+  }
+
+  /* Empty State */
+  .empty-state {
+    text-align: center;
+    padding: 64px 32px;
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  }
+
+  .empty-state i {
+    font-size: 4rem;
+    color: #ddd;
+    margin-bottom: 16px;
+  }
+
+  .empty-state p {
+    color: #999;
+    font-size: 1.1rem;
+    margin: 0;
+  }
+
+  /* Responsive */
+  @media (max-width: 991.98px) { 
+    .content-wrapper { 
+      margin-left: 0; 
+      padding: 20px; 
+    }
+    .page-header h2 {
+      font-size: 1.5rem;
+    }
+    .gallery-card img {
+      height: 180px;
+    }
+  }
+
+  /* Animation */
+  @keyframes fadeInUp {
+    from {
+      opacity: 0;
+      transform: translateY(30px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .gallery-section {
+    animation: fadeInUp 0.5s ease-out;
+  }
 </style>
 </head>
 <body>
@@ -218,62 +666,73 @@ if ($result && $result->num_rows > 0) {
 <?php include('../navbar.php'); ?>
 
 <div class="content-wrapper">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <div>
-      <h2 class="fw-bold">📸 Galleries</h2>
-      <p class="meta mb-0">Manage gallery collections — upload, edit, delete</p>
-    </div>
-    <div class="d-flex gap-2 align-items-center">
-      <form class="d-flex" method="GET" style="gap:.5rem;">
-        <input name="q" class="form-control form-control-sm" type="search" placeholder="Search title or filename" value="<?= e($searchQ) ?>">
-        <button class="btn btn-sm btn-outline-primary" type="submit"><i class="bi bi-search"></i></button>
-      </form>
-      <button class="btn btn-primary ms-2" data-bs-toggle="modal" data-bs-target="#modalAdd">
-        <i class="bi bi-plus-circle me-1"></i> New Gallery
-      </button>
+  
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div>
+        <h2><i class="bi bi-images"></i> Gallery Management</h2>
+        <p class="meta">Upload, organize, and manage your photo galleries</p>
+      </div>
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <form class="d-flex search-container" method="GET" style="gap:.5rem;">
+          <i class="bi bi-search"></i>
+          <input name="q" class="form-control" type="search" placeholder="Search galleries..." value="<?= e($searchQ) ?>">
+          <button class="btn btn-search" type="submit"><i class="bi bi-search"></i></button>
+        </form>
+        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modalAdd">
+          <i class="bi bi-plus-circle me-2"></i> New Gallery
+        </button>
+      </div>
     </div>
   </div>
-
-  <?php if (!empty($errors)): ?>
-    <div class="alert alert-danger">
-      <?php foreach ($errors as $err) echo '<div>'.e($err).'</div>'; ?>
-    </div>
-  <?php endif; ?>
-  <?php if ($success): ?>
-    <div class="alert alert-success"><?= e($success) ?></div>
-  <?php endif; ?>
 
   <?php if (!empty($galleries)): ?>
     <?php foreach ($galleries as $idx => $g):
       $allImages = $g['images'];
       $first = count($allImages) ? $uploadDirRel . e($allImages[0]) : '../images/default-event.jpg';
       $carouselId = 'carousel' . $g['id'];
+      $imageCount = count($allImages);
     ?>
-    <div class="mb-4">
-      <div class="d-flex justify-content-between align-items-start mb-2">
-        <div>
-          <h5 class="mb-0"><i class="bi bi-folder-fill text-warning me-1"></i> <?= e($g['title']) ?></h5>
+    <div class="gallery-section">
+      <div class="gallery-header">
+        <div class="d-flex align-items-center gap-3 flex-wrap">
+          <h5 class="gallery-title mb-0">
+            <i class="bi bi-folder-fill"></i> 
+            <?= e($g['title']) ?>
+          </h5>
+          <span class="image-count-badge">
+            <i class="bi bi-images me-1"></i><?= $imageCount ?> <?= $imageCount === 1 ? 'Image' : 'Images' ?>
+          </span>
+          <span class="gallery-date">
+            <i class="bi bi-calendar-event"></i>
+            <?= date("M d, Y", strtotime($g['created_at'])) ?>
+          </span>
         </div>
         <div class="d-flex gap-2">
           <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEdit<?= $g['id'] ?>">
-            <i class="bi bi-pencil"></i> Edit
+            <i class="bi bi-pencil me-1"></i> Edit
           </button>
-          <form method="POST" class="d-inline" onsubmit="return confirm('Delete this gallery?');">
+          <form method="POST" class="d-inline" onsubmit="return confirm('Delete this entire gallery and all its images?');">
             <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
             <input type="hidden" name="action" value="delete">
             <input type="hidden" name="id" value="<?= (int)$g['id'] ?>">
-            <button type="submit" class="btn btn-sm btn-danger"><i class="bi bi-trash"></i> Delete</button>
+            <button type="submit" class="btn btn-sm btn-danger">
+              <i class="bi bi-trash me-1"></i> Delete
+            </button>
           </form>
         </div>
       </div>
 
-      <div class="row g-3">
+      <div class="row g-4">
         <?php foreach ($allImages as $i => $img): ?>
-          <div class="col-md-3 col-sm-4">
-            <div class="card gallery-card" data-bs-toggle="modal" data-bs-target="#modalView<?= $g['id'] ?>">
+          <div class="col-lg-3 col-md-4 col-sm-6">
+            <div class="gallery-card" data-bs-toggle="modal" data-bs-target="#modalView<?= $g['id'] ?>">
               <img src="<?= $uploadDirRel . e($img) ?>" alt="<?= e($g['title']) ?>">
-              <div class="card-body small">
-                <div class="text-muted">Uploaded: <?= date("M d, Y", strtotime($g['created_at'])) ?></div>
+              <div class="image-overlay">
+                <div class="overlay-info">
+                  <i class="bi bi-eye me-2"></i>Click to view full size
+                </div>
               </div>
             </div>
           </div>
@@ -315,31 +774,42 @@ if ($result && $result->num_rows > 0) {
 
       <!-- Edit modal -->
       <div class="modal fade" id="modalEdit<?= $g['id'] ?>" tabindex="-1">
-        <div class="modal-dialog modal-lg">
-          <div class="modal-content p-3">
-            <h5>Edit Gallery</h5>
-            <form method="POST" enctype="multipart/form-data">
-              <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-              <input type="hidden" name="action" value="edit">
-              <input type="hidden" name="id" value="<?= (int)$g['id'] ?>">
+        <div class="modal-dialog modal-lg modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title"><i class="bi bi-pencil-square me-2"></i>Edit Gallery</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+              <form method="POST" enctype="multipart/form-data">
+                <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                <input type="hidden" name="action" value="edit">
+                <input type="hidden" name="id" value="<?= (int)$g['id'] ?>">
 
-              <div class="mb-3">
-                <label class="form-label">Gallery Title</label>
-                <input type="text" name="title" class="form-control" value="<?= e($g['title']) ?>">
-              </div>
+                <div class="mb-4">
+                  <label class="form-label">Gallery Title</label>
+                  <input type="text" name="title" class="form-control" value="<?= e($g['title']) ?>" required>
+                </div>
 
-              <div class="mb-3">
-                <label class="form-label">Add More Images</label>
-                <div class="upload-box" onclick="document.getElementById('editFiles<?= $g['id'] ?>').click();">Click to add images</div>
-                <input type="file" id="editFiles<?= $g['id'] ?>" name="images[]" class="d-none" accept="image/*" multiple>
-                <div id="previewEdit<?= $g['id'] ?>" class="mt-3 d-flex gap-2 flex-wrap"></div>
-              </div>
+                <div class="mb-4">
+                  <label class="form-label">Add More Images</label>
+                  <div class="upload-box" onclick="document.getElementById('editFiles<?= $g['id'] ?>').click();">
+                    <i class="bi bi-cloud-upload"></i>
+                    <p>Click to add more images</p>
+                    <small>JPEG, PNG, WEBP • Max 5MB each</small>
+                  </div>
+                  <input type="file" id="editFiles<?= $g['id'] ?>" name="images[]" class="d-none" accept="image/*" multiple>
+                  <div id="previewEdit<?= $g['id'] ?>" class="mt-3 d-flex gap-2 flex-wrap"></div>
+                </div>
 
-              <div class="d-flex justify-content-end gap-2">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                <button type="submit" class="btn btn-success">Update</button>
-              </div>
-            </form>
+                <div class="d-flex justify-content-end gap-2">
+                  <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                  <button type="submit" class="btn btn-success">
+                    <i class="bi bi-check-circle me-2"></i>Update Gallery
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       </div>
@@ -348,8 +818,12 @@ if ($result && $result->num_rows > 0) {
     <?php endforeach; ?>
 
   <?php else: ?>
-    <div class="card p-4 text-center">
-      <p class="mb-0">No galleries yet. Create one to get started.</p>
+    <div class="empty-state">
+      <i class="bi bi-images"></i>
+      <p class="mb-3">No galleries yet. Create your first gallery to get started!</p>
+      <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalAdd">
+        <i class="bi bi-plus-circle me-2"></i>Create First Gallery
+      </button>
     </div>
   <?php endif; ?>
 
@@ -357,65 +831,157 @@ if ($result && $result->num_rows > 0) {
 
 <!-- Add modal -->
 <div class="modal fade" id="modalAdd" tabindex="-1">
-  <div class="modal-dialog modal-lg">
-    <div class="modal-content p-3">
-      <h5>New Gallery</h5>
-      <form method="POST" enctype="multipart/form-data">
-        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-        <input type="hidden" name="action" value="add">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title"><i class="bi bi-plus-circle me-2"></i>Create New Gallery</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <form method="POST" enctype="multipart/form-data">
+          <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+          <input type="hidden" name="action" value="add">
 
-        <div class="mb-3">
-          <label class="form-label">Gallery Title</label>
-          <input type="text" name="title" class="form-control" required>
-        </div>
+          <div class="mb-4">
+            <label class="form-label">Gallery Title</label>
+            <input type="text" name="title" class="form-control" placeholder="Enter gallery name..." required>
+          </div>
 
-        <div class="mb-3">
-          <label class="form-label">Images</label>
-          <div class="upload-box" onclick="document.getElementById('addFiles').click();">Click to add images (JPEG, PNG, WEBP)</div>
-          <input type="file" id="addFiles" name="images[]" class="d-none" accept="image/*" multiple required>
-          <div id="previewAdd" class="mt-3 d-flex gap-2 flex-wrap"></div>
-        </div>
+          <div class="mb-4">
+            <label class="form-label">Upload Images</label>
+            <div class="upload-box" onclick="document.getElementById('addFiles').click();">
+              <i class="bi bi-cloud-upload"></i>
+              <p>Click or drag & drop to upload images</p>
+              <small>JPEG, PNG, WEBP • Max 5MB each • Multiple files supported</small>
+            </div>
+            <input type="file" id="addFiles" name="images[]" class="d-none" accept="image/*" multiple required>
+            <div id="previewAdd" class="mt-3 d-flex gap-2 flex-wrap"></div>
+          </div>
 
-        <div class="d-flex justify-content-end gap-2">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn btn-primary">Create</button>
-        </div>
-      </form>
+          <div class="d-flex justify-content-end gap-2">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+            <button type="submit" class="btn btn-success">
+              <i class="bi bi-check-circle me-2"></i>Create Gallery
+            </button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </div>
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
+  // SweetAlert for success/error messages
+  <?php if ($success): ?>
+  Swal.fire({
+    icon: 'success',
+    title: 'Success!',
+    text: '<?= e($success) ?>',
+    timer: 2000,
+    showConfirmButton: false
+  });
+  <?php endif; ?>
+
+  <?php if (!empty($errors)): ?>
+  Swal.fire({
+    icon: 'error',
+    title: 'Error!',
+    html: '<?php foreach ($errors as $err) echo e($err) . "<br>"; ?>',
+    confirmButtonText: 'OK'
+  });
+  <?php endif; ?>
+
   // File preview helper
   function setupPreview(inputId, previewId) {
     const inp = document.getElementById(inputId);
     const prev = document.getElementById(previewId);
     if (!inp || !prev) return;
+    
     inp.addEventListener('change', function(e){
       prev.innerHTML = '';
-      [...e.target.files].forEach(f => {
-        if (!f.type.startsWith('image/')) return;
-        const r = new FileReader();
-        r.onload = ev => {
-          const img = document.createElement('img');
-          img.src = ev.target.result;
-          img.className = 'thumb';
-          img.style.width = '120px';
-          img.style.height = '120px';
-          img.style.objectFit = 'cover';
-          prev.appendChild(img);
-        };
-        r.readAsDataURL(f);
-      });
+      const files = [...e.target.files];
+      
+      if (files.length > 0) {
+        files.forEach((f, idx) => {
+          if (!f.type.startsWith('image/')) return;
+          
+          const wrapper = document.createElement('div');
+          wrapper.className = 'position-relative';
+          wrapper.style.display = 'inline-block';
+          
+          const r = new FileReader();
+          r.onload = ev => {
+            const img = document.createElement('img');
+            img.src = ev.target.result;
+            img.className = 'thumb';
+            wrapper.appendChild(img);
+            
+            // Add remove button
+            const removeBtn = document.createElement('button');
+            removeBtn.className = 'btn btn-danger btn-sm position-absolute top-0 end-0 m-1';
+            removeBtn.innerHTML = '<i class="bi bi-x"></i>';
+            removeBtn.style.padding = '2px 6px';
+            removeBtn.style.fontSize = '0.8rem';
+            removeBtn.onclick = function(e) {
+              e.preventDefault();
+              wrapper.remove();
+            };
+            wrapper.appendChild(removeBtn);
+          };
+          r.readAsDataURL(f);
+          prev.appendChild(wrapper);
+        });
+        
+        // Show count
+        const countBadge = document.createElement('div');
+        countBadge.className = 'badge bg-primary mt-2';
+        countBadge.textContent = files.length + ' image(s) selected';
+        prev.appendChild(countBadge);
+      }
     });
+    
+    // Drag & drop support
+    const uploadBox = inp.closest('.modal-body')?.querySelector('.upload-box');
+    if (uploadBox) {
+      ['dragenter', 'dragover', 'dragleave', 'drop'].forEach(eventName => {
+        uploadBox.addEventListener(eventName, preventDefaults, false);
+      });
+      
+      function preventDefaults(e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      
+      ['dragenter', 'dragover'].forEach(eventName => {
+        uploadBox.addEventListener(eventName, () => {
+          uploadBox.style.borderColor = '#764ba2';
+          uploadBox.style.backgroundColor = '#f0f0f0';
+        });
+      });
+      
+      ['dragleave', 'drop'].forEach(eventName => {
+        uploadBox.addEventListener(eventName, () => {
+          uploadBox.style.borderColor = '#667eea';
+          uploadBox.style.backgroundColor = '';
+        });
+      });
+      
+      uploadBox.addEventListener('drop', function(e) {
+        const dt = e.dataTransfer;
+        const files = dt.files;
+        inp.files = files;
+        inp.dispatchEvent(new Event('change'));
+      });
+    }
   }
+  
   setupPreview('addFiles','previewAdd');
   <?php foreach ($galleries as $g): ?>
   setupPreview('editFiles<?= $g['id'] ?>','previewEdit<?= $g['id'] ?>');
   <?php endforeach; ?>
 
-  // Close mobile nav automatically if open (if using bootstrap collapse in this layout)
+  // Close mobile nav automatically if open
   document.querySelectorAll('.navbar-collapse .nav-link').forEach(a => {
     a.addEventListener('click', () => {
       const toggler = document.querySelector('.navbar-toggler');

@@ -52,19 +52,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $stmt = $conn->prepare("UPDATE events SET event_name=?, category=?, date=?, time=?, location=?, description=? WHERE id=?");
                 $stmt->bind_param("ssssssi",$event_name,$category,$date,$time,$location,$description,$event_id);
             }
-            $flash = $stmt->execute() ? 
-                ['type'=>'success','message'=>'Event updated successfully.'] : 
-                ['type'=>'error','message'=>'Update failed: '.$conn->error];
-            $stmt->close();
+            if ($stmt->execute()) {
+                $stmt->close();
+                header("Location: event.php?updated=1");
+                exit;
+            } else {
+                $flash = ['type'=>'error','message'=>'Update failed: '.$conn->error];
+                $stmt->close();
+            }
         } else {
             // ✅ Insert new event, AUTO_INCREMENT handles ID
             $stmt = $conn->prepare("INSERT INTO events (event_name, description, date, time, location, category, event_poster, is_archived) VALUES (?,?,?,?,?,?,?,0)");
             $posterValue = $uploadedPoster ?: '';
             $stmt->bind_param("sssssss",$event_name,$description,$date,$time,$location,$category,$posterValue);
-            $flash = $stmt->execute() ? 
-                ['type'=>'success','message'=>'Event added successfully.'] : 
-                ['type'=>'error','message'=>'Insert failed: '.$conn->error];
-            $stmt->close();
+            if ($stmt->execute()) {
+                $stmt->close();
+                header("Location: event.php?added=1");
+                exit;
+            } else {
+                $flash = ['type'=>'error','message'=>'Insert failed: '.$conn->error];
+                $stmt->close();
+            }
         }
     }
 }
@@ -108,6 +116,7 @@ while($c=$catRes->fetch_assoc()) $categories[]=$c['category'];
 <!-- Bootstrap & Icons -->
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
 <!-- DataTables -->
@@ -115,120 +124,885 @@ while($c=$catRes->fetch_assoc()) $categories[]=$c['category'];
 <link rel="stylesheet" href="https://cdn.datatables.net/buttons/2.4.1/css/buttons.dataTables.min.css">
 
 <style>
-/* layout tweaks */
-body { font-family:'Segoe UI',sans-serif; background:#fff; }
-.main-content { margin-left:260px; padding:20px; min-height:100vh; position:relative; }
-
-/* event tabs (left) */
-.event-tabs-left {
-  background: #fff;
-  padding: 6px;
-  border-radius: 8px;
-  box-shadow: 0 6px 18px rgba(0,0,0,0.06);
-  width: 100%;
-  max-width: 190px;
-  position: relative;
-  z-index: 100; /* keep above sidebar overlay */
+/* Modern Layout */
+body { 
+    font-family: 'Inter', 'Segoe UI', sans-serif; 
+    background: #f9fafb;
+    color: #333;
 }
-.event-tabs-left .btn {
-  display: block;
-  width: 100%;
-  text-align: left;
-  padding: .45rem .6rem;
-  border-radius: 3px;
-  margin-bottom: 3px;
+.main-content { 
+    margin-left: 270px; 
+    padding: 32px; 
+    min-height: 100vh; 
 }
-.event-tabs-left .btn.active { background: #f3f6f8; border-color: #dee2e6; }
 
-/* make search/category align nicely */
-#tableSearch { width:100%; max-width:480px; } /* limit width so it won't touch tabs */
-#categoryFilter { width: 100%; max-width:260px; }
+/* Page Header */
+.page-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    padding: 32px;
+    border-radius: 20px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
+    color: white;
+}
 
-/* small shift to the right: use offset in markup + small left padding */
-.search-wrap { padding-left: 8px; }
+.page-header h3 {
+    font-weight: 700;
+    font-size: 2rem;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
 
-/* hide DataTables built-in search (we use custom one) */
-.dataTables_wrapper .dataTables_filter { display: none !important; }
+.page-header h3 i {
+    font-size: 2.5rem;
+}
 
-/* responsive tweaks */
+/* Modern Tabs */
+.event-tabs-container {
+    background: white;
+    padding: 8px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    border: 1px solid #E8E8E8;
+    display: inline-flex;
+    gap: 6px;
+}
+
+.event-tabs-container .btn {
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    border: none;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    background: transparent;
+    color: #666;
+}
+
+.event-tabs-container .btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+}
+
+.event-tabs-container .btn:hover:not(.active) {
+    background: #f8f9fa;
+    color: #667eea;
+}
+
+/* Search & Filter Bar */
+.search-filter-bar {
+    background: white;
+    padding: 20px 24px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    border: 1px solid #E8E8E8;
+    margin-bottom: 24px;
+}
+
+#tableSearch {
+    border-radius: 12px;
+    border: 2px solid #E8E8E8;
+    padding: 12px 16px;
+    padding-left: 45px;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+    background: #f9fafb;
+}
+
+#tableSearch:focus {
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+.search-icon {
+    position: absolute;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #999;
+    font-size: 1.2rem;
+    pointer-events: none;
+}
+
+#categoryFilter {
+    border-radius: 12px;
+    border: 2px solid #E8E8E8;
+    padding: 12px 16px;
+    font-size: 0.95rem;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background: #f9fafb;
+}
+
+#categoryFilter:focus {
+    border-color: #667eea;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    outline: none;
+}
+
+/* Section Headers */
+.section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+    padding-bottom: 12px;
+    border-bottom: 3px solid #E8E8E8;
+}
+
+.section-header h5 {
+    font-weight: 700;
+    font-size: 1.3rem;
+    margin: 0;
+    color: #333;
+}
+
+.section-header .badge {
+    font-size: 0.9rem;
+    padding: 6px 12px;
+    border-radius: 8px;
+}
+
+/* Modern Table Container */
+.table-container {
+    background: white;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    border: 1px solid #E8E8E8;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.table-container::-webkit-scrollbar {
+    height: 10px;
+}
+
+.table-container::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb {
+    background: #888;
+    border-radius: 10px;
+}
+
+.table-container::-webkit-scrollbar-thumb:hover {
+    background: #555;
+}
+
+/* DataTables Styling */
+table.dataTable {
+    border-collapse: separate !important;
+    border-spacing: 0;
+}
+
+table.dataTable thead th {
+    background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+    color: white;
+    font-weight: 600;
+    padding: 16px 12px;
+    border: none;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+table.dataTable tbody td {
+    padding: 16px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #f0f0f0;
+}
+
+table.dataTable tbody tr {
+    transition: all 0.3s ease;
+}
+
+table.dataTable tbody tr:hover {
+    background: linear-gradient(90deg, #f8f9fa 0%, #ffffff 100%);
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+/* Poster Images */
+table.dataTable tbody td img {
+    border-radius: 12px;
+    object-fit: cover;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: all 0.3s ease;
+}
+
+table.dataTable tbody td img:hover {
+    transform: scale(1.1);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.2);
+}
+
+/* Category Badges */
+.event-badge {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.85rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge.bg-success {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+}
+
+.badge.bg-secondary {
+    background: linear-gradient(135deg, #6c757d 0%, #495057 100%) !important;
+}
+
+/* Action Buttons */
+.action-btn-group {
+    display: flex;
+    gap: 6px;
+    justify-content: center;
+}
+
+.btn-sm {
+    padding: 8px 12px;
+    border-radius: 10px;
+    font-weight: 600;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border: none;
+}
+
+.btn-info {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.btn-info:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+}
+
+.btn-danger:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+/* Add Event Button */
+.btn-primary, .btn-light {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    padding: 12px 28px;
+    border-radius: 12px;
+    font-weight: 600;
+    color: white;
+    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary:hover, .btn-light:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+    color: white;
+}
+
+/* Export Buttons */
+.dt-buttons {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+}
+
+.dt-buttons .btn {
+    border-radius: 12px !important;
+    padding: 10px 20px !important;
+    font-weight: 600 !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    border: 2px solid transparent !important;
+    font-size: 0.9rem !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08) !important;
+}
+
+/* CSV Button - Green */
+.buttons-csv {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%) !important;
+    color: white !important;
+    border-color: #10b981 !important;
+}
+
+.buttons-csv:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4) !important;
+}
+
+/* Excel Button - Green (darker) */
+.buttons-excel {
+    background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%) !important;
+    color: white !important;
+    border-color: #22c55e !important;
+}
+
+.buttons-excel:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 6px 20px rgba(34, 197, 94, 0.4) !important;
+}
+
+/* PDF Button - Red */
+.buttons-pdf {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%) !important;
+    color: white !important;
+    border-color: #ef4444 !important;
+}
+
+.buttons-pdf:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 6px 20px rgba(239, 68, 68, 0.4) !important;
+}
+
+/* Print Button - Gray/Blue */
+.buttons-print {
+    background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
+    color: white !important;
+    border-color: #6366f1 !important;
+}
+
+.buttons-print:hover {
+    transform: translateY(-3px) !important;
+    box-shadow: 0 6px 20px rgba(99, 102, 241, 0.4) !important;
+}
+
+.dt-buttons .btn:active {
+    transform: translateY(-1px) !important;
+}
+
+/* DataTables Pagination */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    border-radius: 8px;
+    padding: 8px 14px;
+    margin: 0 4px;
+    font-weight: 600;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white !important;
+    border: none;
+}
+
+/* Modal Improvements */
+.modal-content {
+    border-radius: 20px;
+    border: none;
+    box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+}
+
+.modal-header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border-radius: 20px 20px 0 0;
+    padding: 24px 32px;
+}
+
+.modal-header .btn-close {
+    filter: brightness(0) invert(1);
+}
+
+.modal-body {
+    padding: 32px;
+}
+
+.modal-footer {
+    padding: 20px 32px;
+}
+
+.form-label {
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 8px;
+}
+
+.form-control, .form-select {
+    border-radius: 10px;
+    border: 2px solid #E8E8E8;
+    padding: 10px 16px;
+    transition: all 0.3s ease;
+}
+
+.form-control:focus, .form-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+}
+
+/* Responsive */
 @media (max-width: 991.98px) {
-  #tableSearch { max-width:420px; }
-  #categoryFilter { max-width:220px; }
+    .main-content { 
+        margin-left: 0; 
+        padding: 20px; 
+    }
+    .page-header h3 {
+        font-size: 1.5rem;
+    }
+    .event-tabs-container {
+        width: 100%;
+        justify-content: center;
+    }
 }
+
 @media (max-width: 767.98px) {
-  .main-content { margin-left: 0; padding: 12px; }
-  .event-tabs-left { max-width: none; display:flex; gap:8px; }
-  .event-tabs-left .btn { margin-bottom: 0; text-align:center; flex:1 1 auto; }
-  .search-wrap { padding-left: 0; margin-top:8px; }
+    .main-content { 
+        padding: 16px; 
+    }
+    .page-header {
+        padding: 24px 20px;
+    }
+    .event-tabs-container .btn {
+        padding: 10px 20px;
+        font-size: 0.9rem;
+    }
+    .table-container {
+        overflow-x: auto;
+    }
+}
+
+/* Hide default DataTables search */
+.dataTables_wrapper .dataTables_filter { 
+    display: none !important; 
+}
+
+/* Animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.table-container {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Professional Table Styling */
+.table thead th {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+    padding: 16px 12px;
+    border: none;
+    vertical-align: middle;
+}
+
+.table tbody tr {
+    background: white;
+    transition: all 0.3s ease;
+}
+
+.table tbody tr:hover {
+    background: #f8f9fa;
+    transform: scale(1.01);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.table tbody td {
+    padding: 16px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #e9ecef;
+    font-size: 0.9rem;
+}
+
+/* Event Poster Thumbnail */
+.event-poster-thumb {
+    width: 60px;
+    height: 60px;
+    object-fit: cover;
+    border-radius: 10px;
+    border: 2px solid #e9ecef;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.event-poster-thumb:hover {
+    transform: scale(1.5);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+    z-index: 1000;
+    position: relative;
+}
+
+/* Badge Categories */
+.badge-category {
+    padding: 6px 14px;
+    border-radius: 8px;
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.badge-festival {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+}
+
+.badge-cleanup {
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+    color: white;
+}
+
+.badge-general {
+    background: linear-gradient(135deg, #6b7280 0%, #4b5563 100%);
+    color: white;
+}
+
+.badge-tournament {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    color: white;
+}
+
+.badge-training {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+    color: white;
+}
+
+/* Event Details in Table */
+.event-date {
+    color: #374151;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.event-time {
+    color: #6b7280;
+    font-weight: 500;
+    font-size: 0.85rem;
+}
+
+.event-location {
+    color: #374151;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.event-description {
+    color: #6b7280;
+    font-size: 0.85rem;
+    line-height: 1.5;
+}
+
+/* Action Buttons - Professional Style */
+.btn-group {
+    display: flex;
+    gap: 4px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    border-radius: 8px;
+    overflow: hidden;
+}
+
+.btn-outline-primary {
+    background: white;
+    border: 1.5px solid #667eea;
+    color: #667eea;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-primary:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-outline-warning {
+    background: white;
+    border: 1.5px solid #f59e0b;
+    color: #f59e0b;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-warning:hover {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+}
+
+.btn-outline-danger {
+    background: white;
+    border: 1.5px solid #ef4444;
+    color: #ef4444;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.btn-outline-danger:hover {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border-color: transparent;
+    color: white;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+}
+
+.btn-sm {
+    padding: 8px 14px;
+    border-radius: 0;
+    font-size: 0.875rem;
+}
+
+.btn-group .btn-sm:first-child {
+    border-top-left-radius: 8px;
+    border-bottom-left-radius: 8px;
+}
+
+.btn-group .btn-sm:last-child {
+    border-top-right-radius: 8px;
+    border-bottom-right-radius: 8px;
+}
+
+/* DataTables Customization */
+.dataTables_wrapper .dataTables_paginate .paginate_button {
+    padding: 8px 16px;
+    margin: 0 4px;
+    border-radius: 8px;
+    border: 1px solid #e5e7eb;
+    background: white;
+    color: #374151;
+    font-weight: 600;
+    transition: all 0.3s ease;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: white !important;
+}
+
+.dataTables_wrapper .dataTables_paginate .paginate_button.current {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-color: transparent;
+    color: white !important;
+}
+
+.dataTables_wrapper .dataTables_info {
+    color: #6b7280;
+    font-weight: 500;
+    padding: 12px 0;
+}
+
+/* SweetAlert Custom Styling */
+.swal2-popup {
+    border-radius: 16px;
+    padding: 24px;
+}
+
+.swal2-title {
+    font-family: 'Inter', sans-serif !important;
+    font-weight: 700 !important;
+    color: #333 !important;
+}
+
+.swal2-html-container {
+    font-family: 'Inter', sans-serif !important;
+    color: #555 !important;
+}
+
+.btn-gradient {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+    border: none !important;
+    font-weight: 600 !important;
+    padding: 10px 24px !important;
+    border-radius: 8px !important;
+    transition: all 0.3s ease !important;
+}
+
+.btn-gradient:hover {
+    transform: translateY(-1px) !important;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+}
+
+.swal2-toast {
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15) !important;
+}
+
+.swal2-toast .swal2-title {
+    font-size: 1rem !important;
+    font-weight: 600 !important;
+}
+
+.colored-toast .swal2-icon {
+    margin: 0 !important;
 }
 </style>
 </head>
 <body>
 <?php include('navbar.php'); ?>
 <div class="main-content">
-  <div class="d-flex justify-content-between align-items-center mb-3">
-    <h3>Events</h3>
-    <div>
-      <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#addEditModal" id="openAdd"><i class="bi bi-plus-circle me-1"></i> Add Event</button>
+  
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <h3><i class="bi bi-calendar-event"></i> Events Management</h3>
+      <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addEditModal" id="openAdd">
+        <i class="bi bi-plus-circle me-2"></i> Add Event
+      </button>
     </div>
   </div>
 
-  <div class="row mb-3 align-items-center">
-    <!-- Tabs moved to the left -->
-    <div class="col-md-2">
-      <div class="event-tabs-left">
-        <div class="btn-group" role="group" aria-label="Event tabs">
-          <button class="btn btn-outline-secondary active" id="tabUpcoming">Upcoming</button>
-          <button class="btn btn-outline-secondary" id="tabCompleted">Completed</button>
+  <!-- Tabs & Filters -->
+  <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+    <div class="event-tabs-container">
+      <button class="btn active" id="tabUpcoming">
+        <i class="bi bi-calendar-check me-2"></i>Upcoming
+      </button>
+      <button class="btn" id="tabCompleted">
+        <i class="bi bi-calendar-x me-2"></i>Completed
+      </button>
+    </div>
+  </div>
+
+  <!-- Search & Filter Bar -->
+  <div class="search-filter-bar">
+    <div class="row g-3 align-items-center">
+      <div class="col-md-7">
+        <div class="position-relative">
+          <i class="bi bi-search search-icon"></i>
+          <input id="tableSearch" type="search" class="form-control" placeholder="Search events by name, location, description...">
         </div>
       </div>
-    </div>
-
-    <!-- Search (shifted right and shortened) -->
-    <div class="col-md-5 offset-md-1 search-wrap">
-      <input id="tableSearch" type="search" class="form-control" placeholder="Search events...">
-    </div>
-
-    <!-- Category -->
-    <div class="col-md-4">
-      <select id="categoryFilter" class="form-select">
-        <option value="">-- All Categories --</option>
-        <?php foreach($categories as $cat): ?>
-          <option value="<?=htmlspecialchars($cat)?>"><?=htmlspecialchars($cat)?></option>
-        <?php endforeach; ?>
-      </select>
+      <div class="col-md-5">
+        <select id="categoryFilter" class="form-select">
+          <option value="">-- All Categories --</option>
+          <?php foreach($categories as $cat): ?>
+            <option value="<?=htmlspecialchars($cat)?>"><?=htmlspecialchars($cat)?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
     </div>
   </div>
 
   <!-- Upcoming Table -->
   <div id="upcomingSection">
-    <h5 class="mb-2">Upcoming Events</h5>
-    <div class="table-responsive">
-      <table id="eventsTableUpcoming" class="display table table-bordered table-hover" style="width:100%">
-        <thead class="table-dark text-center">
+    <div class="section-header">
+      <h5><i class="bi bi-calendar-check"></i> Upcoming Events</h5>
+      <span class="badge bg-success"><?= $upcomingRes->num_rows ?> Events</span>
+    </div>
+    <div class="table-container">
+      <table id="eventsTableUpcoming" class="display table table-hover" style="width:100%">
+        <thead>
           <tr>
-            <th>#</th><th>Poster</th><th>Event Name</th><th>Category</th><th>Date</th><th>Time</th><th>Location</th><th>Description</th><th>Actions</th>
+            <th class="text-center" style="width: 50px;">#</th>
+            <th class="text-center" style="width: 80px;">Poster</th>
+            <th style="width: 200px;">Event Name</th>
+            <th class="text-center" style="width: 120px;">Category</th>
+            <th class="text-center" style="width: 120px;">Date</th>
+            <th class="text-center" style="width: 100px;">Time</th>
+            <th style="width: 180px;">Location</th>
+            <th style="width: 250px;">Description</th>
+            <th class="text-center" style="width: 130px;">Actions</th>
           </tr>
         </thead>
         <tbody>
         <?php if($upcomingRes->num_rows>0): $count=1; while($row=$upcomingRes->fetch_assoc()): ?>
           <tr>
-            <td class="text-center"><?=$count++?></td>
-            <td class="text-center"><img src="../uploads/<?=htmlspecialchars($row['event_poster']?:'default.jpg')?>" width="60" height="60"></td>
-            <td><?=htmlspecialchars($row['event_name'])?></td>
-            <td class="text-center"><span class="badge bg-success event-badge"><?=htmlspecialchars($row['category']?:'General')?></span></td>
-            <td><?=htmlspecialchars($row['date'])?></td>
-            <td><?=htmlspecialchars($row['time'])?></td>
-            <td><?=htmlspecialchars($row['location'])?></td>
-            <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?=htmlspecialchars($row['description'])?>"><?=htmlspecialchars($row['description'])?></td>
+            <td class="text-center fw-bold text-muted"><?=$count++?></td>
             <td class="text-center">
-              <button class="btn btn-info btn-sm me-1 view-btn" data-name="<?=htmlspecialchars($row['event_name'])?>" data-category="<?=htmlspecialchars($row['category'])?>" data-date="<?=htmlspecialchars($row['date'])?>" data-time="<?=htmlspecialchars($row['time'])?>" data-location="<?=htmlspecialchars($row['location'])?>" data-description="<?=htmlspecialchars($row['description'])?>" data-poster="<?=htmlspecialchars($row['event_poster'])?>"><i class="bi bi-eye"></i></button>
-              <button class="btn btn-warning btn-sm me-1 edit-btn" data-id="<?=$row['id']?>" data-name="<?=htmlspecialchars($row['event_name'])?>" data-category="<?=htmlspecialchars($row['category'])?>" data-date="<?=htmlspecialchars($row['date'])?>" data-time="<?=htmlspecialchars($row['time'])?>" data-location="<?=htmlspecialchars($row['location'])?>" data-description="<?=htmlspecialchars($row['description'])?>" data-poster="<?=htmlspecialchars($row['event_poster'])?>"><i class="bi bi-pencil-square"></i></button>
-              <button class="btn btn-danger btn-sm archive-btn" data-id="<?=$row['id']?>"><i class="bi bi-archive"></i></button>
+              <img src="../uploads/<?=htmlspecialchars($row['event_poster']?:'default.jpg')?>" 
+                   class="event-poster-thumb" 
+                   alt="Event Poster">
+            </td>
+            <td>
+              <div class="fw-semibold text-dark"><?=htmlspecialchars($row['event_name'])?></div>
+            </td>
+            <td class="text-center">
+              <span class="badge badge-category badge-<?=strtolower($row['category']?:'general')?>">
+                <?=htmlspecialchars($row['category']?:'General')?>
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="event-date">
+                <i class="bi bi-calendar3 me-1"></i><?=date('M d, Y', strtotime($row['date']))?>
+              </div>
+            </td>
+            <td class="text-center">
+              <div class="event-time">
+                <i class="bi bi-clock me-1"></i><?=date('h:i A', strtotime($row['time']))?>
+              </div>
+            </td>
+            <td>
+              <div class="event-location">
+                <i class="bi bi-geo-alt me-1 text-danger"></i><?=htmlspecialchars($row['location'])?>
+              </div>
+            </td>
+            <td>
+              <div class="event-description" title="<?=htmlspecialchars($row['description'])?>">
+                <?=htmlspecialchars(substr($row['description'], 0, 80))?><?=strlen($row['description']) > 80 ? '...' : ''?>
+              </div>
+            </td>
+            <td class="text-center">
+              <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-info view-btn" 
+                        data-name="<?=htmlspecialchars($row['event_name'])?>" 
+                        data-category="<?=htmlspecialchars($row['category'])?>" 
+                        data-date="<?=htmlspecialchars($row['date'])?>" 
+                        data-time="<?=htmlspecialchars($row['time'])?>" 
+                        data-location="<?=htmlspecialchars($row['location'])?>" 
+                        data-description="<?=htmlspecialchars($row['description'])?>" 
+                        data-poster="<?=htmlspecialchars($row['event_poster'])?>">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-warning edit-btn" 
+                        data-id="<?=$row['id']?>" 
+                        data-name="<?=htmlspecialchars($row['event_name'])?>" 
+                        data-category="<?=htmlspecialchars($row['category'])?>" 
+                        data-date="<?=htmlspecialchars($row['date'])?>" 
+                        data-time="<?=htmlspecialchars($row['time'])?>" 
+                        data-location="<?=htmlspecialchars($row['location'])?>" 
+                        data-description="<?=htmlspecialchars($row['description'])?>" 
+                        data-poster="<?=htmlspecialchars($row['event_poster'])?>">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button class="btn btn-sm btn-danger archive-btn" 
+                        data-id="<?=$row['id']?>">
+                  <i class="bi bi-archive"></i>
+                </button>
+              </div>
             </td>
           </tr>
         <?php endwhile; else: ?>
-          <tr><td colspan="9" class="text-center text-muted">No upcoming events.</td></tr>
+          <tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>No upcoming events.</td></tr>
         <?php endif; ?>
         </tbody>
       </table>
@@ -236,34 +1010,95 @@ body { font-family:'Segoe UI',sans-serif; background:#fff; }
   </div>
 
   <!-- Completed Table -->
-  <div id="completedSection" class="d-none mt-4">
-    <h5 class="mb-2">Completed Events</h5>
-    <div class="table-responsive">
-      <table id="eventsTableCompleted" class="display table table-bordered table-hover" style="width:100%">
-        <thead class="table-dark text-center">
+  <div id="completedSection" class="d-none mt-5">
+    <div class="section-header">
+      <h5><i class="bi bi-calendar-x"></i> Completed Events</h5>
+      <span class="badge bg-secondary"><?= $completedRes->num_rows ?> Events</span>
+    </div>
+    <div class="table-container">
+      <table id="eventsTableCompleted" class="display table table-hover" style="width:100%">
+        <thead>
           <tr>
-            <th>#</th><th>Poster</th><th>Event Name</th><th>Category</th><th>Date</th><th>Time</th><th>Location</th><th>Description</th><th>Actions</th>
+            <th class="text-center" style="width: 50px;">#</th>
+            <th class="text-center" style="width: 80px;">Poster</th>
+            <th style="width: 200px;">Event Name</th>
+            <th class="text-center" style="width: 120px;">Category</th>
+            <th class="text-center" style="width: 120px;">Date</th>
+            <th class="text-center" style="width: 100px;">Time</th>
+            <th style="width: 180px;">Location</th>
+            <th style="width: 250px;">Description</th>
+            <th class="text-center" style="width: 130px;">Actions</th>
           </tr>
         </thead>
         <tbody>
         <?php if($completedRes->num_rows>0): $count=1; while($row=$completedRes->fetch_assoc()): ?>
           <tr>
-            <td class="text-center"><?=$count++?></td>
-            <td class="text-center"><img src="../uploads/<?=htmlspecialchars($row['event_poster']?:'default.jpg')?>" width="60" height="60"></td>
-            <td><?=htmlspecialchars($row['event_name'])?></td>
-            <td class="text-center"><span class="badge bg-secondary event-badge"><?=htmlspecialchars($row['category']?:'General')?></span></td>
-            <td><?=htmlspecialchars($row['date'])?></td>
-            <td><?=htmlspecialchars($row['time'])?></td>
-            <td><?=htmlspecialchars($row['location'])?></td>
-            <td style="max-width:250px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;" title="<?=htmlspecialchars($row['description'])?>"><?=htmlspecialchars($row['description'])?></td>
+            <td class="text-center fw-bold text-muted"><?=$count++?></td>
             <td class="text-center">
-              <button class="btn btn-info btn-sm me-1 view-btn" data-name="<?=htmlspecialchars($row['event_name'])?>" data-category="<?=htmlspecialchars($row['category'])?>" data-date="<?=htmlspecialchars($row['date'])?>" data-time="<?=htmlspecialchars($row['time'])?>" data-location="<?=htmlspecialchars($row['location'])?>" data-description="<?=htmlspecialchars($row['description'])?>" data-poster="<?=htmlspecialchars($row['event_poster'])?>"><i class="bi bi-eye"></i></button>
-              <button class="btn btn-warning btn-sm me-1 edit-btn" data-id="<?=$row['id']?>" data-name="<?=htmlspecialchars($row['event_name'])?>" data-category="<?=htmlspecialchars($row['category'])?>" data-date="<?=htmlspecialchars($row['date'])?>" data-time="<?=htmlspecialchars($row['time'])?>" data-location="<?=htmlspecialchars($row['location'])?>" data-description="<?=htmlspecialchars($row['description'])?>" data-poster="<?=htmlspecialchars($row['event_poster'])?>"><i class="bi bi-pencil-square"></i></button>
-              <button class="btn btn-danger btn-sm archive-btn" data-id="<?=$row['id']?>"><i class="bi bi-archive"></i></button>
+              <img src="../uploads/<?=htmlspecialchars($row['event_poster']?:'default.jpg')?>" 
+                   class="event-poster-thumb" 
+                   alt="Event Poster">
+            </td>
+            <td>
+              <div class="fw-semibold text-dark"><?=htmlspecialchars($row['event_name'])?></div>
+            </td>
+            <td class="text-center">
+              <span class="badge badge-category badge-<?=strtolower($row['category']?:'general')?>">
+                <?=htmlspecialchars($row['category']?:'General')?>
+              </span>
+            </td>
+            <td class="text-center">
+              <div class="event-date">
+                <i class="bi bi-calendar3 me-1"></i><?=date('M d, Y', strtotime($row['date']))?>
+              </div>
+            </td>
+            <td class="text-center">
+              <div class="event-time">
+                <i class="bi bi-clock me-1"></i><?=date('h:i A', strtotime($row['time']))?>
+              </div>
+            </td>
+            <td>
+              <div class="event-location">
+                <i class="bi bi-geo-alt me-1 text-danger"></i><?=htmlspecialchars($row['location'])?>
+              </div>
+            </td>
+            <td>
+              <div class="event-description" title="<?=htmlspecialchars($row['description'])?>">
+                <?=htmlspecialchars(substr($row['description'], 0, 80))?><?=strlen($row['description']) > 80 ? '...' : ''?>
+              </div>
+            </td>
+            <td class="text-center">
+              <div class="btn-group" role="group">
+                <button class="btn btn-sm btn-info view-btn" 
+                        data-name="<?=htmlspecialchars($row['event_name'])?>" 
+                        data-category="<?=htmlspecialchars($row['category'])?>" 
+                        data-date="<?=htmlspecialchars($row['date'])?>" 
+                        data-time="<?=htmlspecialchars($row['time'])?>" 
+                        data-location="<?=htmlspecialchars($row['location'])?>" 
+                        data-description="<?=htmlspecialchars($row['description'])?>" 
+                        data-poster="<?=htmlspecialchars($row['event_poster'])?>">
+                  <i class="bi bi-eye"></i>
+                </button>
+                <button class="btn btn-sm btn-warning edit-btn" 
+                        data-id="<?=$row['id']?>" 
+                        data-name="<?=htmlspecialchars($row['event_name'])?>" 
+                        data-category="<?=htmlspecialchars($row['category'])?>" 
+                        data-date="<?=htmlspecialchars($row['date'])?>" 
+                        data-time="<?=htmlspecialchars($row['time'])?>" 
+                        data-location="<?=htmlspecialchars($row['location'])?>" 
+                        data-description="<?=htmlspecialchars($row['description'])?>" 
+                        data-poster="<?=htmlspecialchars($row['event_poster'])?>">
+                  <i class="bi bi-pencil-square"></i>
+                </button>
+                <button class="btn btn-sm btn-danger archive-btn" 
+                        data-id="<?=$row['id']?>">
+                  <i class="bi bi-archive"></i>
+                </button>
+              </div>
             </td>
           </tr>
         <?php endwhile; else: ?>
-          <tr><td colspan="9" class="text-center text-muted">No completed events.</td></tr>
+          <tr><td colspan="9" class="text-center text-muted py-4"><i class="bi bi-inbox" style="font-size:2rem;"></i><br>No completed events.</td></tr>
         <?php endif; ?>
         </tbody>
       </table>
@@ -363,51 +1198,6 @@ body { font-family:'Segoe UI',sans-serif; background:#fff; }
   <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.html5.min.js"></script>
   <script src="https://cdn.datatables.net/buttons/2.4.1/js/buttons.print.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-  <!-- Custom Style -->
-  <style>
-    .dt-buttons .btn {
-      border-radius: 10px !important;
-      padding: 6px 10px !important;
-      border: 1.5px solid transparent;
-      background-color: white !important;
-      box-shadow: none !important;
-    }
-
-    .btn-outline-success {
-      border-color: #198754 !important;
-      color: #198754 !important;
-    }
-
-    .btn-outline-success:hover {
-      background-color: #198754 !important;
-      color: white !important;
-    }
-
-    .btn-outline-danger {
-      border-color: #dc3545 !important;
-      color: #dc3545 !important;
-    }
-
-    .btn-outline-danger:hover {
-      background-color: #dc3545 !important;
-      color: white !important;
-    }
-
-    .btn-outline-secondary {
-      border-color: #6c757d !important;
-      color: #6c757d !important;
-    }
-
-    .btn-outline-secondary:hover {
-      background-color: #6c757d !important;
-      color: white !important;
-    }
-
-    .dt-buttons i {
-      font-size: 1.2rem;
-      vertical-align: middle;
-    }
-  </style>
 
  <script>
 $(document).ready(function() {
@@ -425,19 +1215,67 @@ $(document).ready(function() {
 
   // --- Initialize DataTables once ---
   const tableUpcoming = $('#eventsTableUpcoming').DataTable({
-    responsive: true,
     dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
     pageLength: 10,
-    buttons: [ 'csv', 'excel', 'pdf', 'print' ],
+    buttons: [
+      {
+        extend: 'csv',
+        text: '<i class="bi bi-filetype-csv me-2"></i>CSV',
+        className: 'btn buttons-csv',
+        exportOptions: { columns: ':not(:last-child)' }
+      },
+      {
+        extend: 'excel',
+        text: '<i class="bi bi-file-earmark-excel me-2"></i>Excel',
+        className: 'btn buttons-excel',
+        exportOptions: { columns: ':not(:last-child)' }
+      },
+      {
+        extend: 'pdf',
+        text: '<i class="bi bi-file-earmark-pdf me-2"></i>PDF',
+        className: 'btn buttons-pdf',
+        exportOptions: { columns: ':not(:last-child)' }
+      },
+      {
+        extend: 'print',
+        text: '<i class="bi bi-printer me-2"></i>Print',
+        className: 'btn buttons-print',
+        exportOptions: { columns: ':not(:last-child)' }
+      }
+    ],
     columnDefs: [{ orderable: false, targets: [1,8] }],
     language: { search: "", searchPlaceholder: "Search events..." }
   });
 
   const tableCompleted = $('#eventsTableCompleted').DataTable({
-    responsive: true,
     dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
     pageLength: 10,
-    buttons: [ 'csv', 'excel', 'pdf', 'print' ],
+    buttons: [
+      {
+        extend: 'csv',
+        text: '<i class="bi bi-filetype-csv me-2"></i>CSV',
+        className: 'btn buttons-csv',
+        exportOptions: { columns: ':not(:last-child)' }
+      },
+      {
+        extend: 'excel',
+        text: '<i class="bi bi-file-earmark-excel me-2"></i>Excel',
+        className: 'btn buttons-excel',
+        exportOptions: { columns: ':not(:last-child)' }
+      },
+      {
+        extend: 'pdf',
+        text: '<i class="bi bi-file-earmark-pdf me-2"></i>PDF',
+        className: 'btn buttons-pdf',
+        exportOptions: { columns: ':not(:last-child)' }
+      },
+      {
+        extend: 'print',
+        text: '<i class="bi bi-printer me-2"></i>Print',
+        className: 'btn buttons-print',
+        exportOptions: { columns: ':not(:last-child)' }
+      }
+    ],
     columnDefs: [{ orderable: false, targets: [1,8] }],
     language: { search: "", searchPlaceholder: "Search events..." }
   });
@@ -524,12 +1362,20 @@ $(document).ready(function() {
     const id = $(this).data('id');
     Swal.fire({
       title: 'Archive this event?',
-      text: 'This will move the event to the archived list.',
+      html: '<p style="margin-bottom: 8px;">This will move the event to the archived list.</p><p style="color: #6c757d; font-size: 0.9rem; margin: 0;">You can restore it later from the archived events page.</p>',
       icon: 'warning',
+      iconColor: '#f59e0b',
       showCancelButton: true,
-      confirmButtonColor: '#ff7043',
+      confirmButtonColor: '#667eea',
       cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Yes, archive it!'
+      confirmButtonText: '<i class="bi bi-archive me-1"></i> Yes, archive it!',
+      cancelButtonText: '<i class="bi bi-x-circle me-1"></i> Cancel',
+      reverseButtons: true,
+      customClass: {
+        confirmButton: 'btn-gradient',
+        cancelButton: 'btn-cancel'
+      },
+      backdrop: `rgba(0,0,0,0.4)`
     }).then(result => {
       if (result.isConfirmed) {
         window.location.href = window.location.pathname + '?archive=' + id;
@@ -544,6 +1390,60 @@ $(document).ready(function() {
     else $('#poster_preview').hide();
   });
 });
+
+// SweetAlert Notifications
+<?php if (isset($_GET['added'])): ?>
+Swal.fire({
+    icon: 'success',
+    title: 'Event Added!',
+    text: 'The event has been successfully added.',
+    timer: 2500,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    toast: true,
+    position: 'top-end',
+    customClass: {
+        popup: 'colored-toast'
+    }
+});
+<?php elseif (isset($_GET['updated'])): ?>
+Swal.fire({
+    icon: 'success',
+    title: 'Event Updated!',
+    text: 'Your changes have been saved.',
+    timer: 2500,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    toast: true,
+    position: 'top-end',
+    customClass: {
+        popup: 'colored-toast'
+    }
+});
+<?php elseif ($flash['type'] === 'error'): ?>
+Swal.fire({
+    icon: 'error',
+    title: 'Error',
+    text: '<?= htmlspecialchars($flash['message']) ?>',
+    confirmButtonColor: '#667eea',
+    customClass: {
+        confirmButton: 'btn-gradient'
+    }
+});
+<?php endif; ?>
+
+<?php if (isset($_GET['archive'])): ?>
+Swal.fire({
+    icon: 'success',
+    title: 'Event Archived!',
+    text: 'The event has been moved to the archive.',
+    timer: 2500,
+    timerProgressBar: true,
+    showConfirmButton: false,
+    toast: true,
+    position: 'top-end'
+});
+<?php endif; ?>
 </script>
 
 </body>

@@ -28,8 +28,8 @@ $id = intval($_POST['id']);
 try {
     $conn->begin_transaction();
 
-    // Fetch member (make sure column names match your members table!)
-    $stmt = $conn->prepare("SELECT id, name, email, phone FROM members WHERE id = ? FOR UPDATE");
+    // Fetch ALL member data (make sure column names match your members table!)
+    $stmt = $conn->prepare("SELECT * FROM members WHERE id = ? FOR UPDATE");
     if (!$stmt) {
         throw new Exception("SQL prepare failed (SELECT): " . $conn->error);
     }
@@ -46,18 +46,38 @@ try {
         exit;
     }
 
-    // Insert into archive table
-    $stmt = $conn->prepare("INSERT INTO member_archive (member_id, name, email, phone, archived_at) VALUES (?, ?, ?, ?, NOW())");
+    // Insert ALL fields into archive table
+    $stmt = $conn->prepare("
+        INSERT INTO member_archive (
+            member_id, name, dob, gender, phone, email, address, 
+            work_type, license_number, boat_name, fishing_area, 
+            emergency_name, emergency_phone, agreement, image, archived_at
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
+    ");
+    
     if (!$stmt) {
         throw new Exception("SQL prepare failed (INSERT): " . $conn->error);
     }
+    
     $stmt->bind_param(
-        "isss",
+        "issssssssssssis",
         $member['id'],
         $member['name'],
+        $member['dob'],
+        $member['gender'],
+        $member['phone'],
         $member['email'],
-        $member['phone']
+        $member['address'],
+        $member['work_type'],
+        $member['license_number'],
+        $member['boat_name'],
+        $member['fishing_area'],
+        $member['emergency_name'],
+        $member['emergency_phone'],
+        $member['agreement'],
+        $member['image']
     );
+    
     if (!$stmt->execute()) {
         $conn->rollback();
         throw new Exception("Failed to archive: " . $stmt->error);

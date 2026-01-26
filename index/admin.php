@@ -39,6 +39,101 @@ $eventsTotal = $eventsTotalRow ? (int)$eventsTotalRow['total'] : 0;
 $eventsUpcomingRow = $conn->query("SELECT COUNT(*) AS total FROM events WHERE is_archived=0 AND date >= CURDATE()")->fetch_assoc();
 $eventsUpcoming = $eventsUpcomingRow ? (int)$eventsUpcomingRow['total'] : 0;
 
+// ===== TREND INDICATORS (Last Month Comparison) =====
+$lastMonthStart = date('Y-m-01', strtotime('-1 month'));
+$lastMonthEnd = date('Y-m-t', strtotime('-1 month'));
+$thisMonthStart = date('Y-m-01');
+
+// Check if members table has date column
+$dateCol = null;
+$columnsCheck = $conn->query("SHOW COLUMNS FROM members LIKE 'created_at'");
+if ($columnsCheck && $columnsCheck->num_rows > 0) {
+    $dateCol = 'created_at';
+} else {
+    $columnsCheck = $conn->query("SHOW COLUMNS FROM members LIKE 'date_registered'");
+    if ($columnsCheck && $columnsCheck->num_rows > 0) {
+        $dateCol = 'date_registered';
+    }
+}
+
+// Members trend
+$membersTrend = ['change' => 0, 'direction' => 'same', 'percent' => 0];
+if ($dateCol) {
+    $lastMonthMembers = $conn->query("SELECT COUNT(*) AS total FROM members WHERE $dateCol >= '$lastMonthStart' AND $dateCol <= '$lastMonthEnd'")->fetch_assoc();
+    $thisMonthMembers = $conn->query("SELECT COUNT(*) AS total FROM members WHERE $dateCol >= '$thisMonthStart'")->fetch_assoc();
+    $lastCount = $lastMonthMembers ? (int)$lastMonthMembers['total'] : 0;
+    $thisCount = $thisMonthMembers ? (int)$thisMonthMembers['total'] : 0;
+    $membersTrend['change'] = $thisCount - $lastCount;
+    $membersTrend['direction'] = $membersTrend['change'] > 0 ? 'up' : ($membersTrend['change'] < 0 ? 'down' : 'same');
+    $membersTrend['percent'] = $lastCount > 0 ? round(($membersTrend['change'] / $lastCount) * 100, 1) : 0;
+}
+
+// Officers trend (using created_at if exists in officers table)
+$officersTrend = ['change' => 0, 'direction' => '', 'percent' => 0];
+$officerCols = [];
+$offColsRes = $conn->query("SHOW COLUMNS FROM officers");
+if ($offColsRes) {
+    while ($c = $offColsRes->fetch_assoc()) $officerCols[] = $c['Field'];
+}
+$officerDateCol = null;
+foreach (['created_at', 'date_added', 'assigned_date'] as $c) {
+    if (in_array($c, $officerCols)) {
+        $officerDateCol = $c;
+        break;
+    }
+}
+if ($officerDateCol) {
+    $lastMonthOfficers = $conn->query("SELECT COUNT(DISTINCT member_id) AS total FROM officers WHERE $officerDateCol >= '$lastMonthStart' AND $officerDateCol <= '$lastMonthEnd'")->fetch_assoc();
+    $thisMonthOfficers = $conn->query("SELECT COUNT(DISTINCT member_id) AS total FROM officers WHERE $officerDateCol >= '$thisMonthStart'")->fetch_assoc();
+    $lastCount = $lastMonthOfficers ? (int)$lastMonthOfficers['total'] : 0;
+    $thisCount = $thisMonthOfficers ? (int)$thisMonthOfficers['total'] : 0;
+    $officersTrend['change'] = $thisCount - $lastCount;
+    $officersTrend['direction'] = $officersTrend['change'] > 0 ? 'up' : ($officersTrend['change'] < 0 ? 'down' : 'same');
+    $officersTrend['percent'] = $lastCount > 0 ? round(($officersTrend['change'] / $lastCount) * 100, 1) : 0;
+}
+
+// Events trend
+$eventsTrend = ['change' => 0, 'direction' => '', 'percent' => 0];
+$lastMonthEvents = $conn->query("SELECT COUNT(*) AS total FROM events WHERE date >= '$lastMonthStart' AND date <= '$lastMonthEnd'")->fetch_assoc();
+$thisMonthEvents = $conn->query("SELECT COUNT(*) AS total FROM events WHERE date >= '$thisMonthStart'")->fetch_assoc();
+$lastCount = $lastMonthEvents ? (int)$lastMonthEvents['total'] : 0;
+$thisCount = $thisMonthEvents ? (int)$thisMonthEvents['total'] : 0;
+$eventsTrend['change'] = $thisCount - $lastCount;
+$eventsTrend['direction'] = $eventsTrend['change'] > 0 ? 'up' : ($eventsTrend['change'] < 0 ? 'down' : 'same');
+$eventsTrend['percent'] = $lastCount > 0 ? round(($eventsTrend['change'] / $lastCount) * 100, 1) : 0;
+
+// Announcements trend
+$announcementsTrend = ['change' => 0, 'direction' => '', 'percent' => 0];
+$lastMonthAnnouncements = $conn->query("SELECT COUNT(*) AS total FROM announcements WHERE date_posted >= '$lastMonthStart' AND date_posted <= '$lastMonthEnd'")->fetch_assoc();
+$thisMonthAnnouncements = $conn->query("SELECT COUNT(*) AS total FROM announcements WHERE date_posted >= '$thisMonthStart'")->fetch_assoc();
+$lastCount = $lastMonthAnnouncements ? (int)$lastMonthAnnouncements['total'] : 0;
+$thisCount = $thisMonthAnnouncements ? (int)$thisMonthAnnouncements['total'] : 0;
+$announcementsTrend['change'] = $thisCount - $lastCount;
+$announcementsTrend['direction'] = $announcementsTrend['change'] > 0 ? 'up' : ($announcementsTrend['change'] < 0 ? 'down' : 'same');
+$announcementsTrend['percent'] = $lastCount > 0 ? round(($announcementsTrend['change'] / $lastCount) * 100, 1) : 0;
+
+// ===== UPCOMING EVENTS (TODAY & NEXT 24 HOURS) =====
+$today = date('Y-m-d');
+$tomorrow = date('Y-m-d', strtotime('+1 day'));
+$upcomingAlertsQuery = "SELECT * FROM events WHERE is_archived=0 AND date BETWEEN '$today' AND '$tomorrow' ORDER BY date ASC, time ASC LIMIT 5";
+$upcomingAlertsResult = $conn->query($upcomingAlertsQuery);
+$upcomingAlerts = [];
+if ($upcomingAlertsResult && $upcomingAlertsResult->num_rows > 0) {
+    while ($alert = $upcomingAlertsResult->fetch_assoc()) {
+        $upcomingAlerts[] = $alert;
+    }
+}
+
+// ===== TIME-BASED GREETING =====
+$hour = date('G');
+if ($hour >= 5 && $hour < 12) {
+    $greeting = "Good Morning";
+} elseif ($hour >= 12 && $hour < 18) {
+    $greeting = "Good Afternoon";
+} else {
+    $greeting = "Good Evening";
+}
+
 $memberCols = [];
 $colsRes = $conn->query("SHOW COLUMNS FROM members");
 if ($colsRes) {
@@ -257,22 +352,145 @@ body {
     overflow-x: hidden;
 }
 
-.dashboard-card {
+/* Greeting Banner */
+.greeting-banner {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 28px 32px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+    animation: fadeInDown 0.5s ease-out;
+    margin-bottom: 2rem;
+}
+.greeting-banner h3 {
+    font-weight: 700;
+    margin: 0;
+    font-size: 1.75rem;
+    letter-spacing: -0.5px;
+}
+.greeting-banner p {
+    margin: 0;
+    opacity: 0.95;
+    font-size: 1.05rem;
+}
+.greeting-banner .btn-light {
+    background: rgba(255,255,255,0.25);
+    border: 1px solid rgba(255,255,255,0.4);
+    color: white;
+    font-weight: 600;
+    padding: 8px 16px;
     border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    transition: transform 0.2s, box-shadow 0.2s;
-    border: 1px solid #E0E0E0;
+    transition: all 0.3s ease;
+}
+.greeting-banner .btn-light:hover {
+    background: rgba(255,255,255,0.35);
+    border-color: rgba(255,255,255,0.6);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+.greeting-banner .btn-warning {
+    background: linear-gradient(135deg, #ffd93d 0%, #ffb347 100%);
+    border: none;
+    color: #333;
+    font-weight: 600;
+    padding: 8px 16px;
+    border-radius: 8px;
+    animation: pulse 2s infinite;
+    box-shadow: 0 4px 12px rgba(255, 179, 71, 0.4);
+}
+.greeting-banner .btn-warning:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(255, 179, 71, 0.5);
+}
+
+@keyframes fadeInDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.05);
+    }
+}
+
+.dashboard-card {
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border: 1px solid #E8E8E8;
     background: #FFFFFF;
+    overflow: hidden;
+    position: relative;
 }
 
 .dashboard-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-6px);
+    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
+    border-color: #D0D0D0;
+}
+
+.dashboard-card .card-body {
+    position: relative;
+    z-index: 1;
+}
+
+.dashboard-card:hover .card-hover-info {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.card-hover-info {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+    color: white;
+    padding: 10px;
+    text-align: center;
+    opacity: 0;
+    transform: translateY(100%);
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    font-size: 0.875rem;
+    font-weight: 500;
+    z-index: 2;
+}
+
+/* Trend Indicators */
+.trend-indicator {
+    font-size: 0.8rem;
+    font-weight: 700;
+    margin-top: 8px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.trend-indicator.trend-up {
+    color: #10b981;
+}
+.trend-indicator.trend-down {
+    color: #ef4444;
+}
+.trend-indicator.trend-same {
+    color: #8b5cf6;
+}
+.trend-indicator i {
+    font-size: 1rem;
+    font-weight: bold;
 }
 
 .icon-box {
     border-radius: 8px;
-    background: #5B6B7A;
     color: #fff;
     padding: 14px;
     display: flex;
@@ -694,6 +912,23 @@ body {
         }
     }
 
+    /* Add Event Button */
+    .btn-dark {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        border: none !important;
+        color: white !important;
+        font-weight: 600;
+        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .btn-dark:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        color: white !important;
+    }
+
 
 </style>
 </head>
@@ -703,17 +938,49 @@ body {
 
 <div class="main-content">
 
+<!-- Greeting Banner -->
+<div class="greeting-banner mb-4">
+    <div class="d-flex align-items-center justify-content-between flex-wrap">
+        <div>
+            <h3 class="mb-1"><?= $greeting ?>, <?= htmlspecialchars($fullname) ?>! 👋</h3>
+            <p class="mb-0">You are logged in as <strong><?= ucfirst($role) ?></strong></p>
+        </div>
+        <div class="d-flex gap-2 align-items-center mt-2 mt-md-0">
+            <button class="btn btn-light btn-sm" onclick="showQuickSearch()">
+                <i class="bi bi-search"></i> Quick Search
+            </button>
+            <?php if (count($upcomingAlerts) > 0): ?>
+            <button class="btn btn-warning btn-sm position-relative" onclick="showUpcomingAlerts()">
+                <i class="bi bi-bell-fill"></i> Alerts
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger">
+                    <?= count($upcomingAlerts) ?>
+                </span>
+            </button>
+            <?php endif; ?>
+        </div>
+    </div>
+</div>
+
 <!-- Dashboard Cards -->
 <div class="dashboard-cards row g-4 mb-4">
     <div class="col-md-3">
         <a href="management/memberlist.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100">
+            <div class="card dashboard-card h-100 position-relative">
                 <div class="card-body d-flex align-items-center gap-3">
                     <span class="icon-box bg-primary"><i class="bi bi-people"></i></span>
-                    <div>
+                    <div class="flex-grow-1">
                         <div class="card-title">Total Members</div>
                         <div class="card-text fs-4 fw-semibold"><?php echo $members; ?></div>
+                        <?php if ($membersTrend['change'] != 0): ?>
+                        <div class="trend-indicator trend-<?= $membersTrend['direction'] ?>">
+                            <i class="bi bi-arrow-<?= $membersTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
+                            <?= abs($membersTrend['change']) ?> from last month
+                        </div>
+                        <?php endif; ?>
                     </div>
+                </div>
+                <div class="card-hover-info">
+                    <small>Click to view full member list</small>
                 </div>
             </div>
         </a>
@@ -721,13 +988,22 @@ body {
 
     <div class="col-md-3">
         <a href="management/officerslist.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100">
+            <div class="card dashboard-card h-100 position-relative">
                 <div class="card-body d-flex align-items-center gap-3">
                     <span class="icon-box bg-success"><i class="bi bi-person-badge"></i></span>
-                    <div>
+                    <div class="flex-grow-1">
                         <div class="card-title">Total Officers</div>
                         <div class="card-text fs-4 fw-semibold"><?php echo $officers; ?></div>
+                        <?php if ($officersTrend['change'] != 0): ?>
+                        <div class="trend-indicator trend-<?= $officersTrend['direction'] ?>">
+                            <i class="bi bi-arrow-<?= $officersTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
+                            <?= abs($officersTrend['change']) ?> from last month
+                        </div>
+                        <?php endif; ?>
                     </div>
+                </div>
+                <div class="card-hover-info">
+                    <small>Click to view officers list</small>
                 </div>
             </div>
         </a>
@@ -735,13 +1011,22 @@ body {
 
     <div class="col-md-3">
         <a href="event.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100">
+            <div class="card dashboard-card h-100 position-relative">
                 <div class="card-body d-flex align-items-center gap-3">
                     <span class="icon-box bg-warning"><i class="bi bi-calendar-event"></i></span>
-                    <div>
+                    <div class="flex-grow-1">
                         <div class="card-title">Upcoming Events</div>
                         <div class="card-text fs-4 fw-semibold"><?php echo $eventsUpcoming; ?></div>
+                        <?php if ($eventsTrend['change'] != 0): ?>
+                        <div class="trend-indicator trend-<?= $eventsTrend['direction'] ?>">
+                            <i class="bi bi-arrow-<?= $eventsTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
+                            <?= abs($eventsTrend['change']) ?> from last month
+                        </div>
+                        <?php endif; ?>
                     </div>
+                </div>
+                <div class="card-hover-info">
+                    <small>Click to view all events</small>
                 </div>
             </div>
         </a>
@@ -749,13 +1034,22 @@ body {
 
     <div class="col-md-3">
         <a href="announcement/admin_announcement.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100">
+            <div class="card dashboard-card h-100 position-relative">
                 <div class="card-body d-flex align-items-center gap-3">
                     <span class="icon-box bg-danger"><i class="bi bi-megaphone"></i></span>
-                    <div>
+                    <div class="flex-grow-1">
                         <div class="card-title">Announcements</div>
                         <div class="card-text fs-4 fw-semibold"><?php echo $announcements; ?></div>
+                        <?php if ($announcementsTrend['change'] != 0): ?>
+                        <div class="trend-indicator trend-<?= $announcementsTrend['direction'] ?>">
+                            <i class="bi bi-arrow-<?= $announcementsTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
+                            <?= abs($announcementsTrend['change']) ?> from last month
+                        </div>
+                        <?php endif; ?>
                     </div>
+                </div>
+                <div class="card-hover-info">
+                    <small>Click to manage announcements</small>
                 </div>
             </div>
         </a>
@@ -765,36 +1059,82 @@ body {
 <!-- Member Analytics Panel -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card event-card p-3">
+        <div class="card event-card p-3 shadow-sm">
             <div class="card-body">
-                <h5 class="mb-3">Member Analytics (Last 6 months)</h5>
-                <div class="row gy-3">
-                    <div class="col-lg-6">
-                        <div class="card p-2 h-100">
-                            <div class="card-body">
-                                <h6 class="card-title">Monthly New Members</h6>
-                                <div class="chart-fixed">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="icon-box me-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
+                        <i class="bi bi-people-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold text-dark">Member Analytics</h5>
+                        <p class="mb-0 text-muted small">Last 6 months overview</p>
+                    </div>
+                </div>
+                <div class="row gy-4">
+                    <div class="col-lg-12">
+                        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);">
+                            <div class="card-body p-4">
+                                <h6 class="card-title fw-bold text-dark mb-3">
+                                    <i class="bi bi-graph-up me-2 text-primary"></i>Monthly New Members
+                                </h6>
+                                <div class="chart-fixed" style="height: 280px;">
                                     <canvas id="monthlyNewMembersChart" class="chart-canvas"></canvas>
                                 </div>
                             </div>
                         </div>
                     </div>
-                  
-                    <div class="col-lg-4 mt-3 d-lg-none"></div>
-                    <div class="col-12 col-lg-4 mt-3">
-                        <div class="card p-2 h-100 text-center">
-                            <div class="card-body p-2">
-                                <h6 class="card-title mb-3" style="font-size: 0.95rem;">Event Analytics</h6>
-                                <div class="small-chart">
-                                    <label class="small d-block text-muted mb-1">Events / Month</label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Event Analytics Panel -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card event-card p-3 shadow-sm">
+            <div class="card-body">
+                <div class="d-flex align-items-center mb-4">
+                    <div class="icon-box me-3" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
+                        <i class="bi bi-calendar-event-fill fs-4"></i>
+                    </div>
+                    <div>
+                        <h5 class="mb-0 fw-bold text-dark">Event Analytics</h5>
+                        <p class="mb-0 text-muted small">Event trends and statistics</p>
+                    </div>
+                </div>
+                <div class="row gy-4">
+                    <div class="col-lg-5">
+                        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #fff8f0 0%, #ffffff 100%);">
+                            <div class="card-body p-4">
+                                <h6 class="card-title fw-bold text-dark mb-3">
+                                    <i class="bi bi-bar-chart-fill me-2" style="color: #f59e0b;"></i>Events Per Month
+                                </h6>
+                                <div class="chart-fixed" style="height: 250px;">
                                     <canvas id="eventsPerMonthChart" class="chart-canvas"></canvas>
                                 </div>
-                                <div class="small-chart">
-                                    <label class="small d-block text-muted mb-1">Types of Events</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-4">
+                        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f0f9ff 0%, #ffffff 100%);">
+                            <div class="card-body p-4">
+                                <h6 class="card-title fw-bold text-dark mb-3">
+                                    <i class="bi bi-pie-chart-fill me-2" style="color: #3b82f6;"></i>Event Categories
+                                </h6>
+                                <div class="chart-fixed" style="height: 250px;">
                                     <canvas id="eventTypesChart" class="chart-canvas"></canvas>
                                 </div>
-                                <div class="small-chart">
-                                    <label class="small d-block text-muted mb-1">March Event (% Achievement)</label>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-3">
+                        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);">
+                            <div class="card-body p-4">
+                                <h6 class="card-title fw-bold text-dark mb-3">
+                                    <i class="bi bi-trophy-fill me-2" style="color: #10b981;"></i>March Progress
+                                </h6>
+                                <div class="chart-fixed" style="height: 250px;">
                                     <canvas id="marchEventChart" class="chart-canvas"></canvas>
                                 </div>
                             </div>
@@ -1313,11 +1653,11 @@ Chart.defaults.font.size = 11;
                     datasets: [{
                                 label: 'New Members',
                                 data: monthlyNew,
-                                backgroundColor: 'rgba(91, 107, 122, 0.6)',
-                                borderColor: '#5B6B7A',
-                                borderWidth: 1,
-                                borderRadius: 6,
-                                hoverBackgroundColor: 'rgba(91, 107, 122, 0.85)'
+                                backgroundColor: 'rgba(102, 126, 234, 0.7)',
+                                borderColor: '#667eea',
+                                borderWidth: 2,
+                                borderRadius: 8,
+                                hoverBackgroundColor: 'rgba(102, 126, 234, 0.9)'
                             }]
 
                 },
@@ -1345,18 +1685,20 @@ Chart.defaults.font.size = 11;
                         {
                             label: 'Active',
                             data: activeData,
-                            borderColor: '#5B6B7A',
-                            backgroundColor: 'rgba(91, 107, 122, 0.1)',
+                            borderColor: '#667eea',
+                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
                             tension: 0.3,
-                            fill: true
+                            fill: true,
+                            borderWidth: 2
                         },
                         {
                             label: 'Inactive',
                             data: inactiveData,
-                            borderColor: '#95A5A6',
-                            backgroundColor: 'rgba(149, 165, 166, 0.1)',
+                            borderColor: '#f59e0b',
+                            backgroundColor: 'rgba(245, 158, 11, 0.1)',
                             tension: 0.3,
-                            fill: true
+                            fill: true,
+                            borderWidth: 2
                         }
                     ]
                 },
@@ -1378,8 +1720,11 @@ Chart.defaults.font.size = 11;
                     datasets: [{
                         label: 'Events',
                         data: eventMonthData,
-                        backgroundColor: 'rgba(127, 140, 141, 0.7)',
-                        borderRadius: 4
+                        backgroundColor: 'rgba(245, 158, 11, 0.7)',
+                        borderColor: '#f59e0b',
+                        borderWidth: 2,
+                        borderRadius: 8,
+                        hoverBackgroundColor: 'rgba(245, 158, 11, 0.9)'
 
                     }]
                 },
@@ -1426,10 +1771,13 @@ Chart.defaults.font.size = 11;
                                 label: 'Count',
                                 data: evtTypesData,
                                 backgroundColor: [
-                                    'rgba(91,107,122,0.85)',
-                                    'rgba(91,107,122,0.6)',
-                                    'rgba(91,107,122,0.4)'
-                                ]
+                                    'rgba(59, 130, 246, 0.85)',
+                                    'rgba(59, 130, 246, 0.65)',
+                                    'rgba(59, 130, 246, 0.45)'
+                                ],
+                                borderColor: '#3b82f6',
+                                borderWidth: 2,
+                                borderRadius: 6
                             }]
 
                 },
@@ -1474,7 +1822,9 @@ Chart.defaults.font.size = 11;
                     datasets: [{
                         label: 'Achievement %',
                         data: [marchPercent],
-                       backgroundColor: 'rgba(108, 140, 122, 0.8)',
+                       backgroundColor: 'rgba(16, 185, 129, 0.8)',
+                        borderColor: '#10b981',
+                        borderWidth: 2,
                         borderRadius: 10
 
                     }]
@@ -1515,6 +1865,105 @@ Chart.defaults.font.size = 11;
         console.error('Member charts error', err);
     }
 });
+</script>
+
+<!-- Quick Search Modal -->
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script>
+function showQuickSearch() {
+    Swal.fire({
+        title: '<i class="bi bi-search"></i> Quick Search',
+        html: `
+            <input type="text" id="quickSearchInput" class="swal2-input" placeholder="Search members, events, announcements...">
+            <select id="quickSearchType" class="swal2-select">
+                <option value="all">All</option>
+                <option value="members">Members</option>
+                <option value="events">Events</option>
+                <option value="announcements">Announcements</option>
+            </select>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Search',
+        confirmButtonColor: '#5B6B7A',
+        preConfirm: () => {
+            const query = document.getElementById('quickSearchInput').value;
+            const type = document.getElementById('quickSearchType').value;
+            if (!query) {
+                Swal.showValidationMessage('Please enter a search term');
+                return false;
+            }
+            return { query, type };
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const { query, type } = result.value;
+            // Redirect based on type
+            if (type === 'members' || type === 'all') {
+                window.location.href = `management/memberlist.php?search=${encodeURIComponent(query)}`;
+            } else if (type === 'events') {
+                window.location.href = `event.php?search=${encodeURIComponent(query)}`;
+            } else if (type === 'announcements') {
+                window.location.href = `announcement/admin_announcement.php?q=${encodeURIComponent(query)}`;
+            }
+        }
+    });
+}
+
+function showUpcomingAlerts() {
+    const alerts = <?php echo json_encode($upcomingAlerts); ?>;
+    
+    let html = '<div style="text-align: left; max-height: 400px; overflow-y: auto;">';
+    alerts.forEach(alert => {
+        const eventDate = new Date(alert.date);
+        const isToday = eventDate.toDateString() === new Date().toDateString();
+        const dateText = isToday ? 'Today' : 'Tomorrow';
+        const timeText = alert.time || 'All Day';
+        
+        html += `
+            <div style="border-left: 4px solid #ff9800; padding: 12px; margin-bottom: 12px; background: #fff3e0; border-radius: 4px;">
+                <div style="font-weight: 600; color: #333; margin-bottom: 4px;">
+                    <i class="bi bi-calendar-event"></i> ${alert.event_name}
+                </div>
+                <div style="font-size: 0.9rem; color: #666;">
+                    <i class="bi bi-clock"></i> ${dateText} at ${timeText}<br>
+                    <i class="bi bi-geo-alt"></i> ${alert.location || 'No location'}
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    
+    Swal.fire({
+        title: '<i class="bi bi-bell-fill"></i> Upcoming Events',
+        html: html,
+        icon: 'info',
+        confirmButtonText: 'Got it!',
+        confirmButtonColor: '#ff9800',
+        width: '600px'
+    });
+}
+
+// Show alerts on page load if there are any
+<?php if (count($upcomingAlerts) > 0): ?>
+setTimeout(() => {
+    const alertToast = Swal.mixin({
+        toast: true,
+        position: 'top-end',
+        showConfirmButton: false,
+        timer: 5000,
+        timerProgressBar: true,
+        didOpen: (toast) => {
+            toast.addEventListener('mouseenter', Swal.stopTimer)
+            toast.addEventListener('mouseleave', Swal.resumeTimer)
+        }
+    });
+    
+    alertToast.fire({
+        icon: 'warning',
+        title: '<?= count($upcomingAlerts) ?> upcoming event(s) in next 24 hours!'
+    });
+}, 2000);
+<?php endif; ?>
 </script>
 
 </body>

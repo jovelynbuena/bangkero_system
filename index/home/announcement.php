@@ -17,228 +17,317 @@ $announcement_result = $conn->query($announcement_sql);
   <title>Announcements — Bangkero & Fishermen Association</title>
 
   <!-- Fonts & Icons -->
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&family=Lora:wght@600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
 
   <style>
-    :root{
-      --bg: #f6f8fb;
-      --card: #ffffff;
-      --muted: #667085;
-      --accent: #0d6efd;
-      --primary-dark: #063b57;
-      --radius: 12px;
-      --shadow-sm: 0 4px 18px rgba(2,6,23,0.06);
+    :root {
+      --primary: #2c3e50;
+      --secondary: #34495e;
+      --accent: #5a6c7d;
+      --light: #ecf0f1;
+      --bg: #f8f9fa;
+      --dark: #1a252f;
+      --gray: #95a5a6;
     }
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
-      background:var(--bg);
-      color:#0f172a;
-      -webkit-font-smoothing:antialiased;
-      -moz-osx-font-smoothing:grayscale;
-      line-height:1.5;
+    
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg);
+      color: #2c3e50;
+      margin: 0;
+      padding: 0;
     }
 
-    /* Navbar spacer if navbar is fixed in partials */
-    main{padding-top:88px;padding-bottom:48px}
+    main {
+      padding-top: 0;
+      padding-bottom: 40px;
+    }
 
-    /* Carousel */
-    .announcement-carousel .carousel-item{
-      height: 56vh;
-      min-height: 220px;
-      background-size: cover;
-      background-position: center;
-      border-radius: 14px;
-      overflow: hidden;
+    /* Hero Section with Search */
+    .hero-section {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      padding: 60px 0 50px;
+      color: white;
       position: relative;
+      overflow: hidden;
+      margin-top: 60px;
     }
-    .announcement-carousel .overlay{
-      position:absolute; inset:0;
-      background: linear-gradient(180deg, rgba(3,37,65,0.18) 0%, rgba(3,37,65,0.6) 70%);
-      z-index:1;
+    .hero-section::before {
+      content: '';
+      position: absolute;
+      top: -50%;
+      right: -10%;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+      border-radius: 50%;
     }
-    .announcement-carousel .carousel-caption{
-      z-index:2;
-      left: 48px;
-      right: 48px;
-      bottom: 32px;
-      text-align:left;
+    .hero-section h1 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 3rem;
+      font-weight: 800;
+      margin-bottom: 20px;
+      letter-spacing: -1px;
+      position: relative;
+      z-index: 1;
     }
-    .announcement-carousel h2{
-      font-family: Lora, serif;
-      font-size: clamp(1.2rem, 2.6vw, 2.0rem);
-      color: #fff;
-      margin:0 0 8px;
-      font-weight:700;
+    .hero-section .search-box {
+      position: relative;
+      max-width: 600px;
+      margin: 30px auto 0;
+      z-index: 1;
     }
-    .announcement-carousel p{
-      margin:0;color:rgba(255,255,255,0.92);max-width:70ch;font-size:0.98rem;
+    .hero-section .search-box input {
+      width: 100%;
+      padding: 16px 50px 16px 20px;
+      border: none;
+      border-radius: 50px;
+      font-size: 1rem;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.15);
+    }
+    .hero-section .search-box button {
+      position: absolute;
+      right: 8px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: var(--primary);
+      border: none;
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+    }
+    .hero-section .search-box button:hover {
+      background: var(--dark);
+      transform: translateY(-50%) scale(1.05);
     }
 
-    /* Announcements list */
-    .container-narrow{max-width:1100px;margin:0 auto;padding:24px 16px}
-    .announcement-list{margin-top:24px}
-    .announce-card{
-      display:flex;gap:18px;align-items:flex-start;background:var(--card);padding:18px;border-radius:12px;
-      box-shadow:var(--shadow-sm);border:1px solid rgba(2,6,23,0.03);
-      transition:transform .14s ease,box-shadow .14s ease;
-    }
-    .announce-card:hover{transform:translateY(-6px);box-shadow:0 18px 40px rgba(2,6,23,0.06)}
-    .announce-thumb{
-      width:120px;height:84px;border-radius:8px;flex-shrink:0;background:#e9eefb;background-size:cover;background-position:center;
-      display:block;
-    }
-    .announce-body{flex:1}
-    .announce-title{font-family:Lora,serif;font-size:1.05rem;margin:0;color:var(--primary-dark);font-weight:600}
-    .announce-meta{font-size:0.88rem;color:var(--muted);margin:6px 0}
-    .announce-excerpt{color:#374151;margin:0 0 10px}
-
-    .btn-read{
-      --bs-btn-padding-y: .45rem;
-      --bs-btn-padding-x: .75rem;
-      font-size:0.92rem;border-radius:8px;padding:.4rem .8rem;
+    /* Tabs Navigation */
+    .tabs-nav {
+      display: none;
     }
 
-    /* Empty state */
-    .empty-state{padding:48px 0;text-align:center;color:var(--muted)}
+    /* Announcement List */
+    .announcement-list {
+      max-width: 900px;
+      margin: 25px auto;
+      padding: 0 20px;
+    }
+    .announcement-item {
+      display: flex;
+      gap: 20px;
+      padding: 20px 0;
+      border-bottom: 1px solid #e2e8f0;
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    .announcement-item:hover {
+      background: #f8f9fa;
+      padding-left: 15px;
+      padding-right: 15px;
+      border-radius: 12px;
+      border-bottom-color: transparent;
+    }
+    .announcement-date {
+      flex-shrink: 0;
+      text-align: center;
+      width: 80px;
+    }
+    .announcement-date .day {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: var(--primary);
+      line-height: 1;
+      display: block;
+    }
+    .announcement-date .month {
+      font-size: 0.9rem;
+      color: #64748b;
+      font-weight: 600;
+      text-transform: uppercase;
+      margin-top: 5px;
+      display: block;
+    }
+    .announcement-content {
+      flex: 1;
+    }
+    .announcement-content h3 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.3rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin: 0 0 10px;
+      line-height: 1.4;
+    }
+    .announcement-content h3:hover {
+      color: var(--primary);
+    }
+    .announcement-meta {
+      font-size: 0.9rem;
+      color: #64748b;
+      margin-bottom: 12px;
+    }
+    .announcement-excerpt {
+      color: #64748b;
+      line-height: 1.7;
+      margin: 0;
+    }
 
-    @media (max-width:720px){
-      .announcement-carousel .carousel-caption{left:16px;right:16px;bottom:18px}
-      .announce-card{flex-direction:column;align-items:stretch}
-      .announce-thumb{width:100%;height:160px}
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+      color: #64748b;
+    }
+    .empty-state i {
+      font-size: 4rem;
+      color: var(--gray);
+      margin-bottom: 20px;
+    }
+
+    /* Modal Styling */
+    .modal-content {
+      border-radius: 18px;
+      border: none;
+      box-shadow: 0 12px 48px rgba(44, 62, 80, 0.2);
+    }
+    .modal-header {
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: white;
+      border-radius: 18px 18px 0 0;
+      padding: 25px 30px;
+      border: none;
+    }
+    .modal-title {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 1.5rem;
+    }
+    .modal-body {
+      padding: 30px;
+    }
+    .modal-body img {
+      border-radius: 12px;
+      margin-bottom: 20px;
+    }
+
+    @media (max-width: 768px) {
+      .hero-section h1 {
+        font-size: 2rem;
+      }
+      .announcement-item {
+        flex-direction: column;
+        gap: 10px;
+      }
+      .announcement-date {
+        width: 100%;
+        text-align: left;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .announcement-date .day {
+        font-size: 1.5rem;
+      }
     }
   </style>
 </head>
 <body>
   <?php include("partials/navbar.php"); ?>
 
-  <main>
-    <div class="container-narrow">
-
-      <!-- Top: Carousel -->
-      <section class="announcement-carousel" aria-label="Featured announcements">
-        <div id="announcementCarousel" class="carousel slide" data-bs-ride="carousel">
-          <div class="carousel-inner">
-            <?php
-            $active = true;
-            if ($carousel_result && $carousel_result->num_rows > 0):
-              while ($row = $carousel_result->fetch_assoc()):
-                // build image path (fallback to default)
-                $imgPath = !empty($row['image']) && file_exists(__DIR__ . "/../../uploads/" . $row['image'])
-                  ? "../../uploads/" . htmlspecialchars($row['image'])
-                  : "../images/bg.png";
-
-                $titleEsc = htmlspecialchars($row['title']);
-                $excerpt = htmlspecialchars(mb_substr(strip_tags($row['content']), 0, 220));
-            ?>
-              <div class="carousel-item <?= $active ? 'active' : '' ?>" style="background-image: url('<?= $imgPath ?>');">
-                <div class="overlay" aria-hidden="true"></div>
-                <div class="carousel-caption">
-                  <h2><?= $titleEsc ?></h2>
-                  <p><?= $excerpt ?><?= (mb_strlen(strip_tags($row['content'])) > 220 ? '...' : '') ?></p>
-                </div>
-              </div>
-            <?php
-                $active = false;
-              endwhile;
-            else:
-            ?>
-              <div class="carousel-item active" style="background-image: url('../images/bg.png');">
-                <div class="overlay" aria-hidden="true"></div>
-                <div class="carousel-caption">
-                  <h2>No Announcements</h2>
-                  <p>There are no featured announcements at the moment. Check back later for updates.</p>
-                </div>
-              </div>
-            <?php endif; ?>
-          </div>
-
-          <?php if ($carousel_result && $carousel_result->num_rows > 1): ?>
-            <button class="carousel-control-prev" type="button" data-bs-target="#announcementCarousel" data-bs-slide="prev" aria-label="Previous slide">
-              <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-            </button>
-            <button class="carousel-control-next" type="button" data-bs-target="#announcementCarousel" data-bs-slide="next" aria-label="Next slide">
-              <span class="carousel-control-next-icon" aria-hidden="true"></span>
-            </button>
-          <?php endif; ?>
-        </div>
-      </section>
-
-      <!-- List: Announcements -->
-      <section class="announcement-list" aria-labelledby="announcementsHeading">
-        <h3 id="announcementsHeading" class="mt-4 mb-3" style="font-family:Lora,serif;color:var(--primary-dark)">Latest Announcements</h3>
-
-        <?php if ($announcement_result && $announcement_result->num_rows > 0): ?>
-          <div class="d-grid gap-3">
-            <?php while ($row = $announcement_result->fetch_assoc()): ?>
-              <?php
-                $title = htmlspecialchars($row['title']);
-                $date = date("F j, Y", strtotime($row['date_posted']));
-                $content = nl2br(htmlspecialchars($row['content']));
-                // thumbnail fallback
-                $thumb = !empty($row['image']) && file_exists(__DIR__ . "/../../uploads/" . $row['image'])
-                  ? "../../uploads/" . htmlspecialchars($row['image'])
-                  : "../images/bg.png";
-                $excerptPlain = htmlspecialchars(mb_substr(strip_tags($row['content']), 0, 220));
-              ?>
-              <article class="announce-card" aria-labelledby="ann-<?= $row['id'] ?>">
-                <img class="announce-thumb" src="<?= $thumb ?>" alt="<?= $title ?>" loading="lazy" width="320" height="180">
-                <div class="announce-body">
-                  <h4 id="ann-<?= $row['id'] ?>" class="announce-title"><?= $title ?></h4>
-                  <div class="announce-meta">Posted on <?= $date ?> · by Admin</div>
-                  <p class="announce-excerpt"><?= $excerptPlain ?><?= (mb_strlen(strip_tags($row['content'])) > 220 ? '...' : '') ?></p>
-
-                  <div class="d-flex gap-2 align-items-center">
-                    <button
-                      class="btn btn-outline-primary btn-read"
-                      data-bs-toggle="modal"
-                      data-bs-target="#announceModal"
-                      data-title="<?= $title ?>"
-                      data-date="<?= $date ?>"
-                      data-image="<?= $thumb ?>"
-                      data-content="<?= htmlspecialchars($row['content']) ?>">
-                      <i class="bi bi-eye me-1"></i> Read more
-                    </button>
-
-                    <a class="btn btn-link text-muted" href="mailto:info@example.com?subject=Inquiry about: <?= rawurlencode($title) ?>" aria-label="Contact about <?= $title ?>">
-                      <i class="bi bi-envelope me-1"></i> Contact
-                    </a>
-                  </div>
-                </div>
-              </article>
-            <?php endwhile; ?>
-          </div>
-        <?php else: ?>
-          <div class="empty-state">
-            <p class="mb-2">No announcements available.</p>
-            <small class="text-muted">Please check back later or contact the administrator.</small>
-          </div>
-        <?php endif; ?>
-      </section>
-
+  <!-- Hero Section with Search -->
+  <section class="hero-section">
+    <div class="container text-center">
+      <i class="bi bi-megaphone-fill" style="font-size: 4rem; opacity: 0.9;"></i>
+      <h1>Announcements</h1>
+      <p style="font-size: 1.1rem; opacity: 0.95; max-width: 600px; margin: 0 auto;">
+        Stay updated with the latest news and announcements from Bangkero & Fishermen Association
+      </p>
+      
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search announcements..." aria-label="Search announcements">
+        <button type="button" aria-label="Search">
+          <i class="bi bi-search"></i>
+        </button>
+      </div>
     </div>
+  </section>
+
+  <main>
+    <!-- Announcements List -->
+    <div class="announcement-list">
+      <?php
+      mysqli_data_seek($announcement_result, 0);
+      if ($announcement_result && $announcement_result->num_rows > 0):
+        while ($row = $announcement_result->fetch_assoc()):
+          $title = htmlspecialchars($row['title']);
+          $date = date("F j, Y", strtotime($row['date_posted']));
+          $day = date("d", strtotime($row['date_posted']));
+          $month = date("M", strtotime($row['date_posted']));
+          $year = date("Y", strtotime($row['date_posted']));
+          $content = htmlspecialchars($row['content']);
+          $thumb = !empty($row['image']) && file_exists(__DIR__ . "/../../uploads/" . $row['image'])
+            ? "../../uploads/" . htmlspecialchars($row['image'])
+            : "../images/bg.png";
+          $excerptPlain = htmlspecialchars(mb_substr(strip_tags($row['content']), 0, 180));
+      ?>
+        <div class="announcement-item" 
+             data-bs-toggle="modal" 
+             data-bs-target="#announceModal"
+             data-title="<?= $title ?>"
+             data-date="<?= $date ?>"
+             data-image="<?= $thumb ?>"
+             data-content="<?= $content ?>">
+          
+          <div class="announcement-date">
+            <span class="day"><?= $day ?></span>
+            <span class="month"><?= $month ?> <?= $year ?></span>
+          </div>
+          
+          <div class="announcement-content">
+            <h3><?= $title ?></h3>
+            <div class="announcement-meta">
+              <i class="bi bi-person-circle"></i> by Admin | 
+              <i class="bi bi-calendar3"></i> <?= $date ?>
+            </div>
+            <p class="announcement-excerpt">
+              <?= $excerptPlain ?><?= (mb_strlen(strip_tags($row['content'])) > 180 ? '...' : '') ?>
+            </p>
+          </div>
+        </div>
+      <?php
+        endwhile;
+      else:
+      ?>
+        <div class="empty-state">
+          <i class="bi bi-inbox"></i>
+          <h4>No Announcements Yet</h4>
+          <p>There are no announcements at the moment. Check back later for updates.</p>
+        </div>
+      <?php endif; ?>
   </main>
 
-  <!-- Announcement Modal (re-usable) -->
+  <!-- Announcement Modal -->
   <div class="modal fade" id="announceModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
-      <div class="modal-content" style="border-radius:12px;">
-        <div class="modal-header border-0">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+      <div class="modal-content">
+        <div class="modal-header">
           <div>
-            <h5 id="modalTitle" class="mb-1"></h5>
-            <small id="modalMeta" class="text-muted"></small>
+            <h5 id="modalTitle" class="modal-title mb-1"></h5>
+            <small id="modalMeta" style="opacity: 0.9;"></small>
           </div>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
         </div>
         <div class="modal-body">
-          <img id="modalImage" src="" alt="" class="img-fluid rounded mb-3" style="max-height:320px;object-fit:cover;width:100%;">
-          <div id="modalContent" class="fs-6 text-gray-700"></div>
-        </div>
-        <div class="modal-footer border-0">
-          <button type="button" class="btn btn-secondary btn-sm" data-bs-dismiss="modal">Close</button>
+          <img id="modalImage" src="" alt="" class="img-fluid" style="max-height:400px; width:100%; object-fit:cover; border-radius: 12px; margin-bottom: 20px;">
+          <div id="modalContent" style="line-height: 1.8; color: #64748b;"></div>
         </div>
       </div>
     </div>
@@ -247,11 +336,10 @@ $announcement_result = $conn->query($announcement_sql);
   <?php include("partials/footer.php"); ?>
 
   <!-- Scripts -->
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js" defer></script>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
   <script>
-    // DOM ready
     document.addEventListener('DOMContentLoaded', function(){
-      // Populate modal with announcement data
+      // Modal population
       const announceModal = document.getElementById('announceModal');
       announceModal.addEventListener('show.bs.modal', function (event) {
         const button = event.relatedTarget;
@@ -268,23 +356,28 @@ $announcement_result = $conn->query($announcement_sql);
         imgEl.src = image;
         imgEl.alt = title;
 
-        // sanitize & convert newlines to <br> (content comes escaped server-side)
         const contentEl = document.getElementById('modalContent');
         contentEl.innerHTML = rawContent.replace(/\r?\n/g, '<br>');
       });
 
-      // Improve carousel behavior: pause on hover
-      const carouselEl = document.querySelector('#announcementCarousel');
-      if (carouselEl) {
-        carouselEl.addEventListener('mouseenter', () => {
-          const bs = bootstrap.Carousel.getInstance(carouselEl);
-          if (bs) bs.pause();
+      // Search functionality
+      const searchInput = document.getElementById('searchInput');
+      const announcementItems = document.querySelectorAll('.announcement-item');
+
+      searchInput.addEventListener('input', function() {
+        const searchTerm = this.value.toLowerCase();
+
+        announcementItems.forEach(item => {
+          const title = item.querySelector('h3').textContent.toLowerCase();
+          const excerpt = item.querySelector('.announcement-excerpt').textContent.toLowerCase();
+
+          if (title.includes(searchTerm) || excerpt.includes(searchTerm)) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
         });
-        carouselEl.addEventListener('mouseleave', () => {
-          const bs = bootstrap.Carousel.getInstance(carouselEl);
-          if (bs) bs.cycle();
-        });
-      }
+      });
     });
   </script>
   <?php include 'chatbox.php'; ?>
