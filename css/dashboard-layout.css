@@ -1,0 +1,139 @@
+/**
+ * Global Dashboard Layout Stylesheet
+ * Ensures consistent responsive behavior across all dashboard pages
+ * Version: 1.0
+ */
+
+/* ==================== MAIN CONTENT LAYOUT ==================== */
+.main-content,
+.content-wrapper {
+    margin-left: 270px;
+    padding: 32px;
+    min-height: 100vh;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==================== RESPONSIVE ADJUSTMENTS ==================== */
+
+/* Desktop - Full sidebar visible */
+@media (min-width: 992px) {
+    .main-content,
+    .content-wrapper {
+        margin-left: 270px !important;
+        padding: 32px;
+    }
+}
+
+/* Tablet/Mobile - Collapsible sidebar */
+@media (max-width: 991.98px) {
+    .main-content,
+    .content-wrapper {
+        margin-left: 0 !important;
+        padding: 20px !important;
+    }
+}
+
+/* Small Mobile - Reduced padding */
+@media (max-width: 576px) {
+    .main-content,
+    .content-wrapper {
+        padding: 16px !important;
+    }
+    
+    /* Adjust page headers on mobile */
+    .page-header {
+        padding: 20px !important;
+        border-radius: 12px !important;
+    }
+    
+    .page-header h3,
+    .page-header h2 {
+        font-size: 1.5rem !important;
+    }
+}
+
+/* ==================== CARD & TABLE RESPONSIVENESS ==================== */
+
+/* Ensure cards are responsive */
+.card {
+    margin-bottom: 20px;
+}
+
+/* Table containers for horizontal scroll */
+.table-responsive {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* ==================== BUTTON RESPONSIVENESS ==================== */
+
+@media (max-width: 576px) {
+    /* Stack buttons vertically on small screens */
+    .d-flex.justify-content-between {
+        flex-direction: column !important;
+        gap: 10px;
+    }
+    
+    .d-flex.justify-content-between > * {
+        width: 100%;
+    }
+    
+    .btn {
+        font-size: 0.9rem;
+        padding: 8px 16px;
+    }
+}
+
+/* ==================== MODAL RESPONSIVENESS ==================== */
+
+@media (max-width: 576px) {
+    .modal-dialog {
+        margin: 0.5rem;
+    }
+    
+    .modal-content {
+        border-radius: 12px;
+    }
+}
+
+/* ==================== FORM RESPONSIVENESS ==================== */
+
+@media (max-width: 576px) {
+    .form-control,
+    .form-select {
+        font-size: 0.9rem;
+    }
+    
+    .form-label {
+        font-size: 0.875rem;
+        font-weight: 600;
+    }
+}
+
+/* ==================== ENSURE NO LAYOUT BREAKING ==================== */
+
+/* Prevent horizontal overflow */
+body {
+    overflow-x: hidden;
+}
+
+.main-content,
+.content-wrapper {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+/* Ensure images are responsive */
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+/* ==================== SMOOTH TRANSITIONS ==================== */
+
+.main-content,
+.content-wrapper,
+.navbar {
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}

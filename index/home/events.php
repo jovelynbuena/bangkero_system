@@ -972,68 +972,7 @@ const countdownFunction = setInterval(function() {
 </script>
 <?php endif; ?>
 
-  <!-- Stats Section -->
-<section class="stats-glance text-center">
-  <div class="container">
-    <h2 class="mb-4">Association at a Glance</h2>
-    <div class="row g-4">
-      
-      <!-- Members -->
-      <div class="col-md-3 col-6">
-        <div class="stat-box">
-          <h3 data-count="250">0</h3>
-          <p>Active Members</p>
-        </div>
-      </div>
-      
-      <!-- Events -->
-      <div class="col-md-3 col-6">
-        <div class="stat-box">
-          <h3 data-count="45">0</h3>
-          <p>Events Organized</p>
-        </div>
-      </div>
-      
-      <!-- Projects -->
-      <div class="col-md-3 col-6">
-        <div class="stat-box">
-          <h3 data-count="12">0</h3>
-          <p>Community Projects</p>
-        </div>
-      </div>
-      
-      <!-- Years -->
-      <div class="col-md-3 col-6">
-        <div class="stat-box">
-          <h3 data-count="8">0</h3>
-          <p>Years of Service</p>
-        </div>
-      </div>
-      
-    </div>
-  </div>
-</section>
 
-<!-- Counter Animation -->
-<script>
-document.addEventListener("DOMContentLoaded", () => {
-  const counters = document.querySelectorAll("[data-count]");
-  counters.forEach(counter => {
-    let target = +counter.getAttribute("data-count");
-    let count = 0;
-    let step = Math.ceil(target / 100); 
-    let interval = setInterval(() => {
-      count += step;
-      if (count >= target) {
-        counter.textContent = target;
-        clearInterval(interval);
-      } else {
-        counter.textContent = count;
-      }
-    }, 30);
-  });
-});
-</script>
 <!-- Map Section -->
 <section class="map-section">
   <div class="container text-center">

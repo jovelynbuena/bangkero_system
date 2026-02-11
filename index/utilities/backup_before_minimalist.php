@@ -196,95 +196,30 @@ if (isset($_POST['restore']) && isset($_FILES['sql_file'])) {
         // Read SQL file
         $sql = file_get_contents($file['tmp_name']);
         
-        if (empty($sql)) {
-            throw new Exception("SQL file is empty or unreadable");
-        }
+        // Execute SQL
+        $conn->multi_query($sql);
         
-        // Disable foreign key checks and autocommit
-        if (!$conn->query("SET FOREIGN_KEY_CHECKS=0")) {
-            throw new Exception("Failed to disable foreign key checks: " . $conn->error);
-        }
-        
-        if (!$conn->query("SET autocommit=0")) {
-            throw new Exception("Failed to disable autocommit: " . $conn->error);
-        }
-        
-        // Execute multi-query with proper error checking
-        if (!$conn->multi_query($sql)) {
-            throw new Exception("Failed to execute SQL: " . $conn->error);
-        }
-        
-        // Process all results and check for errors
-        $queryCount = 0;
-        $errors = array();
-        
+        // Wait for all queries to complete
         do {
-            // Store result if there is one
             if ($result = $conn->store_result()) {
                 $result->free();
             }
-            
-            // Check for errors after each query
-            if ($conn->error) {
-                $errors[] = $conn->error;
-            } else {
-                $queryCount++;
-            }
-            
-            // Move to next result
-            $hasMoreResults = $conn->more_results();
-            if ($hasMoreResults) {
-                if (!$conn->next_result()) {
-                    // Error moving to next result
-                    if ($conn->error) {
-                        $errors[] = "Failed to move to next query: " . $conn->error;
-                    }
-                    break;
-                }
-            }
-        } while ($hasMoreResults);
-        
-        // Commit changes
-        if (!$conn->query("COMMIT")) {
-            throw new Exception("Failed to commit changes: " . $conn->error);
-        }
-        
-        // Re-enable foreign key checks and autocommit
-        $conn->query("SET FOREIGN_KEY_CHECKS=1");
-        $conn->query("SET autocommit=1");
-        
-        // Check if there were any errors
-        if (count($errors) > 0) {
-            $errorSummary = "Restore completed with " . count($errors) . " error(s):\n" . implode("\n", array_slice($errors, 0, 3));
-            if (count($errors) > 3) {
-                $errorSummary .= "\n... and " . (count($errors) - 3) . " more errors";
-            }
-            throw new Exception($errorSummary);
-        }
+        } while ($conn->more_results() && $conn->next_result());
 
         // Log activity
         $user_id = $_SESSION['user_id'];
         $action = 'Database Restore';
-        $description = "Restored database from: {$file['name']} ({$queryCount} queries executed successfully)";
+        $description = "Restored database from: {$file['name']}";
         $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
         
         $log_stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)");
         $log_stmt->bind_param("isss", $user_id, $action, $description, $ip_address);
         $log_stmt->execute();
 
-        // Set success flag and filename for SweetAlert
-        $restore_success = true;
-        $restore_filename = $file['name'];
-        $restore_query_count = $queryCount;
+        $success_message = "Database restored successfully!";
 
     } catch (Exception $e) {
-        // Rollback on error
-        $conn->query("ROLLBACK");
-        $conn->query("SET FOREIGN_KEY_CHECKS=1");
-        $conn->query("SET autocommit=1");
-        
-        $restore_error = true;
-        $restore_error_msg = $e->getMessage();
+        $error_message = "Restore failed: " . $e->getMessage();
     }
 }
 
@@ -359,59 +294,59 @@ if (isset($_POST['delete_file'])) {
 
         .main-content {
             margin-left: 270px;
-            padding: 20px;
+            padding: 32px;
             min-height: 100vh;
         }
 
-        /* Page Header - Compact */
+        /* Page Header */
         .page-header {
             background: white;
-            padding: 16px 20px;
-            border-radius: 10px;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-            margin-bottom: 20px;
+            padding: 28px 32px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin-bottom: 32px;
             border-left: 4px solid;
             border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
         }
 
         .page-header h2 {
-            font-size: 20px;
+            font-size: 28px;
             font-weight: 700;
             color: #1a1a1a;
-            margin: 0 0 4px 0;
+            margin: 0 0 8px 0;
             display: flex;
             align-items: center;
-            gap: 10px;
+            gap: 12px;
         }
 
         .page-header p {
             color: #6c757d;
             margin: 0;
-            font-size: 13px;
+            font-size: 15px;
         }
 
         .page-icon {
-            width: 36px;
-            height: 36px;
+            width: 48px;
+            height: 48px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 18px;
+            font-size: 24px;
         }
 
-        /* Alert Messages - Compact with auto-dismiss animation */
+        /* Alert Messages with auto-dismiss animation */
         .alert-custom {
-            border-radius: 8px;
+            border-radius: 12px;
             border: none;
-            padding: 14px 18px;
-            margin-bottom: 16px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
             display: flex;
             align-items: start;
-            gap: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+            gap: 16px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             animation: slideIn 0.3s ease-out;
         }
 
@@ -452,13 +387,13 @@ if (isset($_POST['delete_file'])) {
         }
 
         .alert-icon {
-            width: 32px;
-            height: 32px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 16px;
+            font-size: 20px;
             flex-shrink: 0;
         }
 
@@ -475,60 +410,56 @@ if (isset($_POST['delete_file'])) {
         .download-badge {
             display: inline-flex;
             align-items: center;
-            gap: 6px;
-            padding: 8px 14px;
+            gap: 8px;
+            padding: 10px 20px;
             background: #28a745;
             color: white;
             text-decoration: none;
-            border-radius: 6px;
+            border-radius: 8px;
             font-weight: 500;
-            margin-top: 8px;
-            transition: all 0.2s ease;
-            font-size: 12px;
+            margin-top: 12px;
+            transition: all 0.3s ease;
         }
 
         .download-badge:hover {
             background: #218838;
             color: white;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(40, 167, 69, 0.3);
         }
 
-        /* Summary Dashboard - Minimalist */
+        /* Summary Dashboard */
         .summary-dashboard {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-            gap: 12px;
-            margin-bottom: 20px;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 20px;
+            margin-bottom: 32px;
         }
 
         .summary-card {
             background: white;
-            border-radius: 10px;
-            padding: 14px 18px;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-            transition: all 0.2s ease;
-            border: 1px solid #e9ecef;
-            display: flex;
-            align-items: center;
-            gap: 12px;
+            border-radius: 16px;
+            padding: 24px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
 
         .summary-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             border-color: rgba(102, 126, 234, 0.3);
         }
 
         .summary-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
+            font-size: 28px;
+            margin-bottom: 16px;
         }
 
         .summary-icon.purple {
@@ -546,57 +477,45 @@ if (isset($_POST['delete_file'])) {
             color: white;
         }
 
-        .summary-content {
-            flex-grow: 1;
-        }
-
         .summary-value {
-            font-size: 20px;
+            font-size: 32px;
             font-weight: 700;
             color: #1a1a1a;
-            margin-bottom: 2px;
-            line-height: 1;
+            margin-bottom: 8px;
         }
 
         .summary-label {
             color: #6c757d;
-            font-size: 12px;
+            font-size: 14px;
             font-weight: 500;
-            line-height: 1;
         }
 
-        /* Action Cards - Minimalist */
+        /* Action Cards */
         .action-card {
             background: white;
-            border-radius: 10px;
-            padding: 18px 20px;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-            transition: all 0.2s ease;
-            border: 1px solid #e9ecef;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            height: 100%;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
         }
 
         .action-card:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+            transform: translateY(-4px);
+            box-shadow: 0 8px 24px rgba(0,0,0,0.12);
             border-color: rgba(102, 126, 234, 0.3);
         }
 
-        .action-card-header {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin-bottom: 14px;
-        }
-
         .action-card-icon {
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
+            width: 56px;
+            height: 56px;
+            border-radius: 14px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 18px;
-            flex-shrink: 0;
+            font-size: 28px;
+            margin-bottom: 20px;
         }
 
         .backup-card-icon {
@@ -610,31 +529,29 @@ if (isset($_POST['delete_file'])) {
         }
 
         .action-card h3 {
-            font-size: 16px;
+            font-size: 20px;
             font-weight: 700;
             color: #1a1a1a;
-            margin: 0;
-            line-height: 1.2;
+            margin-bottom: 12px;
         }
 
         .action-card p {
             color: #6c757d;
-            margin-bottom: 14px;
-            line-height: 1.5;
-            font-size: 13px;
+            margin-bottom: 24px;
+            line-height: 1.6;
         }
 
-        /* Button Hierarchy - Compact */
+        /* Button Hierarchy: Restore=Green, Download=Blue, Delete=Red */
         .btn-custom {
-            padding: 10px 20px;
+            padding: 12px 28px;
             font-weight: 600;
-            border-radius: 8px;
+            border-radius: 10px;
             border: none;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 8px;
-            font-size: 14px;
+            gap: 10px;
+            font-size: 15px;
         }
 
         .btn-primary-custom {
@@ -659,21 +576,21 @@ if (isset($_POST['delete_file'])) {
             color: white;
         }
 
-        /* File Input - Compact and Clear */
+        /* File Input */
         .file-upload-wrapper {
-            margin-bottom: 14px;
+            position: relative;
+            margin-bottom: 20px;
         }
 
         .file-upload-label {
             display: block;
-            padding: 16px 20px;
+            padding: 24px;
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             border: 2px dashed #dee2e6;
-            border-radius: 8px;
+            border-radius: 12px;
             text-align: center;
             cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
+            transition: all 0.3s ease;
         }
 
         .file-upload-label:hover {
@@ -688,41 +605,43 @@ if (isset($_POST['delete_file'])) {
         }
 
         .file-upload-icon {
-            font-size: 28px;
+            font-size: 40px;
             color: #667eea;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         .file-upload-text {
             color: #495057;
             font-weight: 500;
-            font-size: 13px;
         }
 
-        .file-upload-wrapper input[type="file"] {
-            display: none;
+        input[type="file"] {
+            position: absolute;
+            opacity: 0;
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
         }
 
-        /* Backup History - Compact */
+        /* Backup History */
         .history-card {
             background: white;
-            border-radius: 10px;
-            padding: 18px 20px;
-            box-shadow: 0 1px 6px rgba(0,0,0,0.06);
-            border: 1px solid #e9ecef;
+            border-radius: 16px;
+            padding: 28px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
         }
 
         .history-header {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-bottom: 16px;
-            padding-bottom: 14px;
-            border-bottom: 1px solid #e9ecef;
+            gap: 12px;
+            margin-bottom: 24px;
+            padding-bottom: 20px;
+            border-bottom: 2px solid #e9ecef;
         }
 
         .history-header h3 {
-            font-size: 16px;
+            font-size: 22px;
             font-weight: 700;
             color: #1a1a1a;
             margin: 0;
@@ -732,42 +651,42 @@ if (isset($_POST['delete_file'])) {
         .backup-count {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
+            padding: 6px 16px;
+            border-radius: 20px;
             font-weight: 600;
-            font-size: 12px;
+            font-size: 14px;
         }
 
-        /* Backup Items - Minimalist with Enhanced Hover */
+        /* Backup Items with Enhanced Hover Effects */
         .backup-item {
-            background: linear-gradient(135deg, #fafbfc 0%, #ffffff 100%);
-            border: 1px solid #e9ecef;
-            border-radius: 8px;
-            padding: 12px 14px;
-            margin-bottom: 10px;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+            border: 2px solid #e9ecef;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 16px;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 20px;
         }
 
         .backup-item:hover {
             background: white;
             border-color: #667eea;
-            transform: translateX(6px) scale(1.005);
-            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
+            transform: translateX(8px) scale(1.01);
+            box-shadow: 0 8px 24px rgba(102, 126, 234, 0.15);
         }
 
         .backup-icon-wrapper {
-            width: 36px;
-            height: 36px;
+            width: 52px;
+            height: 52px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-radius: 8px;
+            border-radius: 12px;
             display: flex;
             align-items: center;
             justify-content: center;
             color: white;
-            font-size: 16px;
+            font-size: 24px;
             flex-shrink: 0;
             transition: all 0.3s ease;
         }
@@ -778,54 +697,48 @@ if (isset($_POST['delete_file'])) {
 
         .backup-details {
             flex-grow: 1;
-            min-width: 0;
         }
 
         .backup-filename {
-            font-weight: 600;
+            font-weight: 700;
             color: #1a1a1a;
-            font-size: 13px;
-            margin-bottom: 4px;
+            font-size: 15px;
+            margin-bottom: 6px;
             display: flex;
             align-items: center;
-            gap: 6px;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
+            gap: 8px;
         }
 
         .backup-meta {
             display: flex;
-            gap: 14px;
+            gap: 20px;
             color: #6c757d;
-            font-size: 11px;
-            flex-wrap: wrap;
+            font-size: 13px;
         }
 
         .backup-meta-item {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
         }
 
         .backup-actions {
             display: flex;
-            gap: 6px;
+            gap: 10px;
             flex-shrink: 0;
         }
 
         .btn-action-small {
-            padding: 6px 12px;
-            font-size: 12px;
+            padding: 8px 16px;
+            font-size: 13px;
             font-weight: 600;
-            border-radius: 6px;
+            border-radius: 8px;
             border: none;
-            transition: all 0.2s ease;
+            transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 5px;
+            gap: 6px;
             cursor: pointer;
-            white-space: nowrap;
         }
 
         /* Blue for Download */
@@ -852,10 +765,10 @@ if (isset($_POST['delete_file'])) {
             box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
         }
 
-        /* Enhanced Empty State - Compact */
+        /* Enhanced Empty State */
         .empty-state {
             text-align: center;
-            padding: 50px 20px;
+            padding: 80px 20px;
             animation: fadeIn 0.5s ease-out;
         }
 
@@ -871,12 +784,12 @@ if (isset($_POST['delete_file'])) {
         }
 
         .empty-state-icon {
-            font-size: 64px;
+            font-size: 96px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
-            margin-bottom: 16px;
+            margin-bottom: 24px;
             animation: float 3s ease-in-out infinite;
         }
 
@@ -885,20 +798,20 @@ if (isset($_POST['delete_file'])) {
                 transform: translateY(0px);
             }
             50% {
-                transform: translateY(-15px);
+                transform: translateY(-20px);
             }
         }
 
         .empty-state-title {
-            font-size: 18px;
+            font-size: 24px;
             font-weight: 700;
             color: #1a1a1a;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
         .empty-state-text {
             color: #6c757d;
-            font-size: 13px;
+            font-size: 16px;
             line-height: 1.6;
         }
 
@@ -999,44 +912,36 @@ if (isset($_POST['delete_file'])) {
                 <div class="summary-icon purple">
                     <i class="bi bi-database-fill"></i>
                 </div>
-                <div class="summary-content">
-                    <div class="summary-value"><?= count($backups) ?></div>
-                    <div class="summary-label">Total Backups</div>
-                </div>
+                <div class="summary-value"><?= count($backups) ?></div>
+                <div class="summary-label">Total Backups</div>
             </div>
 
             <div class="summary-card">
                 <div class="summary-icon blue">
                     <i class="bi bi-hdd-fill"></i>
                 </div>
-                <div class="summary-content">
-                    <div class="summary-value"><?= formatFileSize($totalStorage) ?></div>
-                    <div class="summary-label">Storage Used</div>
-                </div>
+                <div class="summary-value"><?= formatFileSize($totalStorage) ?></div>
+                <div class="summary-label">Storage Used</div>
             </div>
 
             <div class="summary-card">
                 <div class="summary-icon green">
                     <i class="bi bi-clock-history"></i>
                 </div>
-                <div class="summary-content">
-                    <div class="summary-value"><?= $lastBackupDate ? date('M j', $lastBackupDate) : 'N/A' ?></div>
-                    <div class="summary-label">Last Backup<?= $lastBackupDate ? ' - ' . date('g:i A', $lastBackupDate) : '' ?></div>
-                </div>
+                <div class="summary-value"><?= $lastBackupDate ? date('M j', $lastBackupDate) : 'N/A' ?></div>
+                <div class="summary-label">Last Backup<?= $lastBackupDate ? ' - ' . date('g:i A', $lastBackupDate) : '' ?></div>
             </div>
         </div>
 
         <!-- Action Cards -->
-        <div class="row mb-3">
+        <div class="row mb-4">
             <!-- Create Backup -->
-            <div class="col-lg-6 mb-3">
+            <div class="col-lg-6 mb-4">
                 <div class="action-card">
-                    <div class="action-card-header">
-                        <div class="action-card-icon backup-card-icon">
-                            <i class="bi bi-cloud-download"></i>
-                        </div>
-                        <h3>Create Database Backup</h3>
+                    <div class="action-card-icon backup-card-icon">
+                        <i class="bi bi-cloud-download"></i>
                     </div>
+                    <h3>Create Database Backup</h3>
                     <p>Generate a complete snapshot of your database. The backup file includes all tables, data, and structures.</p>
                     
                     <form method="post">
@@ -1049,19 +954,17 @@ if (isset($_POST['delete_file'])) {
             </div>
 
             <!-- Restore Database -->
-            <div class="col-lg-6 mb-3">
+            <div class="col-lg-6 mb-4">
                 <div class="action-card">
-                    <div class="action-card-header">
-                        <div class="action-card-icon restore-card-icon">
-                            <i class="bi bi-arrow-counterclockwise"></i>
-                        </div>
-                        <h3>Restore Database</h3>
+                    <div class="action-card-icon restore-card-icon">
+                        <i class="bi bi-arrow-counterclockwise"></i>
                     </div>
+                    <h3>Restore Database</h3>
                     <p>Upload a backup SQL file to restore your database to a previous state. This will replace current data.</p>
                     
-                    <form method="post" enctype="multipart/form-data" onsubmit="return confirmRestore(event);">
+                    <form method="post" enctype="multipart/form-data" onsubmit="return confirmRestore();">
                         <div class="file-upload-wrapper">
-                            <label for="sqlFileInput" class="file-upload-label" id="fileLabel">
+                            <label class="file-upload-label" id="fileLabel">
                                 <div class="file-upload-icon">
                                     <i class="bi bi-cloud-upload"></i>
                                 </div>
@@ -1070,7 +973,7 @@ if (isset($_POST['delete_file'])) {
                                     <small>or drag and drop here</small>
                                 </div>
                             </label>
-                            <input type="file" id="sqlFileInput" name="sql_file" accept=".sql" required onchange="updateFileName(this)">
+                            <input type="file" name="sql_file" accept=".sql" required onchange="updateFileName(this)">
                         </div>
                         <button type="submit" name="restore" class="btn-custom btn-success-custom">
                             <i class="bi bi-upload"></i>
@@ -1084,7 +987,7 @@ if (isset($_POST['delete_file'])) {
         <!-- Backup History -->
         <div class="history-card">
             <div class="history-header">
-                <i class="bi bi-clock-history" style="font-size: 20px; color: #667eea;"></i>
+                <i class="bi bi-clock-history" style="font-size: 28px; color: #667eea;"></i>
                 <h3>Backup History</h3>
                 <span class="backup-count"><?= count($backups) ?> Backups</span>
             </div>
@@ -1153,44 +1056,6 @@ if (isset($_POST['delete_file'])) {
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
 
 <script>
-// Show restore success SweetAlert
-<?php if (isset($restore_success) && $restore_success === true): ?>
-window.addEventListener('DOMContentLoaded', function() {
-    Swal.fire({
-        title: 'Restore Successful!',
-        html: 'Database has been restored successfully from:<br><br><strong><?= htmlspecialchars($restore_filename) ?></strong><br><br><small class="text-muted"><?= $restore_query_count ?> queries executed</small>',
-        icon: 'success',
-        confirmButtonColor: '#28a745',
-        confirmButtonText: 'OK',
-        customClass: {
-            confirmButton: 'btn btn-success px-4 py-2'
-        },
-        buttonsStyling: false
-    }).then(() => {
-        // Reload the page to show updated backup list
-        window.location.href = 'backup.php';
-    });
-});
-<?php endif; ?>
-
-// Show restore error SweetAlert
-<?php if (isset($restore_error) && $restore_error === true): ?>
-window.addEventListener('DOMContentLoaded', function() {
-    Swal.fire({
-        title: 'Restore Failed!',
-        html: 'An error occurred while restoring the database:<br><br><div style="text-align: left; background: #f8f9fa; padding: 12px; border-radius: 6px; font-size: 12px; color: #dc3545; max-height: 300px; overflow-y: auto; white-space: pre-wrap; font-family: monospace;"><code><?= htmlspecialchars($restore_error_msg) ?></code></div>',
-        icon: 'error',
-        confirmButtonColor: '#dc3545',
-        confirmButtonText: 'OK',
-        width: '650px',
-        customClass: {
-            confirmButton: 'btn btn-danger px-4 py-2'
-        },
-        buttonsStyling: false
-    });
-});
-<?php endif; ?>
-
 // Auto-dismiss success alert after 4 seconds
 window.addEventListener('DOMContentLoaded', function() {
     const successAlert = document.getElementById('successAlert');
@@ -1220,23 +1085,10 @@ function updateFileName(input) {
     }
 }
 
-// Simple confirmation for restore
-function confirmRestore(event) {
+// SweetAlert confirmation for restore
+function confirmRestore() {
     event.preventDefault();
     const form = event.target;
-    
-    // Check if file is selected
-    const fileInput = form.querySelector('input[type="file"]');
-    if (!fileInput.files || !fileInput.files[0]) {
-        Swal.fire({
-            title: 'No File Selected',
-            text: 'Please select a backup file to restore.',
-            icon: 'warning',
-            confirmButtonColor: '#667eea',
-            confirmButtonText: 'OK'
-        });
-        return false;
-    }
     
     Swal.fire({
         title: 'Restore Database?',
@@ -1255,31 +1107,7 @@ function confirmRestore(event) {
         buttonsStyling: false
     }).then((result) => {
         if (result.isConfirmed) {
-            // Show loading with timer
-            let timerInterval;
-            Swal.fire({
-                title: 'Restoring Database...',
-                html: 'Please wait while we restore your database<br><br><b></b> seconds elapsed',
-                allowOutsideClick: false,
-                allowEscapeKey: false,
-                didOpen: () => {
-                    Swal.showLoading();
-                    const b = Swal.getHtmlContainer().querySelector('b');
-                    let seconds = 0;
-                    timerInterval = setInterval(() => {
-                        seconds++;
-                        b.textContent = seconds;
-                    }, 1000);
-                },
-                willClose: () => {
-                    clearInterval(timerInterval);
-                }
-            });
-            
-            // Submit the form after a tiny delay to ensure SweetAlert shows
-            setTimeout(() => {
-                form.submit();
-            }, 100);
+            form.submit();
         }
     });
     

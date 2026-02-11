@@ -7,8 +7,17 @@ include(__DIR__ . "/../config/path.php"); // BASE_URL
 include(__DIR__ . "/../config/db_connect.php"); // DB connection
 
 // Get logged-in user info
-$memberName = $_SESSION['member_name'] ?? 'Admin';
-$role = strtolower($_SESSION['role'] ?? 'guest');
+$firstName = $_SESSION['first_name'] ?? $_SESSION['fullname'] ?? $_SESSION['username'] ?? 'User';
+$role = $_SESSION['role'] ?? 'guest';
+
+// Format role for display (capitalize first letter)
+$roleDisplay = match(strtolower($role)) {
+    'admin' => 'Administrator',
+    'officer' => 'Officer',
+    'member' => 'Member',
+    default => ucfirst($role)
+};
+
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // Fetch association settings from system_config table
@@ -43,6 +52,7 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
 <title>Panel</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<link href="<?= BASE_URL; ?>css/dashboard-layout.css" rel="stylesheet">
 <style>
 /* Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -51,11 +61,13 @@ body {
     font-family: 'Inter', 'Segoe UI', sans-serif;
 }
 
-/* Sidebar */
+/* ==================== SIDEBAR ==================== */
 .sidebar {
     width: 270px;
     height: 100vh;
     position: fixed;
+    left: 0;
+    top: 0;
     background: #FFFFFF;
     color: #333;
     padding-top: 0;
@@ -63,8 +75,15 @@ body {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    overflow-x: hidden;
+    transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border-right: 1px solid #E8E8E8;
+    z-index: 1050;
+}
+
+/* Sidebar Collapsed State */
+.sidebar.collapsed {
+    transform: translateX(-100%);
 }
 
 /* Scrollbar */
@@ -232,7 +251,7 @@ body {
     color: #dc3545;
 }
 
-/* Navbar */
+/* ==================== TOP NAVBAR ==================== */
 .navbar {
     margin-left: 270px;
     background: #FFFFFF;
@@ -241,6 +260,13 @@ body {
     box-shadow: 0 2px 16px rgba(0,0,0,0.06);
     padding: 16px 24px;
     min-height: 70px;
+    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    z-index: 1040;
+}
+
+.navbar.sidebar-collapsed {
+    margin-left: 0;
 }
 
 .navbar-text { 
@@ -253,17 +279,87 @@ body {
     border: 1px solid #E0E0E0;
     display: inline-flex;
     align-items: center;
-    gap: 8px;
+    gap: 10px;
 }
 
-.navbar-text strong {
+.navbar-text .user-info {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    line-height: 1.3;
+}
+
+.navbar-text .user-name {
     color: #667eea;
     font-weight: 700;
+    font-size: 0.95rem;
+}
+
+.navbar-text .user-role {
+    color: #888;
+    font-weight: 500;
+    font-size: 0.8rem;
 }
 
 .navbar-text::before {
     content: "👤";
     font-size: 1.2rem;
+    flex-shrink: 0;
+}
+
+/* ==================== HAMBURGER MENU TOGGLE ==================== */
+.hamburger-toggle {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border: none;
+    color: white;
+    width: 44px;
+    height: 44px;
+    border-radius: 12px;
+    display: none;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.5rem;
+    cursor: pointer;
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
+}
+
+.hamburger-toggle:hover {
+    transform: scale(1.05);
+    box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+}
+
+.hamburger-toggle:active {
+    transform: scale(0.95);
+}
+
+.hamburger-toggle i {
+    transition: transform 0.3s ease;
+}
+
+.hamburger-toggle.active i {
+    transform: rotate(90deg);
+}
+
+/* ==================== OVERLAY ==================== */
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 1045;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.sidebar-overlay.show {
+    display: block;
+    opacity: 1;
 }
 
 /* Dropdown Caret Animation */
@@ -275,13 +371,96 @@ body {
     transform: rotate(180deg);
 }
 
-/* Responsive */
-@media (max-width: 991.98px) { 
-    .sidebar, .navbar { 
-        margin-left: 0 !important; 
-    }
+/* ==================== RESPONSIVE DESIGN ==================== */
+
+/* Large Screens (Desktop) - Sidebar Always Visible */
+@media (min-width: 992px) {
     .sidebar {
-        width: 250px;
+        transform: translateX(0) !important;
+    }
+    
+    .navbar {
+        margin-left: 270px !important;
+    }
+    
+    .hamburger-toggle {
+        display: none !important;
+    }
+    
+    .sidebar-overlay {
+        display: none !important;
+    }
+    
+    /* Ensure main content has proper margin on desktop */
+    .main-content,
+    .content-wrapper {
+        margin-left: 270px !important;
+    }
+}
+
+/* Medium and Small Screens (Tablet/Mobile) - Collapsible Sidebar */
+@media (max-width: 991.98px) {
+    /* Sidebar hidden by default */
+    .sidebar {
+        transform: translateX(-100%);
+    }
+    
+    /* Show sidebar when active */
+    .sidebar.active {
+        transform: translateX(0);
+    }
+    
+    /* Navbar takes full width */
+    .navbar {
+        margin-left: 0 !important;
+    }
+    
+    /* Show hamburger button */
+    .hamburger-toggle {
+        display: flex !important;
+    }
+    
+    /* Adjust sidebar width for smaller screens */
+    .sidebar {
+        width: 270px;
+        max-width: 85vw;
+    }
+    
+    /* Main content takes full width on mobile */
+    .main-content,
+    .content-wrapper {
+        margin-left: 0 !important;
+        padding: 20px !important;
+    }
+}
+
+/* Extra Small Screens (Mobile) */
+@media (max-width: 576px) {
+    .sidebar {
+        width: 100%;
+        max-width: 100vw;
+    }
+    
+    .navbar-text {
+        font-size: 0.85rem;
+        padding: 8px 14px;
+    }
+    
+    .navbar-text .user-name {
+        font-size: 0.85rem;
+    }
+    
+    .navbar-text .user-role {
+        font-size: 0.75rem;
+    }
+    
+    .navbar-text::before {
+        font-size: 1rem;
+    }
+    
+    .main-content,
+    .content-wrapper {
+        padding: 16px !important;
     }
 }
 
@@ -300,12 +479,26 @@ body {
 .sidebar a {
     animation: slideIn 0.3s ease-out;
 }
+
+/* Prevent body scroll when sidebar is open on mobile */
+body.sidebar-open {
+    overflow: hidden;
+}
+
+@media (max-width: 991.98px) {
+    body.sidebar-open {
+        overflow: hidden;
+    }
+}
 </style>
 </head>
 <body>
 
+<!-- Sidebar Overlay (for mobile/tablet) -->
+<div class="sidebar-overlay" id="sidebarOverlay"></div>
+
 <!-- Sidebar -->
-<div class="sidebar d-flex flex-column">
+<div class="sidebar d-flex flex-column" id="mainSidebar">
 
     <!-- Logo + Name Header -->
     <div class="sidebar-header">
@@ -317,7 +510,7 @@ body {
         </div>
     </div>
 
-    <h4><?= ucfirst($role); ?> Menu</h4>
+    <h4><?= $roleDisplay; ?> Menu</h4>
 
     <!-- Dashboard + Main Shortcuts -->
     <a href="<?= BASE_URL; ?>admin.php" class="<?= ($current_page == 'admin.php') ? 'active' : ''; ?>">
@@ -333,7 +526,7 @@ body {
         <i class="bi bi-images"></i> Galleries
     </a>
 
-    <?php if (in_array($role, ['admin','officer'])): ?>
+    <?php if (in_array(strtolower($role), ['admin','officer'])): ?>
 
     
     <!-- ================= MANAGEMENT SECTION ================= -->
@@ -355,7 +548,7 @@ body {
            <i class="bi bi-people-fill"></i> Member List
         </a>
 
-        <?php if ($role === 'admin'): ?>
+        <?php if (strtolower($role) === 'admin'): ?>
         <a href="<?= BASE_URL; ?>management/manage_officer.php"
            class="<?= ($current_page == 'manage_officer.php') ? 'active' : ''; ?>">
            <i class="bi bi-shield-lock"></i> Manage Officers
@@ -376,7 +569,7 @@ body {
     <?php endif; ?>
 
     <!-- ================= ADMIN UTILITIES ================= -->
-    <?php if ($role === 'admin'): ?>
+    <?php if (strtolower($role) === 'admin'): ?>
     <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#utilitiesMenu"
        aria-expanded="<?= $isUtilitiesOpen ? 'true' : 'false'; ?>">
         <i class="bi bi-hammer"></i> Utilities
@@ -441,7 +634,7 @@ body {
            <i class="bi bi-person-circle"></i> Profile Settings
         </a>
 
-        <?php if ($role === 'admin'): ?>
+        <?php if (strtolower($role) === 'admin'): ?>
         <a href="<?= BASE_URL; ?>settings/config.php"
            class="<?= ($current_page == 'config.php') ? 'active' : ''; ?>">
            <i class="bi bi-sliders"></i> System Configuration
@@ -459,26 +652,143 @@ body {
 
 
 <!-- Top Navbar -->
-<nav class="navbar navbar-expand-lg navbar-light">
+<nav class="navbar navbar-expand-lg navbar-light" id="topNavbar">
     <div class="container-fluid">
+        <!-- Hamburger Toggle Button -->
+        <button class="hamburger-toggle" id="sidebarToggle" type="button" aria-label="Toggle Sidebar">
+            <i class="bi bi-list"></i>
+        </button>
+        
         <span class="navbar-text ms-auto me-3">
-            Logged in as <strong><?= htmlspecialchars($memberName); ?></strong> (<?= ucfirst($role); ?>)
+            <div class="user-info">
+                <span class="user-name"><?= htmlspecialchars($firstName); ?></span>
+                <span class="user-role"><?= htmlspecialchars($roleDisplay); ?></span>
+            </div>
         </span>
     </div>
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function(toggle){
-    toggle.addEventListener('click', function(){
-        setTimeout(function(){
-            const menu = toggle.nextElementSibling;
-            if(menu.classList.contains('show')) {
-                menu.scrollIntoView({behavior: 'smooth', block: 'nearest'});
-            }
-        }, 300);
+// ==================== GLOBAL SIDEBAR TOGGLE FUNCTIONALITY ====================
+
+(function() {
+    'use strict';
+    
+    // DOM Elements
+    const sidebar = document.getElementById('mainSidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    const toggle = document.getElementById('sidebarToggle');
+    const navbar = document.getElementById('topNavbar');
+    
+    if (!sidebar || !overlay || !toggle) {
+        console.warn('Sidebar elements not found');
+        return;
+    }
+    
+    // Toggle sidebar function
+    function toggleSidebar() {
+        const isActive = sidebar.classList.toggle('active');
+        overlay.classList.toggle('show', isActive);
+        toggle.classList.toggle('active', isActive);
+        document.body.classList.toggle('sidebar-open', isActive);
+        
+        // Store state in sessionStorage
+        sessionStorage.setItem('sidebarOpen', isActive ? 'true' : 'false');
+    }
+    
+    // Close sidebar function
+    function closeSidebar() {
+        sidebar.classList.remove('active');
+        overlay.classList.remove('show');
+        toggle.classList.remove('active');
+        document.body.classList.remove('sidebar-open');
+        sessionStorage.setItem('sidebarOpen', 'false');
+    }
+    
+    // Event Listeners
+    toggle.addEventListener('click', function(e) {
+        e.stopPropagation();
+        toggleSidebar();
     });
-});
+    
+    overlay.addEventListener('click', closeSidebar);
+    
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', function(e) {
+        if (window.innerWidth <= 991.98) {
+            if (!sidebar.contains(e.target) && !toggle.contains(e.target) && sidebar.classList.contains('active')) {
+                closeSidebar();
+            }
+        }
+    });
+    
+    // Handle window resize
+    let resizeTimer;
+    window.addEventListener('resize', function() {
+        clearTimeout(resizeTimer);
+        resizeTimer = setTimeout(function() {
+            // On desktop, ensure sidebar is visible
+            if (window.innerWidth > 991.98) {
+                sidebar.classList.remove('active');
+                overlay.classList.remove('show');
+                toggle.classList.remove('active');
+                document.body.classList.remove('sidebar-open');
+            }
+        }, 250);
+    });
+    
+    // Restore sidebar state on page load (mobile only)
+    window.addEventListener('DOMContentLoaded', function() {
+        if (window.innerWidth <= 991.98) {
+            const savedState = sessionStorage.getItem('sidebarOpen');
+            if (savedState === 'true') {
+                sidebar.classList.add('active');
+                overlay.classList.add('show');
+                toggle.classList.add('active');
+                document.body.classList.add('sidebar-open');
+            }
+        }
+    });
+    
+    // Close sidebar when navigating to a new page on mobile
+    const sidebarLinks = sidebar.querySelectorAll('a:not(.sidebar-dropdown-toggle)');
+    sidebarLinks.forEach(function(link) {
+        link.addEventListener('click', function() {
+            if (window.innerWidth <= 991.98) {
+                closeSidebar();
+            }
+        });
+    });
+    
+    // Smooth scroll for dropdown menus
+    document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function(toggle){
+        toggle.addEventListener('click', function(){
+            setTimeout(function(){
+                const menu = toggle.nextElementSibling;
+                if(menu && menu.classList.contains('show')) {
+                    menu.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                }
+            }, 300);
+        });
+    });
+    
+    // Prevent body scroll when sidebar is open on mobile
+    function updateBodyScroll() {
+        if (window.innerWidth <= 991.98 && sidebar.classList.contains('active')) {
+            document.body.style.overflow = 'hidden';
+        } else {
+            document.body.style.overflow = '';
+        }
+    }
+    
+    // Update on sidebar toggle
+    const observer = new MutationObserver(updateBodyScroll);
+    observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
+    
+})();
+
+console.log('✅ Responsive Sidebar System Loaded');
 </script>
 </body>
 </html>

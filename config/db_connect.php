@@ -1,22 +1,18 @@
 <?php
-$servername = "sql12.freesqldatabase.com";
-$username   = "sql12814263";
-$password   = "W2VRUwnFv4";
-$dbname     = "sql12814263";
-$port       = 3306;
+// ============================================
+// DATABASE CONNECTION SWITCHER
+// Change between ONLINE and OFFLINE modes
+// ============================================
 
-// Create connection
-$conn = new mysqli($servername, $username, $password, $dbname, $port);
+// 🌐 ONLINE MODE (default) - Uses freesqldatabase.com
+require_once(__DIR__ . '/db_connect_online.php');
 
-// Check connection
-if ($conn->connect_error) {
-    die("Database connection failed: " . $conn->connect_error);
-}
+// 💻 OFFLINE MODE - Uses localhost (uncomment for defense day)
+// require_once(__DIR__ . '/db_connect_local.php');
 
-// Set charset
-$conn->set_charset("utf8");
+// ============================================
+// INSTRUCTIONS:
+// - For normal use: Use ONLINE mode (current)
+// - For defense/offline: Comment ONLINE, uncomment OFFLINE
+// ============================================
 
-// Debug (pwede mo alisin pag ok na)
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-?>

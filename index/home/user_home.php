@@ -16,11 +16,13 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Association Portal</title>
+  <title>Home - Bangkero & Fishermen Association</title>
   <!-- Bootstrap CSS & Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <!-- Main Stylesheet -->
+  <link href="../../css/main-style.css" rel="stylesheet">
   <style>
     :root {
       --primary: #2c3e50;
@@ -146,6 +148,47 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       font-weight: 400;
       animation: fadeInUp 0.8s ease-out 0.2s backwards;
     }
+    .carousel-control-prev,
+    .carousel-control-next {
+      z-index: 3;
+      width: 50px;
+      opacity: 0.8;
+    }
+    .carousel-control-prev:hover,
+    .carousel-control-next:hover {
+      opacity: 1;
+    }
+    .carousel-control-prev-icon,
+    .carousel-control-next-icon {
+      width: 40px;
+      height: 40px;
+      background-color: rgba(44, 62, 80, 0.7);
+      border-radius: 50%;
+      padding: 10px;
+    }
+    .carousel-indicators {
+      z-index: 3;
+      margin-bottom: 2rem;
+    }
+    .carousel-indicators button {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      border: 2px solid white;
+      background-color: rgba(255, 255, 255, 0.5);
+      transition: all 0.3s ease;
+      margin: 0 6px;
+    }
+    .carousel-indicators button.active {
+      width: 14px;
+      height: 14px;
+      background-color: white;
+      box-shadow: 0 0 10px rgba(255, 255, 255, 0.8);
+    }
+    .carousel-indicators button:hover {
+      background-color: rgba(255, 255, 255, 0.8);
+      transform: scale(1.1);
+    }
     @keyframes fadeInUp {
       from {
         opacity: 0;
@@ -221,254 +264,488 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       position: relative;
     }
    
-    /* Enhanced Event Highlight */
+    /* Compact Event Highlight */
     .event-highlight {
       background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
-      padding: 50px 20px;
+      padding: 40px 20px;
       position: relative;
-    }
-    .event-highlight::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 6px;
-      background: linear-gradient(90deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
     }
     .event-highlight h2 {
       font-family: 'Poppins', sans-serif;
       color: var(--dark);
-      margin-bottom: 35px;
-      font-weight: 800;
-      font-size: 2.8rem;
-      position: relative;
-      display: inline-block;
-      letter-spacing: -0.5px;
-    }
-    .event-highlight h2::after {
-      content: '';
-      position: absolute;
-      bottom: -12px;
-      left: 0;
-      width: 60%;
-      height: 5px;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
-      border-radius: 3px;
+      margin-bottom: 30px;
+      font-weight: 700;
+      font-size: 2rem;
+      text-align: center;
     }
     .event-card {
-      border-radius: 24px;
+      border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 12px 48px rgba(44, 62, 80, 0.12);
-      transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+      transition: all 0.3s ease;
       border: none;
       background: white;
-      position: relative;
-    }
-    .event-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 5px;
-      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
-      opacity: 0;
-      transition: opacity 0.4s ease;
-    }
-    .event-card:hover::before {
-      opacity: 1;
+      max-width: 900px;
+      margin: 0 auto;
     }
     .event-card:hover {
-      transform: translateY(-12px);
-      box-shadow: 0 24px 80px rgba(44, 62, 80, 0.18);
+      transform: translateY(-4px);
+      box-shadow: 0 8px 32px rgba(44, 62, 80, 0.12);
     }
     .event-poster-wrapper {
       position: relative;
       overflow: hidden;
       height: 100%;
-      min-height: 450px;
-    }
-    .event-poster-wrapper::after {
-      content: '';
-      position: absolute;
-      top: 0;
-      right: 0;
-      bottom: 0;
-      width: 50px;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1));
-      pointer-events: none;
+      min-height: 400px;
     }
     .event-card img {
       height: 100%;
       width: 100%;
       object-fit: cover;
-      transition: transform 0.6s ease;
+      transition: transform 0.4s ease;
     }
     .event-card:hover img {
-      transform: scale(1.08);
+      transform: scale(1.05);
     }
     .event-details {
-      padding: 50px 45px;
+      padding: 30px;
       position: relative;
     }
     .event-badge {
       display: inline-block;
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: white;
-      padding: 8px 20px;
-      border-radius: 50px;
-      font-size: 0.85rem;
-      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      font-weight: 600;
       letter-spacing: 0.5px;
       text-transform: uppercase;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+      margin-bottom: 12px;
     }
     .event-details h3 {
       color: var(--dark);
-      font-weight: 800;
-      font-size: 2.2rem;
-      margin-bottom: 20px;
+      font-weight: 700;
+      font-size: 1.5rem;
+      margin-bottom: 12px;
       font-family: 'Poppins', sans-serif;
       line-height: 1.3;
-      letter-spacing: -0.5px;
     }
     .event-description {
       color: #64748b;
-      font-size: 1.05rem;
-      line-height: 1.75;
-      margin-bottom: 25px;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 18px;
       font-weight: 400;
     }
     .event-info-grid {
-      display: grid;
+      display: flex;
+      flex-wrap: wrap;
       gap: 12px;
-      margin-bottom: 25px;
+      margin-bottom: 20px;
     }
     .event-details .icon-text {
       display: flex;
       align-items: center;
-      padding: 12px 18px;
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-      border-radius: 14px;
-      transition: all 0.3s ease;
-      border-left: 4px solid var(--primary);
+      padding: 8px 14px;
+      background: #f8fafc;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+      border-left: 3px solid var(--primary);
+      flex: 1;
+      min-width: 200px;
     }
     .event-details .icon-text:hover {
-      background: linear-gradient(135deg, #f1f5f9 0%, #e2e8f0 100%);
-      transform: translateX(6px);
-      box-shadow: 0 4px 16px rgba(44, 62, 80, 0.1);
+      background: #f1f5f9;
     }
     .event-details .icon-text i {
       color: var(--primary);
-      margin-right: 16px;
-      font-size: 1.4rem;
-      width: 32px;
-      text-align: center;
+      margin-right: 10px;
+      font-size: 1.1rem;
     }
     .event-details .icon-text span {
       color: var(--dark);
       font-weight: 600;
-      font-size: 1.05rem;
+      font-size: 0.9rem;
     }
     .event-empty-state {
       text-align: center;
-      padding: 60px 20px;
-      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-      border-radius: 24px;
+      padding: 50px 20px;
+      background: #f8fafc;
+      border-radius: 16px;
       border: 2px dashed #cbd5e1;
+      max-width: 900px;
+      margin: 0 auto;
     }
     .event-empty-state i {
-      font-size: 5rem;
+      font-size: 3.5rem;
       color: #cbd5e1;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
     .event-empty-state p {
       color: #94a3b8;
-      font-size: 1.15rem;
+      font-size: 1rem;
       font-weight: 500;
     }
     
-    /* Modern Countdown */
+    /* Compact Countdown */
     .countdown-wrapper {
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-      padding: 25px;
-      border-radius: 20px;
-      margin-top: 25px;
+      padding: 18px;
+      border-radius: 12px;
+      margin-top: 18px;
       border: 1px solid #e2e8f0;
-      position: relative;
-      overflow: hidden;
-    }
-    .countdown-wrapper::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
     }
     .countdown-label {
       text-align: center;
       color: var(--dark);
-      font-weight: 700;
-      font-size: 0.9rem;
+      font-weight: 600;
+      font-size: 0.8rem;
       text-transform: uppercase;
-      letter-spacing: 1.5px;
-      margin-bottom: 15px;
+      letter-spacing: 1px;
+      margin-bottom: 12px;
       opacity: 0.7;
     }
     .countdown {
       display: flex;
       justify-content: center;
-      gap: 20px;
+      gap: 12px;
       flex-wrap: wrap;
     }
     .countdown div {
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: #fff;
-      padding: 28px 24px;
-      border-radius: 18px;
-      min-width: 100px;
-      box-shadow: 0 8px 24px rgba(44, 62, 80, 0.25);
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      position: relative;
-      overflow: hidden;
-    }
-    .countdown div::before {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: radial-gradient(circle, rgba(255,255,255,0.15) 0%, transparent 70%);
-      opacity: 0;
-      transition: opacity 0.4s ease;
-    }
-    .countdown div:hover::before {
-      opacity: 1;
+      padding: 16px 12px;
+      border-radius: 10px;
+      min-width: 70px;
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
+      transition: all 0.3s ease;
     }
     .countdown div:hover {
-      transform: translateY(-6px) scale(1.05);
-      box-shadow: 0 16px 40px rgba(44, 62, 80, 0.35);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(44, 62, 80, 0.25);
     }
     .countdown div span {
       display: block;
-      font-size: 2.5rem;
-      font-weight: 900;
+      font-size: 1.8rem;
+      font-weight: 800;
       font-family: 'Poppins', sans-serif;
       line-height: 1;
-      margin-bottom: 8px;
-      text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+      margin-bottom: 4px;
     }
     .countdown div small {
-      font-size: 0.8rem;
-      opacity: 0.95;
+      font-size: 0.7rem;
+      opacity: 0.9;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    /* Professional Section Styling */
+    .event-highlight h2 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      color: var(--dark);
+      font-size: 1.8rem;
+    }
+    
+    /* Modern Event Card - Poster on Top */
+    .event-card {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+      transition: all 0.3s ease;
+    }
+    .event-card:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 30px rgba(44, 62, 80, 0.15);
+    }
+    .event-poster-wrapper {
+      position: relative;
+      height: 400px;
+      overflow: hidden;
+    }
+    .event-poster-wrapper img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    .event-details {
+      padding: 25px;
+    }
+    .event-details h3 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--dark);
+      margin: 15px 0;
+      font-family: 'Poppins', sans-serif;
+    }
+    .event-description {
+      color: #64748b;
+      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 15px;
+    }
+    .event-info-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .icon-text {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 12px;
+      background: #f8fafc;
+      border-radius: 8px;
+      border-left: 3px solid var(--primary);
+    }
+    .icon-text i {
+      color: var(--primary);
+      font-size: 1rem;
+    }
+    .icon-text span {
+      color: var(--dark);
       font-weight: 600;
+      font-size: 0.9rem;
+    }
+    
+    /* Cleaner Countdown */
+    .countdown-wrapper {
+      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      padding: 18px;
+      border-radius: 12px;
+      margin-top: 15px;
+    }
+    .countdown-label {
+      text-align: center;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 10px;
+      font-size: 0.85rem;
       text-transform: uppercase;
       letter-spacing: 1px;
+    }
+    .countdown-pro {
+      display: flex;
+      justify-content: center;
+      gap: 8px;
+    }
+    .countdown-pro div {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 12px 8px;
+      border-radius: 10px;
+      min-width: 65px;
+      text-align: center;
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
+    }
+    .countdown-pro div span {
+      display: block;
+      font-size: 1.6rem;
+      font-weight: 800;
+      line-height: 1;
+      font-family: 'Poppins', sans-serif;
+    }
+    .countdown-pro div small {
+      display: block;
+      font-size: 0.65rem;
+      opacity: 0.9;
+      margin-top: 4px;
+      font-weight: 500;
+      text-transform: uppercase;
+    }
+    
+    /* Awards & Recognition Widget */
+    .awards-widget {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+      height: 100%;
+      transition: all 0.3s ease;
+    }
+    .awards-widget:hover {
+      transform: translateY(-5px);
+      box-shadow: 0 8px 30px rgba(44, 62, 80, 0.15);
+    }
+    .awards-header {
+      background: linear-gradient(135deg, #d4af37 0%, #f4e5a1 100%);
+      color: #1a252f;
+      padding: 20px;
+      text-align: center;
+    }
+    .awards-header h4 {
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .awards-header i {
+      font-size: 1.3rem;
+    }
+    .awards-header .subtitle {
+      font-size: 0.75rem;
+      opacity: 0.85;
+      margin: 5px 0 0 0;
+      font-weight: 500;
+    }
+    
+    /* Featured Award */
+    .featured-award {
+      padding: 20px;
+      background: white;
+    }
+    .award-image-container {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 15px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .award-image {
+      width: 100%;
+      height: 200px;
+      object-fit: cover;
+      transition: transform 0.3s ease;
+    }
+    .award-image-container:hover .award-image {
+      transform: scale(1.05);
+    }
+    .award-badge {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: linear-gradient(135deg, #d4af37 0%, #f4e5a1 100%);
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
+    .award-badge i {
+      font-size: 1.2rem;
+      color: #1a252f;
+    }
+    .award-info h5 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      color: var(--dark);
+      font-size: 1rem;
+      margin-bottom: 5px;
+    }
+    .award-year {
+      color: #d4af37;
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 8px;
+    }
+    .award-desc {
+      color: #64748b;
+      font-size: 0.85rem;
+      line-height: 1.5;
+      margin: 0;
+    }
+    
+    /* Award Highlights List */
+    .award-highlights {
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+    .award-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      background: #f8fafc;
+      border-radius: 10px;
+      transition: all 0.3s ease;
+    }
+    .award-item:hover {
+      background: #f1f5f9;
+      transform: translateX(5px);
+    }
+    .award-icon {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+    }
+    .award-icon i {
+      font-size: 1.1rem;
+    }
+    .award-icon.gold {
+      background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
+      box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+    }
+    .award-icon.gold i {
+      color: #1a252f;
+    }
+    .award-icon.silver {
+      background: linear-gradient(135deg, #c0c0c0 0%, #e8e8e8 100%);
+      box-shadow: 0 2px 8px rgba(192, 192, 192, 0.3);
+    }
+    .award-icon.silver i {
+      color: #1a252f;
+    }
+    .award-icon.bronze {
+      background: linear-gradient(135deg, #cd7f32 0%, #e9b982 100%);
+      box-shadow: 0 2px 8px rgba(205, 127, 50, 0.3);
+    }
+    .award-icon.bronze i {
+      color: #fff;
+    }
+    .award-text {
+      flex: 1;
+    }
+    .award-text strong {
+      display: block;
+      color: var(--dark);
+      font-size: 0.9rem;
+      font-weight: 600;
+      margin-bottom: 2px;
+    }
+    .award-text small {
+      color: #94a3b8;
+      font-size: 0.75rem;
+    }
+    
+    /* Awards Footer */
+    .awards-footer {
+      padding: 15px 20px;
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      text-align: center;
+    }
+    .btn-view-awards {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      text-decoration: none;
+      border-radius: 10px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      transition: all 0.3s ease;
+    }
+    .btn-view-awards:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.3);
+      color: white;
     }
     
     /* Modern Announcement Cards */
@@ -608,14 +885,40 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       .event-highlight h2,
       .announcements-section h2,
       .partnerships h2 {
-        font-size: 2rem;
+        font-size: 1.75rem;
+      }
+      .event-poster-wrapper {
+        height: 300px;
+        min-height: 300px;
+      }
+      .event-details {
+        padding: 20px;
+      }
+      .event-details h3 {
+        font-size: 1.3rem;
+      }
+      .event-info-grid {
+        flex-direction: column;
+      }
+      .event-details .icon-text {
+        min-width: 100%;
       }
       .countdown div {
-        min-width: 70px;
-        padding: 16px;
+        min-width: 60px;
+        padding: 12px 8px;
       }
       .countdown div span {
-        font-size: 1.5rem;
+        font-size: 1.4rem;
+      }
+      .countdown div small {
+        font-size: 0.65rem;
+      }
+      /* Awards Widget Mobile */
+      .awards-widget {
+        margin-top: 20px;
+      }
+      .award-image {
+        height: 180px;
       }
     }
   </style>
@@ -626,6 +929,13 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
 
 <!-- Hero Carousel -->
 <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
+  <!-- Carousel Indicators (Dots) -->
+  <div class="carousel-indicators">
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+  </div>
+
   <div class="carousel-inner">
     <div class="carousel-item active" style="background-image: url('../images/home.jpg');">
       <div class="carousel-caption text-center">
@@ -655,13 +965,15 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
 </div>
 
 <!-- Introduction Section -->
-<section class="intro-section text-center">
+<section class="intro-section text-center py-5">
   <div class="container">
-    <h2>Who We Are</h2>
-    <p>
-      The <strong>Bankero & Fishermen Association</strong> is a community-driven organization dedicated to supporting local fishermen and their families. Founded in 2009, the association was established with the mission to promote sustainable fishing practices, strengthen unity among members, and provide opportunities for growth and livelihood development.<br><br>
-      We serve as a platform for collaboration, leadership, and training, ensuring that every member is empowered to thrive while preserving the rich fishing heritage of our community.
+    <h2 class="section-title mb-4">Who We Are</h2>
+    <p class="lead" style="max-width: 900px; margin: 0 auto; font-size: 1.15rem; line-height: 1.8; color: #4b5563;">
+      The <strong>Bankero & Fishermen Association</strong> is a community-driven organization dedicated to supporting local fishermen and their families. Founded in 2009, we promote sustainable fishing practices, strengthen unity among members, and provide opportunities for growth and livelihood development.
     </p>
+    <a href="about_us.php" class="btn btn-outline-primary mt-4">
+      Learn More About Us <i class="bi bi-arrow-right ms-2"></i>
+    </a>
   </div>
 </section>
 
@@ -670,78 +982,151 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
 <!-- Event Highlight Section -->
 <section class="event-highlight">
     <div class="container">
-        <h2 class="text-center">🎉 Upcoming Major Event</h2>
-        <?php if ($nextEvent): ?>
-        <div class="card event-card shadow-lg border-0">
-            <div class="row g-0 align-items-stretch">
-                <!-- Event Poster -->
-                <div class="col-md-5">
-                    <div class="event-poster-wrapper">
-                        <img src="../../uploads/<?php echo htmlspecialchars($nextEvent['event_poster'] ?: 'default.jpg'); ?>" 
-                             class="img-fluid" alt="Event Poster">
+        <div class="row g-4">
+            <!-- Event Card (Left Side - 8 columns) -->
+            <div class="col-lg-8">
+                <h2 class="mb-3">📅 Upcoming Event</h2>
+                <?php if ($nextEvent): ?>
+                <div class="card event-card border-0">
+                    <div class="row g-0">
+                        <!-- Event Poster (Portrait - Left Side) -->
+                        <div class="col-md-4">
+                            <div class="event-poster-wrapper">
+                                <img src="../../uploads/<?php echo htmlspecialchars($nextEvent['event_poster'] ?: 'default.jpg'); ?>" 
+                                     class="img-fluid" alt="Event Poster">
+                            </div>
+                        </div>
+                        
+                        <!-- Event Details (Right Side) -->
+                        <div class="col-md-8">
+                            <div class="event-details">
+                                <!-- Event Badge & Title -->
+                                <span class="event-badge">
+                                    <i class="bi bi-star-fill me-1"></i> Featured
+                                </span>
+                                
+                                <h3><?php echo htmlspecialchars($nextEvent['event_name']); ?></h3>
+                                
+                                <!-- Event Description -->
+                                <p class="event-description">
+                                    <?php 
+                                        $desc = htmlspecialchars($nextEvent['description']);
+                                        $maxLength = 100;
+                                        if (strlen($desc) > $maxLength) {
+                                            $desc = substr($desc, 0, $maxLength) . '...';
+                                        }
+                                        echo $desc;
+                                    ?>
+                                </p>
+                                
+                                <!-- Event Info Grid -->
+                                <div class="event-info-grid">
+                                    <div class="icon-text">
+                                        <i class="bi bi-calendar-event-fill"></i>
+                                        <span><?php echo date('M d, Y', strtotime($nextEvent['date'])); ?></span>
+                                    </div>
+                                    <div class="icon-text">
+                                        <i class="bi bi-clock-fill"></i>
+                                        <span><?php echo date('g:i A', strtotime($nextEvent['time'])); ?></span>
+                                    </div>
+                                    <div class="icon-text">
+                                        <i class="bi bi-geo-alt-fill"></i>
+                                        <span><?php echo htmlspecialchars($nextEvent['location']); ?></span>
+                                    </div>
+                                </div>
+                                
+                                <!-- Countdown Timer -->
+                                <div class="countdown-wrapper">
+                                    <div class="countdown-label">
+                                        <i class="bi bi-hourglass-split me-1"></i>Starts In
+                                    </div>
+                                    <div class="countdown countdown-pro" data-event-date="<?php echo $nextEvent['date'] . ' ' . $nextEvent['time']; ?>">
+                                        <div><span class="days">0</span><small>Days</small></div>
+                                        <div><span class="hours">0</span><small>Hours</small></div>
+                                        <div><span class="minutes">0</span><small>Min</small></div>
+                                        <div><span class="seconds">0</span><small>Sec</small></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                
-                <!-- Event Details -->
-                <div class="col-md-7 event-details">
-                    <!-- Event Badge -->
-                    <span class="event-badge">
-                        <i class="bi bi-star-fill me-1"></i> Featured Event
-                    </span>
+                <?php else: ?>
+                <div class="event-empty-state">
+                    <i class="bi bi-calendar-x"></i>
+                    <p class="mb-0">No upcoming events scheduled at the moment.</p>
+                    <p class="text-muted small mt-2">Check back soon for exciting announcements!</p>
+                </div>
+                <?php endif; ?>
+            </div>
+            
+            <!-- Awards & Recognition (Right Side - 4 columns) -->
+            <div class="col-lg-4">
+                <h2 class="mb-3">🏆 Awards & Recognition</h2>
+                <div class="awards-widget h-100">
+                    <!-- Header -->
+                    <div class="awards-header">
+                        <h4><i class="bi bi-trophy-fill"></i> Recent Achievements</h4>
+                        <p class="subtitle">Celebrating Our Success</p>
+                    </div>
                     
-                    <!-- Event Title -->
-                    <h3><?php echo htmlspecialchars($nextEvent['event_name']); ?></h3>
-                    
-                    <!-- Event Description -->
-                    <p class="event-description">
-                        <?php 
-                            $desc = htmlspecialchars($nextEvent['description']);
-                            $maxLength = 200;
-                            if (strlen($desc) > $maxLength) {
-                                $desc = substr($desc, 0, $maxLength) . '...';
-                            }
-                            echo $desc;
-                        ?>
-                    </p>
-                    
-                    <!-- Event Info Grid -->
-                    <div class="event-info-grid">
-                        <div class="icon-text">
-                            <i class="bi bi-calendar-event-fill"></i>
-                            <span><?php echo date('l, F d, Y', strtotime($nextEvent['date'])); ?></span>
+                    <!-- Featured Award/Certificate -->
+                    <div class="featured-award">
+                        <div class="award-image-container">
+                            <img src="../../uploads/awards/Screenshot 2026-02-12 015634.png" alt="Featured Award" class="award-image">
+                            <div class="award-badge">
+                                <i class="bi bi-award-fill"></i>
+                            </div>
                         </div>
-                        <div class="icon-text">
-                            <i class="bi bi-clock-fill"></i>
-                            <span><?php echo date('g:i A', strtotime($nextEvent['time'])); ?></span>
-                        </div>
-                        <div class="icon-text">
-                            <i class="bi bi-geo-alt-fill"></i>
-                            <span><?php echo htmlspecialchars($nextEvent['location']); ?></span>
+                        <div class="award-info">
+                            <h5>Outstanding Community Service</h5>
+                            <p class="award-year">2025</p>
+                            <p class="award-desc">Recognized by the City Government for exceptional service to the fishing community.</p>
                         </div>
                     </div>
                     
-                    <!-- Countdown Timer -->
-                    <div class="countdown-wrapper">
-                        <div class="countdown-label">
-                            <i class="bi bi-hourglass-split me-2"></i>Event Starts In
+                    <!-- Award Highlights -->
+                    <div class="award-highlights">
+                        <div class="award-item">
+                            <div class="award-icon gold">
+                                <i class="bi bi-trophy-fill"></i>
+                            </div>
+                            <div class="award-text">
+                                <strong>Best Association Award</strong>
+                                <small>BFAR Region 3 - 2024</small>
+                            </div>
                         </div>
-                        <div class="countdown" data-event-date="<?php echo $nextEvent['date'] . ' ' . $nextEvent['time']; ?>">
-                            <div><span class="days">0</span><small>Days</small></div>
-                            <div><span class="hours">0</span><small>Hours</small></div>
-                            <div><span class="minutes">0</span><small>Minutes</small></div>
-                            <div><span class="seconds">0</span><small>Seconds</small></div>
+                        
+                        <div class="award-item">
+                            <div class="award-icon silver">
+                                <i class="bi bi-patch-check-fill"></i>
+                            </div>
+                            <div class="award-text">
+                                <strong>Environmental Excellence</strong>
+                                <small>DENR Recognition - 2024</small>
+                            </div>
                         </div>
+                        
+                        <div class="award-item">
+                            <div class="award-icon bronze">
+                                <i class="bi bi-star-fill"></i>
+                            </div>
+                            <div class="award-text">
+                                <strong>Safety Champion</strong>
+                                <small>Coast Guard Citation - 2023</small>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- View All Button -->
+                    <div class="awards-footer">
+                        <a href="awards.php" class="btn-view-awards">
+                            <i class="bi bi-grid-3x3-gap"></i> View All Awards
+                        </a>
                     </div>
                 </div>
             </div>
         </div>
-        <?php else: ?>
-        <div class="event-empty-state">
-            <i class="bi bi-calendar-x"></i>
-            <p class="mb-0">No upcoming events scheduled at the moment.</p>
-            <p class="text-muted small mt-2">Check back soon for exciting announcements!</p>
-        </div>
-        <?php endif; ?>
     </div>
 </section>
 <section class="container my-5">
@@ -801,7 +1186,7 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
 <!-- Counter Script -->
 <script>
 document.addEventListener("DOMContentLoaded", () => {
-    const countdown = document.querySelector(".countdown");
+    const countdown = document.querySelector(".countdown-pro");
     if (!countdown) return;
 
     const eventDateStr = countdown.dataset.eventDate;
@@ -812,7 +1197,7 @@ document.addEventListener("DOMContentLoaded", () => {
         const diff = eventDate - now;
 
         if (diff <= 0) {
-            countdown.innerHTML = "<strong>Event Started!</strong>";
+            countdown.innerHTML = "<strong style='text-align:center; width:100%; color:white;'>Event Started!</strong>";
             return;
         }
 
@@ -831,43 +1216,211 @@ document.addEventListener("DOMContentLoaded", () => {
     updateCountdown();
 });
 </script>
-<!-- Partnerships Section -->
-<section class="partnerships">
+
+<!-- Live Weather Script -->
+<script>
+// OpenWeatherMap API Configuration
+const WEATHER_CONFIG = {
+    apiKey: '', // Leave empty to use demo mode, or add your API key from openweathermap.org
+    city: 'Olongapo',
+    country: 'PH',
+    units: 'metric',
+    demoMode: true // Set to false when you have API key
+};
+
+// Weather icon mapping
+const weatherIcons = {
+    'clear': 'bi-sun-fill',
+    'clouds': 'bi-cloud-sun',
+    'rain': 'bi-cloud-rain-fill',
+    'drizzle': 'bi-cloud-drizzle-fill',
+    'thunderstorm': 'bi-cloud-lightning-fill',
+    'snow': 'bi-cloud-snow-fill',
+    'mist': 'bi-cloud-haze',
+    'fog': 'bi-cloud-fog'
+};
+
+// Determine sea condition based on wind speed
+function getSeaCondition(windSpeed) {
+    if (windSpeed < 10) return { text: 'Calm', safe: true };
+    if (windSpeed < 20) return { text: 'Moderate', safe: true };
+    if (windSpeed < 30) return { text: 'Rough', safe: false };
+    return { text: 'Very Rough', safe: false };
+}
+
+// Determine fishing safety
+function getFishingStatus(windSpeed, weather) {
+    const dangerousWeather = ['thunderstorm', 'rain', 'storm'];
+    const weatherType = weather.toLowerCase();
+    
+    if (windSpeed > 25 || dangerousWeather.some(w => weatherType.includes(w))) {
+        return { safe: false, text: 'UNSAFE', icon: 'bi-x-circle-fill' };
+    } else if (windSpeed > 15) {
+        return { safe: false, text: 'CAUTION', icon: 'bi-exclamation-circle-fill' };
+    }
+    return { safe: true, text: 'SAFE', icon: 'bi-check-circle-fill' };
+}
+
+// Get cardinal direction from degrees
+function getWindDirection(degrees) {
+    const directions = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
+    const index = Math.round(degrees / 45) % 8;
+    return directions[index];
+}
+
+// Fetch and update weather data
+async function updateWeatherData() {
+    // Demo/Default data
+    const demoData = {
+        temp: 28,
+        weatherMain: 'Clouds',
+        weatherDesc: 'Partly Cloudy',
+        windSpeed: 10,
+        windDeg: 45
+    };
+    
+    try {
+        let weatherData = demoData;
+        
+        // Try to fetch live data if API key is provided
+        if (WEATHER_CONFIG.apiKey && !WEATHER_CONFIG.demoMode) {
+            const url = `https://api.openweathermap.org/data/2.5/weather?q=${WEATHER_CONFIG.city},${WEATHER_CONFIG.country}&appid=${WEATHER_CONFIG.apiKey}&units=${WEATHER_CONFIG.units}`;
+            
+            const response = await fetch(url);
+            
+            if (response.ok) {
+                const data = await response.json();
+                weatherData = {
+                    temp: Math.round(data.main.temp),
+                    weatherMain: data.weather[0].main,
+                    weatherDesc: data.weather[0].description,
+                    windSpeed: Math.round(data.wind.speed * 3.6),
+                    windDeg: data.wind.deg
+                };
+            }
+        }
+        
+        // Update temperature
+        document.getElementById('tempValue').textContent = weatherData.temp;
+        
+        // Update weather description
+        const weatherDesc = weatherData.weatherDesc.charAt(0).toUpperCase() + weatherData.weatherDesc.slice(1);
+        document.getElementById('weatherDesc').textContent = weatherDesc;
+        
+        // Update weather icon
+        const iconClass = weatherIcons[weatherData.weatherMain.toLowerCase()] || 'bi-cloud-sun';
+        const weatherIconElement = document.getElementById('weatherIcon');
+        weatherIconElement.className = `bi ${iconClass}`;
+        
+        // Update wind speed
+        const windDir = getWindDirection(weatherData.windDeg);
+        document.getElementById('windSpeed').textContent = `${weatherData.windSpeed} km/h ${windDir}`;
+        
+        // Update sea condition
+        const seaCondition = getSeaCondition(weatherData.windSpeed);
+        document.getElementById('seaCondition').textContent = seaCondition.text;
+        
+        // Update fishing status
+        const fishingStatus = getFishingStatus(weatherData.windSpeed, weatherData.weatherMain);
+        const fishingStatusElement = document.getElementById('fishingStatus');
+        const fishingTextElement = document.getElementById('fishingText');
+        const fishingIconElement = fishingStatusElement.querySelector('i');
+        
+        fishingTextElement.textContent = fishingStatus.text;
+        fishingIconElement.className = `bi ${fishingStatus.icon}`;
+        
+        if (fishingStatus.safe) {
+            fishingStatusElement.className = 'weather-item fishing-safe';
+            fishingStatusElement.style.borderLeftColor = 'var(--success)';
+            fishingStatusElement.style.background = 'linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%)';
+            fishingIconElement.style.color = 'var(--success)';
+            fishingTextElement.style.color = 'var(--success)';
+        } else {
+            fishingStatusElement.className = 'weather-item fishing-unsafe';
+            fishingStatusElement.style.borderLeftColor = '#ef4444';
+            fishingStatusElement.style.background = 'linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%)';
+            fishingIconElement.style.color = '#ef4444';
+            fishingTextElement.style.color = '#ef4444';
+        }
+        
+        // Update advisory
+        let advisory = 'None';
+        if (weatherData.windSpeed > 30) {
+            advisory = 'Strong winds warning';
+        } else if (weatherData.weatherMain.toLowerCase().includes('rain') || weatherData.weatherMain.toLowerCase().includes('storm')) {
+            advisory = 'Rain/Storm advisory';
+        } else if (weatherData.windSpeed > 20) {
+            advisory = 'Moderate wind caution';
+        }
+        document.getElementById('advisory').textContent = advisory;
+        
+        // Update last update time
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const modeText = WEATHER_CONFIG.demoMode ? ' (Demo Mode)' : '';
+        document.getElementById('updateTime').textContent = `Last updated: ${timeStr}${modeText}`;
+        
+    } catch (error) {
+        console.error('Error fetching weather data:', error);
+        
+        // Use demo data as fallback
+        document.getElementById('tempValue').textContent = demoData.temp;
+        document.getElementById('weatherDesc').textContent = demoData.weatherDesc;
+        document.getElementById('seaCondition').textContent = 'Calm';
+        document.getElementById('windSpeed').textContent = `${demoData.windSpeed} km/h NE`;
+        document.getElementById('fishingText').textContent = 'SAFE';
+        document.getElementById('advisory').textContent = 'None';
+        
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        document.getElementById('updateTime').textContent = `${timeStr} (Demo Mode)`;
+    }
+}
+
+// Initialize weather on page load
+document.addEventListener('DOMContentLoaded', () => {
+    updateWeatherData();
+    // Update every 10 minutes
+    setInterval(updateWeatherData, 600000);
+});
+</script>
+
+
+<!-- Partnerships Section with Slider -->
+<section class="partnerships py-5" style="background: linear-gradient(135deg, #ecf0f1 0%, #ffffff 100%);">
   <div class="container">
     <div class="text-center mb-5">
-      <h2>🤝 Our Partners</h2>
+      <h2 class="section-title">🤝 Our Partners</h2>
       <p class="text-muted" style="font-size: 1.1rem; max-width: 700px; margin: 0 auto;">
         We are proud to collaborate with institutions and organizations that share our vision of 
         supporting local fishermen and preserving marine resources.
       </p>
     </div>
     
-    <div class="row justify-content-center align-items-stretch g-4">
-      <!-- Partner 1 -->
-      <div class="col-6 col-md-3">
-        <div class="partner-card text-center">
-          <img src="../uploads/partners/olongapo.png" class="img-fluid mb-3" alt="Municipality of Subic">
+    <!-- Partner Slider -->
+    <div class="partner-slider-container position-relative" style="overflow: hidden; padding: 20px 0;">
+      <div class="partner-track-wrapper d-flex align-items-center justify-content-center flex-wrap gap-4">
+        <!-- Partner 1 -->
+        <div class="partner-card">
+          <img src="../uploads/partners/olongapo.png" class="img-fluid mb-3" alt="Municipality of Olongapo" style="max-height: 90px;">
           <p class="mt-2 text-dark small fw-semibold mb-0">Municipality of Olongapo City</p>
         </div>
-      </div>
-      <!-- Partner 2 -->
-      <div class="col-6 col-md-3">
-        <div class="partner-card text-center">
-          <img src="../uploads/partners/bfar.png" class="img-fluid mb-3" alt="BFAR">
+        
+        <!-- Partner 2 -->
+        <div class="partner-card">
+          <img src="../uploads/partners/bfar.png" class="img-fluid mb-3" alt="BFAR" style="max-height: 90px;">
           <p class="mt-2 text-dark small fw-semibold mb-0">Bureau of Fisheries & Aquatic Resources</p>
         </div>
-      </div>
-      <!-- Partner 3 -->
-      <div class="col-6 col-md-3">
-        <div class="partner-card text-center">
-          <img src="../uploads/partners/agriculture.png" class="img-fluid mb-3" alt="SBMA">
+        
+        <!-- Partner 3 -->
+        <div class="partner-card">
+          <img src="../uploads/partners/agriculture.png" class="img-fluid mb-3" alt="Agriculture" style="max-height: 90px;">
           <p class="mt-2 text-dark small fw-semibold mb-0">Olongapo City Agriculture Department</p>
         </div>
-      </div>
-      <!-- Partner 4 -->
-      <div class="col-6 col-md-3">
-        <div class="partner-card text-center">
-          <img src="../uploads/partners/usaid.png" class="img-fluid mb-3" alt="Local Business Sponsor">
+        
+        <!-- Partner 4 -->
+        <div class="partner-card">
+          <img src="../uploads/partners/usaid.png" class="img-fluid mb-3" alt="USAID" style="max-height: 90px;">
           <p class="mt-2 text-dark small fw-semibold mb-0">USAID</p>
         </div>
       </div>
