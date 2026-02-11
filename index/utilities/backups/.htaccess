@@ -1,0 +1,10 @@
+# Prevent direct access to backup files
+<Files *.sql>
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# Allow only from localhost (for development)
+# Remove or modify this for production
+Allow from 127.0.0.1
+Allow from ::1

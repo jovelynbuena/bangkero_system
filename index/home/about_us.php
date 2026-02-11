@@ -788,7 +788,7 @@ document.addEventListener('DOMContentLoaded', () => {
   <div class="container">
     <h2>Join Our Community Today</h2>
     <p>Become part of a thriving association dedicated to the welfare and development of local fishermen. Together, we create opportunities, share resources, and build a stronger future for our community.</p>
-    <a href="contact.php" class="cta-btn">
+    <a href="contact_us.php" class="cta-btn">
       Get in Touch <i class="bi bi-arrow-right"></i>
     </a>
   </div>
