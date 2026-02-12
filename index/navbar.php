@@ -32,7 +32,7 @@ $assocPhone = htmlspecialchars($config['assoc_phone'] ?? '+63 912 345 6789');
 $assocAddress = htmlspecialchars($config['assoc_address'] ?? '123 Association Street, City, Philippines');
 
 // Pages for dropdowns
-$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php'];
+$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php'];
 $archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php'];
 $utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php'];
 $settingsPages = ['system_config.php','profile_settings.php'];
@@ -366,9 +366,18 @@ body {
 .sidebar-dropdown-toggle i.float-end { 
     transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     font-size: 0.9rem;
+    display: inline-block;
 }
 .sidebar-dropdown-toggle[aria-expanded="true"] i.float-end { 
     transform: rotate(180deg);
+}
+
+/* Ensure dropdown toggle is clickable */
+.sidebar-dropdown-toggle {
+    user-select: none;
+    -webkit-user-select: none;
+    -moz-user-select: none;
+    -ms-user-select: none;
 }
 
 /* ==================== RESPONSIVE DESIGN ==================== */
@@ -557,6 +566,11 @@ body.sidebar-open {
         <a href="<?= BASE_URL; ?>management/officer_roles.php"
            class="<?= ($current_page == 'officer_roles.php') ? 'active' : ''; ?>">
            <i class="bi bi-person-check"></i> Manage Roles
+        </a>
+
+        <a href="<?= BASE_URL; ?>management/awards.php"
+           class="<?= ($current_page == 'awards.php') ? 'active' : ''; ?>">
+           <i class="bi bi-trophy-fill"></i> Awards
         </a>
         <?php endif; ?>
 
@@ -761,17 +775,62 @@ body.sidebar-open {
         });
     });
     
+    // Function to sync all dropdown arrow states
+    function syncDropdownArrows() {
+        document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function(toggle){
+            const targetId = toggle.getAttribute('href');
+            const targetMenu = document.querySelector(targetId);
+            
+            if (targetMenu) {
+                const isOpen = targetMenu.classList.contains('show');
+                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+            }
+        });
+    }
+    
     // Smooth scroll for dropdown menus
     document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function(toggle){
-        toggle.addEventListener('click', function(){
+        toggle.addEventListener('click', function(e){
+            // Prevent default anchor behavior
+            e.preventDefault();
+            
+            // Let Bootstrap handle the toggle, then sync
+            setTimeout(syncDropdownArrows, 50);
+            
+            // Scroll into view after animation
             setTimeout(function(){
                 const menu = toggle.nextElementSibling;
                 if(menu && menu.classList.contains('show')) {
-                    menu.scrollIntoView({behavior: 'smooth', block: 'nearest'});
+                    // Scroll the dropdown into view within the sidebar
+                    menu.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
                 }
-            }, 300);
+            }, 350);
         });
+        
+        // Listen to Bootstrap collapse events to sync arrow state
+        const targetId = toggle.getAttribute('href');
+        const targetMenu = document.querySelector(targetId);
+        
+        if (targetMenu) {
+            targetMenu.addEventListener('shown.bs.collapse', function() {
+                toggle.setAttribute('aria-expanded', 'true');
+            });
+            
+            targetMenu.addEventListener('hidden.bs.collapse', function() {
+                toggle.setAttribute('aria-expanded', 'false');
+            });
+        }
     });
+    
+    // Sync arrow states on scroll (debounced)
+    let scrollTimer;
+    sidebar.addEventListener('scroll', function() {
+        clearTimeout(scrollTimer);
+        scrollTimer = setTimeout(syncDropdownArrows, 100);
+    });
+    
+    // Initial sync on page load
+    syncDropdownArrows();
     
     // Prevent body scroll when sidebar is open on mobile
     function updateBodyScroll() {

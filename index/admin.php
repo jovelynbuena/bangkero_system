@@ -124,7 +124,8 @@ if ($upcomingAlertsResult && $upcomingAlertsResult->num_rows > 0) {
     }
 }
 
-// ===== TIME-BASED GREETING =====
+// ===== TIME-BASED GREETING (Philippine Time) =====
+date_default_timezone_set('Asia/Manila');
 $hour = date('G');
 if ($hour >= 5 && $hour < 12) {
     $greeting = "Good Morning";
