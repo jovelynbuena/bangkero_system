@@ -273,10 +273,9 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     .event-highlight h2 {
       font-family: 'Poppins', sans-serif;
       color: var(--dark);
-      margin-bottom: 30px;
+      margin-bottom: 20px;
       font-weight: 700;
-      font-size: 2rem;
-      text-align: center;
+      font-size: 1.5rem;
     }
     .event-card {
       border-radius: 16px;
@@ -285,8 +284,9 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       transition: all 0.3s ease;
       border: none;
       background: white;
-      max-width: 900px;
-      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
     }
     .event-card:hover {
       transform: translateY(-4px);
@@ -295,8 +295,8 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     .event-poster-wrapper {
       position: relative;
       overflow: hidden;
-      height: 100%;
-      min-height: 400px;
+      height: 320px;
+      flex-shrink: 0;
     }
     .event-card img {
       height: 100%;
@@ -308,8 +308,11 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       transform: scale(1.05);
     }
     .event-details {
-      padding: 30px;
+      padding: 24px;
       position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
     .event-badge {
       display: inline-block;
@@ -317,43 +320,42 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       color: white;
       padding: 6px 14px;
       border-radius: 20px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       font-weight: 600;
       letter-spacing: 0.5px;
       text-transform: uppercase;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
+      align-self: flex-start;
     }
     .event-details h3 {
       color: var(--dark);
       font-weight: 700;
-      font-size: 1.5rem;
-      margin-bottom: 12px;
+      font-size: 1.3rem;
+      margin-bottom: 10px;
       font-family: 'Poppins', sans-serif;
       line-height: 1.3;
     }
     .event-description {
       color: #64748b;
-      font-size: 0.95rem;
-      line-height: 1.6;
-      margin-bottom: 18px;
+      font-size: 0.9rem;
+      line-height: 1.5;
+      margin-bottom: 15px;
       font-weight: 400;
     }
     .event-info-grid {
       display: flex;
-      flex-wrap: wrap;
-      gap: 12px;
-      margin-bottom: 20px;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 15px;
     }
     .event-details .icon-text {
       display: flex;
       align-items: center;
-      padding: 8px 14px;
+      padding: 8px 12px;
       background: #f8fafc;
       border-radius: 8px;
       transition: all 0.2s ease;
       border-left: 3px solid var(--primary);
-      flex: 1;
-      min-width: 200px;
     }
     .event-details .icon-text:hover {
       background: #f1f5f9;
@@ -361,12 +363,12 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     .event-details .icon-text i {
       color: var(--primary);
       margin-right: 10px;
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
     .event-details .icon-text span {
       color: var(--dark);
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
     }
     .event-empty-state {
       text-align: center;
@@ -374,8 +376,11 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       background: #f8fafc;
       border-radius: 16px;
       border: 2px dashed #cbd5e1;
-      max-width: 900px;
-      margin: 0 auto;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
     .event-empty-state i {
       font-size: 3.5rem;
@@ -391,33 +396,33 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     /* Compact Countdown */
     .countdown-wrapper {
       background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-      padding: 18px;
+      padding: 15px;
       border-radius: 12px;
-      margin-top: 18px;
+      margin-top: auto;
       border: 1px solid #e2e8f0;
     }
     .countdown-label {
       text-align: center;
       color: var(--dark);
       font-weight: 600;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       opacity: 0.7;
     }
     .countdown {
       display: flex;
       justify-content: center;
-      gap: 12px;
+      gap: 8px;
       flex-wrap: wrap;
     }
     .countdown div {
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: #fff;
-      padding: 16px 12px;
-      border-radius: 10px;
-      min-width: 70px;
+      padding: 12px 8px;
+      border-radius: 8px;
+      min-width: 60px;
       box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
       transition: all 0.3s ease;
     }
@@ -427,131 +432,45 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     }
     .countdown div span {
       display: block;
-      font-size: 1.8rem;
+      font-size: 1.4rem;
       font-weight: 800;
       font-family: 'Poppins', sans-serif;
       line-height: 1;
       margin-bottom: 4px;
     }
     .countdown div small {
-      font-size: 0.7rem;
+      font-size: 0.65rem;
       opacity: 0.9;
       font-weight: 500;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
     
-    /* Professional Section Styling */
-    .event-highlight h2 {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 700;
-      color: var(--dark);
-      font-size: 1.8rem;
-    }
-    
-    /* Modern Event Card - Poster on Top */
-    .event-card {
-      background: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
-      transition: all 0.3s ease;
-    }
-    .event-card:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 30px rgba(44, 62, 80, 0.15);
-    }
-    .event-poster-wrapper {
-      position: relative;
-      height: 400px;
-      overflow: hidden;
-    }
-    .event-poster-wrapper img {
-      width: 100%;
-      height: 100%;
-      object-fit: cover;
-    }
-    .event-details {
-      padding: 25px;
-    }
-    .event-details h3 {
-      font-size: 1.5rem;
-      font-weight: 700;
-      color: var(--dark);
-      margin: 15px 0;
-      font-family: 'Poppins', sans-serif;
-    }
-    .event-description {
-      color: #64748b;
-      font-size: 0.95rem;
-      line-height: 1.6;
-      margin-bottom: 15px;
-    }
-    .event-info-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-bottom: 15px;
-    }
-    .icon-text {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      padding: 8px 12px;
-      background: #f8fafc;
-      border-radius: 8px;
-      border-left: 3px solid var(--primary);
-    }
-    .icon-text i {
-      color: var(--primary);
-      font-size: 1rem;
-    }
-    .icon-text span {
-      color: var(--dark);
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-    
-    /* Cleaner Countdown */
-    .countdown-wrapper {
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
-      padding: 18px;
-      border-radius: 12px;
-      margin-top: 15px;
-    }
-    .countdown-label {
-      text-align: center;
-      font-weight: 600;
-      color: var(--dark);
-      margin-bottom: 10px;
-      font-size: 0.85rem;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
+    /* Cleaner Countdown Pro */
     .countdown-pro {
       display: flex;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
     }
     .countdown-pro div {
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: white;
-      padding: 12px 8px;
-      border-radius: 10px;
-      min-width: 65px;
+      padding: 10px 6px;
+      border-radius: 8px;
+      min-width: 55px;
       text-align: center;
       box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
     }
     .countdown-pro div span {
       display: block;
-      font-size: 1.6rem;
+      font-size: 1.3rem;
       font-weight: 800;
       line-height: 1;
       font-family: 'Poppins', sans-serif;
     }
     .countdown-pro div small {
       display: block;
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       opacity: 0.9;
       margin-top: 4px;
       font-weight: 500;
@@ -566,52 +485,56 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
       height: 100%;
       transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
     }
     .awards-widget:hover {
-      transform: translateY(-5px);
+      transform: translateY(-4px);
       box-shadow: 0 8px 30px rgba(44, 62, 80, 0.15);
     }
     .awards-header {
       background: linear-gradient(135deg, #d4af37 0%, #f4e5a1 100%);
       color: #1a252f;
-      padding: 20px;
+      padding: 16px;
       text-align: center;
+      flex-shrink: 0;
     }
     .awards-header h4 {
-      font-size: 1.15rem;
+      font-size: 1rem;
       font-weight: 700;
       margin: 0;
       font-family: 'Poppins', sans-serif;
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 8px;
+      gap: 6px;
     }
     .awards-header i {
-      font-size: 1.3rem;
+      font-size: 1.1rem;
     }
     .awards-header .subtitle {
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       opacity: 0.85;
-      margin: 5px 0 0 0;
+      margin: 4px 0 0 0;
       font-weight: 500;
     }
     
     /* Featured Award */
     .featured-award {
-      padding: 20px;
+      padding: 18px;
       background: white;
+      flex-shrink: 0;
     }
     .award-image-container {
       position: relative;
       border-radius: 12px;
       overflow: hidden;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.1);
     }
     .award-image {
       width: 100%;
-      height: 200px;
+      height: 180px;
       object-fit: cover;
       transition: transform 0.3s ease;
     }
@@ -623,8 +546,8 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       top: 10px;
       right: 10px;
       background: linear-gradient(135deg, #d4af37 0%, #f4e5a1 100%);
-      width: 40px;
-      height: 40px;
+      width: 35px;
+      height: 35px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -632,43 +555,44 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       box-shadow: 0 2px 8px rgba(0,0,0,0.2);
     }
     .award-badge i {
-      font-size: 1.2rem;
+      font-size: 1rem;
       color: #1a252f;
     }
     .award-info h5 {
       font-family: 'Poppins', sans-serif;
       font-weight: 700;
       color: var(--dark);
-      font-size: 1rem;
-      margin-bottom: 5px;
+      font-size: 0.95rem;
+      margin-bottom: 4px;
     }
     .award-year {
       color: #d4af37;
       font-weight: 700;
-      font-size: 0.85rem;
-      margin-bottom: 8px;
+      font-size: 0.8rem;
+      margin-bottom: 6px;
     }
     .award-desc {
       color: #64748b;
-      font-size: 0.85rem;
-      line-height: 1.5;
+      font-size: 0.8rem;
+      line-height: 1.4;
       margin: 0;
     }
     
     /* Award Highlights List */
     .award-highlights {
-      padding: 20px;
+      padding: 0 18px 18px;
       display: flex;
       flex-direction: column;
-      gap: 12px;
+      gap: 10px;
+      flex: 1;
     }
     .award-item {
       display: flex;
       align-items: center;
-      gap: 12px;
-      padding: 12px;
+      gap: 10px;
+      padding: 10px;
       background: #f8fafc;
-      border-radius: 10px;
+      border-radius: 8px;
       transition: all 0.3s ease;
     }
     .award-item:hover {
@@ -676,8 +600,8 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       transform: translateX(5px);
     }
     .award-icon {
-      width: 40px;
-      height: 40px;
+      width: 36px;
+      height: 36px;
       border-radius: 50%;
       display: flex;
       align-items: center;
@@ -685,7 +609,7 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       flex-shrink: 0;
     }
     .award-icon i {
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
     .award-icon.gold {
       background: linear-gradient(135deg, #ffd700 0%, #ffed4e 100%);
@@ -714,32 +638,34 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     .award-text strong {
       display: block;
       color: var(--dark);
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       font-weight: 600;
       margin-bottom: 2px;
     }
     .award-text small {
       color: #94a3b8;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
     }
     
     /* Awards Footer */
     .awards-footer {
-      padding: 15px 20px;
+      padding: 14px 18px;
       background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
       text-align: center;
+      flex-shrink: 0;
+      border-top: 1px solid #e2e8f0;
     }
     .btn-view-awards {
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      padding: 10px 20px;
+      gap: 6px;
+      padding: 9px 18px;
       background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
       color: white;
       text-decoration: none;
-      border-radius: 10px;
+      border-radius: 8px;
       font-weight: 600;
-      font-size: 0.9rem;
+      font-size: 0.85rem;
       transition: all 0.3s ease;
     }
     .btn-view-awards:hover {
@@ -874,6 +800,15 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     .bottom-space { height: 40px; }
     
     /* Responsive */
+    @media (max-width: 991px) {
+      .col-lg-7, .col-lg-5 {
+        flex: 0 0 100%;
+        max-width: 100%;
+      }
+      .awards-widget {
+        margin-top: 0;
+      }
+    }
     @media (max-width: 768px) {
       .carousel-caption h1 {
         font-size: 2rem;
@@ -885,40 +820,32 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       .event-highlight h2,
       .announcements-section h2,
       .partnerships h2 {
-        font-size: 1.75rem;
+        font-size: 1.5rem;
       }
       .event-poster-wrapper {
-        height: 300px;
-        min-height: 300px;
+        height: 280px;
       }
       .event-details {
-        padding: 20px;
+        padding: 18px;
       }
       .event-details h3 {
-        font-size: 1.3rem;
-      }
-      .event-info-grid {
-        flex-direction: column;
-      }
-      .event-details .icon-text {
-        min-width: 100%;
+        font-size: 1.2rem;
       }
       .countdown div {
-        min-width: 60px;
-        padding: 12px 8px;
+        min-width: 55px;
+        padding: 10px 6px;
       }
       .countdown div span {
-        font-size: 1.4rem;
+        font-size: 1.2rem;
       }
       .countdown div small {
-        font-size: 0.65rem;
-      }
-      /* Awards Widget Mobile */
-      .awards-widget {
-        margin-top: 20px;
+        font-size: 0.6rem;
       }
       .award-image {
-        height: 180px;
+        height: 160px;
+      }
+      .award-highlights {
+        gap: 8px;
       }
     }
   </style>
@@ -982,71 +909,65 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
 <!-- Event Highlight Section -->
 <section class="event-highlight">
     <div class="container">
-        <div class="row g-4">
-            <!-- Event Card (Left Side - 8 columns) -->
-            <div class="col-lg-8">
+        <div class="row g-3 align-items-stretch">
+            <!-- Event Card (Left Side - 7 columns) -->
+            <div class="col-lg-7">
                 <h2 class="mb-3">📅 Upcoming Event</h2>
                 <?php if ($nextEvent): ?>
                 <div class="card event-card border-0">
-                    <div class="row g-0">
-                        <!-- Event Poster (Portrait - Left Side) -->
-                        <div class="col-md-4">
-                            <div class="event-poster-wrapper">
-                                <img src="../../uploads/<?php echo htmlspecialchars($nextEvent['event_poster'] ?: 'default.jpg'); ?>" 
-                                     class="img-fluid" alt="Event Poster">
+                    <!-- Event Poster -->
+                    <div class="event-poster-wrapper">
+                        <img src="../../uploads/<?php echo htmlspecialchars($nextEvent['event_poster'] ?: 'default.jpg'); ?>" 
+                             class="img-fluid" alt="Event Poster">
+                    </div>
+                    
+                    <!-- Event Details -->
+                    <div class="event-details">
+                        <!-- Event Badge & Title -->
+                        <span class="event-badge">
+                            <i class="bi bi-star-fill me-1"></i> Featured
+                        </span>
+                        
+                        <h3><?php echo htmlspecialchars($nextEvent['event_name']); ?></h3>
+                        
+                        <!-- Event Description -->
+                        <p class="event-description">
+                            <?php 
+                                $desc = htmlspecialchars($nextEvent['description']);
+                                $maxLength = 120;
+                                if (strlen($desc) > $maxLength) {
+                                    $desc = substr($desc, 0, $maxLength) . '...';
+                                }
+                                echo $desc;
+                            ?>
+                        </p>
+                        
+                        <!-- Event Info Grid -->
+                        <div class="event-info-grid">
+                            <div class="icon-text">
+                                <i class="bi bi-calendar-event-fill"></i>
+                                <span><?php echo date('M d, Y', strtotime($nextEvent['date'])); ?></span>
+                            </div>
+                            <div class="icon-text">
+                                <i class="bi bi-clock-fill"></i>
+                                <span><?php echo date('g:i A', strtotime($nextEvent['time'])); ?></span>
+                            </div>
+                            <div class="icon-text">
+                                <i class="bi bi-geo-alt-fill"></i>
+                                <span><?php echo htmlspecialchars($nextEvent['location']); ?></span>
                             </div>
                         </div>
                         
-                        <!-- Event Details (Right Side) -->
-                        <div class="col-md-8">
-                            <div class="event-details">
-                                <!-- Event Badge & Title -->
-                                <span class="event-badge">
-                                    <i class="bi bi-star-fill me-1"></i> Featured
-                                </span>
-                                
-                                <h3><?php echo htmlspecialchars($nextEvent['event_name']); ?></h3>
-                                
-                                <!-- Event Description -->
-                                <p class="event-description">
-                                    <?php 
-                                        $desc = htmlspecialchars($nextEvent['description']);
-                                        $maxLength = 100;
-                                        if (strlen($desc) > $maxLength) {
-                                            $desc = substr($desc, 0, $maxLength) . '...';
-                                        }
-                                        echo $desc;
-                                    ?>
-                                </p>
-                                
-                                <!-- Event Info Grid -->
-                                <div class="event-info-grid">
-                                    <div class="icon-text">
-                                        <i class="bi bi-calendar-event-fill"></i>
-                                        <span><?php echo date('M d, Y', strtotime($nextEvent['date'])); ?></span>
-                                    </div>
-                                    <div class="icon-text">
-                                        <i class="bi bi-clock-fill"></i>
-                                        <span><?php echo date('g:i A', strtotime($nextEvent['time'])); ?></span>
-                                    </div>
-                                    <div class="icon-text">
-                                        <i class="bi bi-geo-alt-fill"></i>
-                                        <span><?php echo htmlspecialchars($nextEvent['location']); ?></span>
-                                    </div>
-                                </div>
-                                
-                                <!-- Countdown Timer -->
-                                <div class="countdown-wrapper">
-                                    <div class="countdown-label">
-                                        <i class="bi bi-hourglass-split me-1"></i>Starts In
-                                    </div>
-                                    <div class="countdown countdown-pro" data-event-date="<?php echo $nextEvent['date'] . ' ' . $nextEvent['time']; ?>">
-                                        <div><span class="days">0</span><small>Days</small></div>
-                                        <div><span class="hours">0</span><small>Hours</small></div>
-                                        <div><span class="minutes">0</span><small>Min</small></div>
-                                        <div><span class="seconds">0</span><small>Sec</small></div>
-                                    </div>
-                                </div>
+                        <!-- Countdown Timer -->
+                        <div class="countdown-wrapper">
+                            <div class="countdown-label">
+                                <i class="bi bi-hourglass-split me-1"></i>Starts In
+                            </div>
+                            <div class="countdown countdown-pro" data-event-date="<?php echo $nextEvent['date'] . ' ' . $nextEvent['time']; ?>">
+                                <div><span class="days">0</span><small>Days</small></div>
+                                <div><span class="hours">0</span><small>Hours</small></div>
+                                <div><span class="minutes">0</span><small>Min</small></div>
+                                <div><span class="seconds">0</span><small>Sec</small></div>
                             </div>
                         </div>
                     </div>
@@ -1060,69 +981,71 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
                 <?php endif; ?>
             </div>
             
-            <!-- Awards & Recognition (Right Side - 4 columns) -->
-            <div class="col-lg-4">
-                <h2 class="mb-3">🏆 Awards & Recognition</h2>
-                <div class="awards-widget h-100">
-                    <!-- Header -->
-                    <div class="awards-header">
-                        <h4><i class="bi bi-trophy-fill"></i> Recent Achievements</h4>
-                        <p class="subtitle">Celebrating Our Success</p>
-                    </div>
-                    
-                    <!-- Featured Award/Certificate -->
-                    <div class="featured-award">
-                        <div class="award-image-container">
-                            <img src="../../uploads/awards/Screenshot 2026-02-12 015634.png" alt="Featured Award" class="award-image">
-                            <div class="award-badge">
-                                <i class="bi bi-award-fill"></i>
-                            </div>
+            <!-- Awards & Recognition (Right Side - 5 columns) -->
+            <div class="col-lg-5 d-flex">
+                <div class="w-100">
+                    <h2 class="mb-3">🏆 Awards & Recognition</h2>
+                    <div class="awards-widget">
+                        <!-- Header -->
+                        <div class="awards-header">
+                            <h4><i class="bi bi-trophy-fill"></i> Recent Achievements</h4>
+                            <p class="subtitle">Celebrating Our Success</p>
                         </div>
-                        <div class="award-info">
-                            <h5>Outstanding Community Service</h5>
-                            <p class="award-year">2025</p>
-                            <p class="award-desc">Recognized by the City Government for exceptional service to the fishing community.</p>
-                        </div>
-                    </div>
-                    
-                    <!-- Award Highlights -->
-                    <div class="award-highlights">
-                        <div class="award-item">
-                            <div class="award-icon gold">
-                                <i class="bi bi-trophy-fill"></i>
+                        
+                        <!-- Featured Award/Certificate -->
+                        <div class="featured-award">
+                            <div class="award-image-container">
+                                <img src="../../uploads/awards/Screenshot 2026-02-12 015634.png" alt="Featured Award" class="award-image">
+                                <div class="award-badge">
+                                    <i class="bi bi-award-fill"></i>
+                                </div>
                             </div>
-                            <div class="award-text">
-                                <strong>Best Association Award</strong>
-                                <small>BFAR Region 3 - 2024</small>
+                            <div class="award-info">
+                                <h5>Outstanding Community Service</h5>
+                                <p class="award-year">2025</p>
+                                <p class="award-desc">Recognized by the City Government for exceptional service to the fishing community.</p>
                             </div>
                         </div>
                         
-                        <div class="award-item">
-                            <div class="award-icon silver">
-                                <i class="bi bi-patch-check-fill"></i>
+                        <!-- Award Highlights -->
+                        <div class="award-highlights">
+                            <div class="award-item">
+                                <div class="award-icon gold">
+                                    <i class="bi bi-trophy-fill"></i>
+                                </div>
+                                <div class="award-text">
+                                    <strong>Best Association Award</strong>
+                                    <small>BFAR Region 3 - 2024</small>
+                                </div>
                             </div>
-                            <div class="award-text">
-                                <strong>Environmental Excellence</strong>
-                                <small>DENR Recognition - 2024</small>
+                            
+                            <div class="award-item">
+                                <div class="award-icon silver">
+                                    <i class="bi bi-patch-check-fill"></i>
+                                </div>
+                                <div class="award-text">
+                                    <strong>Environmental Excellence</strong>
+                                    <small>DENR Recognition - 2024</small>
+                                </div>
+                            </div>
+                            
+                            <div class="award-item">
+                                <div class="award-icon bronze">
+                                    <i class="bi bi-star-fill"></i>
+                                </div>
+                                <div class="award-text">
+                                    <strong>Safety Champion</strong>
+                                    <small>Coast Guard Citation - 2023</small>
+                                </div>
                             </div>
                         </div>
                         
-                        <div class="award-item">
-                            <div class="award-icon bronze">
-                                <i class="bi bi-star-fill"></i>
-                            </div>
-                            <div class="award-text">
-                                <strong>Safety Champion</strong>
-                                <small>Coast Guard Citation - 2023</small>
-                            </div>
+                        <!-- View All Button -->
+                        <div class="awards-footer">
+                            <a href="awards.php" class="btn-view-awards">
+                                <i class="bi bi-grid-3x3-gap"></i> View All Awards
+                            </a>
                         </div>
-                    </div>
-                    
-                    <!-- View All Button -->
-                    <div class="awards-footer">
-                        <a href="awards.php" class="btn-view-awards">
-                            <i class="bi bi-grid-3x3-gap"></i> View All Awards
-                        </a>
                     </div>
                 </div>
             </div>

@@ -217,7 +217,8 @@ function getCategoryIcon($category) {
     return $icons[$category] ?? '📢';
 }
 
-// Get time-based greeting
+// Get time-based greeting (Philippine Time)
+date_default_timezone_set('Asia/Manila');
 $hour = date('G');
 if ($hour >= 5 && $hour < 12) {
     $greeting = "Good Morning";

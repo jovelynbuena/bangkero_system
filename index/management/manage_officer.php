@@ -15,29 +15,45 @@ if (isset($_POST['ajax_action'])) {
     $action = $_POST['ajax_action'];
     $officer_id = isset($_POST['officer_id']) ? intval($_POST['officer_id']) : 0;
     
+    // Validate officer_id
+    if ($officer_id <= 0) {
+        $response['message'] = 'Invalid officer ID.';
+        echo json_encode($response);
+        exit;
+    }
+    
     try {
         switch($action) {
             case 'approve':
-                // Check if officer exists and is pending
-                $check = $conn->query("SELECT status FROM users WHERE id=$officer_id AND role IN ('officer', 'admin')");
-                if ($check && $check->num_rows > 0) {
-                    $row = $check->fetch_assoc();
-                    if ($row['status'] === 'approved') {
+                // Check if officer exists
+                $stmt = $conn->prepare("SELECT status FROM users WHERE id=? AND role IN ('officer', 'admin')");
+                $stmt->bind_param("i", $officer_id);
+                $stmt->execute();
+                $result = $stmt->get_result();
+                
+                if ($result && $result->num_rows > 0) {
+                    $row = $result->fetch_assoc();
+                    // Normalize status to lowercase for comparison
+                    $currentStatus = strtolower(trim($row['status']));
+                    
+                    if ($currentStatus === 'approved') {
                         $response['message'] = 'Officer is already approved!';
                     } else {
-                        $stmt = $conn->prepare("UPDATE users SET status='approved' WHERE id=? AND role IN ('officer', 'admin')");
-                        $stmt->bind_param("i", $officer_id);
-                        if ($stmt->execute() && $stmt->affected_rows > 0) {
+                        // Update status to approved
+                        $updateStmt = $conn->prepare("UPDATE users SET status='approved' WHERE id=? AND role IN ('officer', 'admin')");
+                        $updateStmt->bind_param("i", $officer_id);
+                        if ($updateStmt->execute() && $updateStmt->affected_rows > 0) {
                             $response['success'] = true;
                             $response['message'] = 'Officer approved successfully!';
                         } else {
                             $response['message'] = 'Failed to approve officer.';
                         }
-                        $stmt->close();
+                        $updateStmt->close();
                     }
                 } else {
                     $response['message'] = 'Officer not found!';
                 }
+                $stmt->close();
                 break;
                 
             case 'reject':
@@ -47,7 +63,7 @@ if (isset($_POST['ajax_action'])) {
                     $response['success'] = true;
                     $response['message'] = 'Officer rejected successfully!';
                 } else {
-                    $response['message'] = 'Failed to reject officer.';
+                    $response['message'] = 'Failed to reject officer or officer not found.';
                 }
                 $stmt->close();
                 break;

@@ -4,6 +4,9 @@
 // Change between ONLINE and OFFLINE modes
 // ============================================
 
+// Set Philippine timezone globally
+date_default_timezone_set('Asia/Manila');
+
 // 🌐 ONLINE MODE (default) - Uses freesqldatabase.com
 require_once(__DIR__ . '/db_connect_online.php');
 
@@ -15,4 +18,6 @@ require_once(__DIR__ . '/db_connect_online.php');
 // - For normal use: Use ONLINE mode (current)
 // - For defense/offline: Comment ONLINE, uncomment OFFLINE
 // ============================================
+
+
 
