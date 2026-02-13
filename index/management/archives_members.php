@@ -95,10 +95,33 @@ $offset = ($page - 1) * $limit;
 
 // Search functionality
 $search = "";
+$work_type_filter = "";
+$sort = "newest";
 $whereClause = "";
+
 if (isset($_GET['search']) && !empty(trim($_GET['search']))) {
     $search = $conn->real_escape_string(trim($_GET['search']));
-    $whereClause = "WHERE name LIKE '%$search%' OR email LIKE '%$search%' OR phone LIKE '%$search%'";
+}
+
+if (isset($_GET['work_type']) && !empty(trim($_GET['work_type']))) {
+    $work_type_filter = $conn->real_escape_string(trim($_GET['work_type']));
+}
+
+if (isset($_GET['sort'])) {
+    $sort = trim($_GET['sort']);
+}
+
+// Build WHERE clause
+$conditions = [];
+if ($search !== '') {
+    $conditions[] = "(name LIKE '%$search%' OR email LIKE '%$search%' OR phone LIKE '%$search%')";
+}
+if ($work_type_filter !== '') {
+    $conditions[] = "(work_type = '$work_type_filter')";
+}
+
+if (!empty($conditions)) {
+    $whereClause = "WHERE " . implode(" AND ", $conditions);
 }
 
 // Count total records
@@ -110,8 +133,19 @@ $totalPages = ceil($totalRecords / $limit);
 // Fetch archived members with pagination
 $sql = "SELECT * FROM member_archive 
         $whereClause
-        ORDER BY archived_at DESC 
-        LIMIT $limit OFFSET $offset";
+        ORDER BY ";
+
+if ($sort === 'oldest') {
+    $sql .= "archived_at ASC";
+} elseif ($sort === 'name_a') {
+    $sql .= "name ASC";
+} elseif ($sort === 'name_z') {
+    $sql .= "name DESC";
+} else {
+    $sql .= "archived_at DESC";
+}
+
+$sql .= " LIMIT $limit OFFSET $offset";
 $result = $conn->query($sql);
 
 // Statistics
@@ -331,6 +365,45 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             color: white;
         }
 
+        .btn-delete-perm {
+            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            border: none;
+            border-radius: 8px;
+            padding: 8px 16px;
+            color: white;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn-delete-perm:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            color: white;
+        }
+
+        /* Bulk Action Bar */
+        .bulk-action-bar {
+            background: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+            border-left: 5px solid #667eea;
+            animation: slideInDown 0.3s ease-out;
+        }
+
+        @keyframes slideInDown {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+
         .pagination-container {
             display: flex;
             justify-content: center;
@@ -414,20 +487,75 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
         </div>
     </div>
 
-    <!-- Search Section -->
-    <div class="search-filter-section">
-        <form method="GET" action="archives_members.php">
-            <div class="search-box">
-                <input type="text" 
-                       name="search" 
-                       class="form-control" 
-                       placeholder="Search by name, email, or phone..." 
-                       value="<?php echo htmlspecialchars($search); ?>">
-                <button type="submit">
-                    <i class="bi bi-search"></i> Search
-                </button>
+    <!-- Bulk Actions -->
+    <div id="bulkActionBar" class="bulk-action-bar">
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAllMembers" style="width: 20px; height: 20px;">
+                <label class="form-check-label ms-2 fw-bold text-primary" for="selectAllMembers">Select All</label>
             </div>
-        </form>
+            <span id="selectedCount" class="badge bg-primary rounded-pill px-3 py-2" style="font-size: 14px;">0 Selected</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="bulkAction('restore')" class="btn btn-success rounded-pill px-4">
+                <i class="bi bi-arrow-counterclockwise me-2"></i>Restore Selected
+            </button>
+            <button onclick="bulkAction('delete')" class="btn btn-danger rounded-pill px-4">
+                <i class="bi bi-trash-fill me-2"></i>Delete Permanently
+            </button>
+            <button onclick="clearSelection()" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-x-circle me-2"></i>Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- Professional Filter Toolbar -->
+
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-3">
+            <form method="GET" class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <!-- LEFT SIDE: Search & Filter -->
+                <div class="d-flex gap-2 flex-wrap align-items-center" style="flex: 1; min-width: 300px;">
+                    <!-- Search Input -->
+                    <div class="position-relative" style="flex: 1; min-width: 200px;">
+                        <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #999;"></i>
+                        <input type="text" name="search" class="form-control rounded-pill ps-5" 
+                               placeholder="Search by name, email or phone..."
+                               value="<?= htmlspecialchars($search) ?>">
+                    </div>
+                    
+                    <!-- Work Type Filter -->
+                    <select name="work_type" class="form-select rounded-pill shadow-sm" style="flex: 0 0 auto; min-width: 140px;">
+                        <option value="">All Work Types</option>
+                        <option value="Fisherman" <?= $work_type_filter === 'Fisherman' ? 'selected' : '' ?>>Fisherman</option>
+                        <option value="Boat Owner" <?= $work_type_filter === 'Boat Owner' ? 'selected' : '' ?>>Boat Owner</option>
+                        <option value="Trader" <?= $work_type_filter === 'Trader' ? 'selected' : '' ?>>Trader</option>
+                        <option value="Processor" <?= $work_type_filter === 'Processor' ? 'selected' : '' ?>>Processor</option>
+                    </select>
+                </div>
+
+                <!-- RIGHT SIDE: Sort, Reset -->
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <!-- Sort Dropdown -->
+                    <select name="sort" class="form-select rounded-pill shadow-sm" style="flex: 0 0 auto; min-width: 140px;" onchange="this.form.submit();">
+                        <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
+                        <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
+                        <option value="name_a" <?= $sort === 'name_a' ? 'selected' : '' ?>>Name A-Z</option>
+                        <option value="name_z" <?= $sort === 'name_z' ? 'selected' : '' ?>>Name Z-A</option>
+                    </select>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-search me-2"></i>Search
+                    </button>
+
+                    <!-- Reset Button -->
+                    <a href="archives_members.php" class="btn btn-light border rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Reset
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Table -->
@@ -436,6 +564,7 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             <table class="table">
                 <thead>
                     <tr>
+                        <th width="40px"></th>
                         <th>Member ID</th>
                         <th>Name</th>
                         <th>Email</th>
@@ -449,7 +578,11 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
                 <?php if ($result && $result->num_rows > 0): ?>
                     <?php while ($row = $result->fetch_assoc()): ?>
                         <tr>
+                            <td>
+                                <input type="checkbox" class="form-check-input member-checkbox" value="<?php echo (int)$row['member_id']; ?>" onchange="updateBulkBar()">
+                            </td>
                             <td><strong><?php echo (int)$row['member_id']; ?></strong></td>
+
                             <td><?php echo htmlspecialchars($row['name']); ?></td>
                             <td><?php echo htmlspecialchars($row['email']); ?></td>
                             <td><?php echo htmlspecialchars($row['phone']); ?></td>
@@ -461,13 +594,19 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
                                 <?php endif; ?>
                             </td>
                             <td><?php echo date('M d, Y', strtotime($row['archived_at'])); ?></td>
-                            <td class="text-center">
+                            <td class="text-center d-flex justify-content-center gap-2">
                                 <button type="button" 
                                         class="btn-restore" 
                                         onclick="confirmRestore(<?php echo (int)$row['member_id']; ?>, '<?php echo htmlspecialchars(addslashes($row['name'])); ?>')">
                                     <i class="bi bi-arrow-counterclockwise"></i> Restore
                                 </button>
+                                <button type="button" 
+                                        class="btn-delete-perm" 
+                                        onclick="confirmDeletePerm(<?php echo (int)$row['member_id']; ?>, '<?php echo htmlspecialchars(addslashes($row['name'])); ?>')">
+                                    <i class="bi bi-trash"></i> Delete
+                                </button>
                             </td>
+
                         </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
@@ -587,6 +726,63 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+    // Bulk Selection Logic
+    const selectAllBtn = document.getElementById('selectAllMembers');
+    const checkboxes = document.querySelectorAll('.member-checkbox');
+    const bulkBar = document.getElementById('bulkActionBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateBulkBar();
+        });
+    }
+
+    window.updateBulkBar = function() {
+        const checked = document.querySelectorAll('.member-checkbox:checked');
+        const count = checked.length;
+        
+        if (count > 0) {
+            bulkBar.style.display = 'flex';
+            selectedCount.textContent = count + ' Selected';
+        } else {
+            bulkBar.style.display = 'none';
+            if (selectAllBtn) selectAllBtn.checked = false;
+        }
+    }
+
+    window.clearSelection = function() {
+        checkboxes.forEach(cb => cb.checked = false);
+        if (selectAllBtn) selectAllBtn.checked = false;
+        updateBulkBar();
+    }
+
+    window.bulkAction = function(action) {
+        const checked = document.querySelectorAll('.member-checkbox:checked');
+        const ids = Array.from(checked).map(cb => cb.value);
+        
+        if (ids.length === 0) return;
+
+        const actionText = action === 'restore' ? 'Restore' : 'Permanently Delete';
+        const actionIcon = action === 'restore' ? 'question' : 'warning';
+        const confirmColor = action === 'restore' ? '#10b981' : '#ef4444';
+
+        Swal.fire({
+            title: `${actionText} Selected Members?`,
+            text: `You are about to ${actionText.toLowerCase()} ${ids.length} members. ${action === 'delete' ? 'This cannot be undone!' : ''}`,
+            icon: actionIcon,
+            showCancelButton: true,
+            confirmButtonColor: confirmColor,
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Yes, ${actionText}!`
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `bulk_manage_archives.php?type=members&ids=${ids.join(',')}&action=${action}`;
+            }
+        });
+    }
+
 function confirmRestore(id, name) {
     Swal.fire({
         title: 'Restore Member?',
@@ -607,6 +803,22 @@ function confirmRestore(id, name) {
     });
 }
 
+function confirmDeletePerm(id, name) {
+    Swal.fire({
+        title: 'Delete Permanently?',
+        text: `Are you sure you want to permanently delete "${name}"? This action cannot be undone!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Delete Permanently'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `bulk_manage_archives.php?type=members&ids=${id}&action=delete`;
+        }
+    });
+}
+
 <?php if (isset($_GET['retrieved'])): ?>
     Swal.fire({
         icon: 'success',
@@ -616,6 +828,17 @@ function confirmRestore(id, name) {
         showConfirmButton: false
     });
 <?php endif; ?>
+
+<?php if (isset($_GET['bulk_success'])): ?>
+    Swal.fire({ 
+        icon: 'success', 
+        title: 'Success!', 
+        text: '<?= $_GET['count'] ?> members were <?= $_GET['action'] === 'restore' ? 'restored' : 'permanently deleted' ?>.', 
+        timer: 3000, 
+        showConfirmButton: false 
+    });
+<?php endif; ?>
+
 
 <?php if (isset($_GET['error'])): ?>
     Swal.fire({

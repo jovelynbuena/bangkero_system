@@ -3,7 +3,9 @@ if (session_status() === PHP_SESSION_NONE) session_start();
 require_once('../../config/db_connect.php');
 
 $errors = [];
-$success = '';
+$success = $_GET['success'] ?? '';
+$error_get = $_GET['error'] ?? '';
+if ($error_get) $errors[] = $error_get;
 
 // CSRF token
 if (empty($_SESSION['csrf_token'])) {
@@ -65,7 +67,9 @@ function checkCsrf() {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'add') {
     if (!checkCsrf()) { $errors[] = "Invalid session token."; }
     $title = trim($_POST['title'] ?? '');
+    $category = trim($_POST['category'] ?? '');
     if ($title === '') $errors[] = "Gallery title is required.";
+    if ($category === '') $errors[] = "Category is required.";
 
     if (empty($_FILES['images']['name'][0])) {
         $errors[] = "Please upload at least one image.";
@@ -75,8 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $saved = saveUploadedImages($_FILES['images'], $uploadDir, $errors);
         if (!empty($saved)) {
             $imagesStr = implode(',', $saved);
-            $stmt = $conn->prepare("INSERT INTO galleries (title, images, created_at) VALUES (?,?,NOW())");
-            $stmt->bind_param("ss", $title, $imagesStr);
+            $stmt = $conn->prepare("INSERT INTO galleries (title, category, images, created_at) VALUES (?,?,?,NOW())");
+            $stmt->bind_param("sss", $title, $category, $imagesStr);
             if ($stmt->execute()) {
                 $success = "Gallery created successfully.";
             } else {
@@ -90,29 +94,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     }
 }
 
+
 // -------------------------
-// DELETE GALLERY
+// ARCHIVE GALLERY
 // -------------------------
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'delete') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'archive') {
     if (!checkCsrf()) { $errors[] = "Invalid session token."; }
     $id = intval($_POST['id'] ?? 0);
     if ($id <= 0) $errors[] = "Invalid gallery id.";
 
     if (empty($errors)) {
-        $stmt = $conn->prepare("SELECT images FROM galleries WHERE id = ?");
-        $stmt->bind_param("i", $id); $stmt->execute(); $res = $stmt->get_result();
-        if ($row = $res->fetch_assoc()) {
-            $imgs = array_filter(array_map('trim', explode(',', $row['images'] ?? '')));
-            foreach ($imgs as $img) {
-                $path = $uploadDir . $img;
-                if (file_exists($path)) @unlink($path);
-            }
-            $del = $conn->prepare("DELETE FROM galleries WHERE id = ?");
-            $del->bind_param("i", $id);
-            if ($del->execute()) $success = "Gallery deleted.";
-            else $errors[] = "DB error: " . $conn->error;
-        } else {
-            $errors[] = "Gallery not found.";
+        try {
+            $conn->begin_transaction();
+
+            // Copy to archive
+            $stmt = $conn->prepare("INSERT INTO galleries_archive (gallery_id, title, category, images, original_created_at) SELECT id, title, category, images, created_at FROM galleries WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+
+            // Delete from main table
+            $stmt = $conn->prepare("DELETE FROM galleries WHERE id = ?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+
+            $conn->commit();
+            $success = "Gallery moved to archive successfully.";
+        } catch (Exception $e) {
+            $conn->rollback();
+            $errors[] = "Failed to archive: " . $e->getMessage();
         }
     }
 }
@@ -124,8 +135,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     if (!checkCsrf()) { $errors[] = "Invalid session token."; }
     $id = intval($_POST['id'] ?? 0);
     $title = trim($_POST['title'] ?? '');
+    $category = trim($_POST['category'] ?? '');
     if ($id <= 0) $errors[] = "Invalid gallery id.";
     if ($title === '') $errors[] = "Gallery title is required.";
+    if ($category === '') $errors[] = "Category is required.";
 
     if (empty($errors)) {
         // fetch existing images
@@ -143,45 +156,104 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $allImgs = array_values(array_filter(array_merge($oldImgs, $newSaved)));
         $imagesStr = implode(',', $allImgs);
 
-        $u = $conn->prepare("UPDATE galleries SET title = ?, images = ? WHERE id = ?");
-        $u->bind_param("ssi", $title, $imagesStr, $id);
+        $u = $conn->prepare("UPDATE galleries SET title = ?, category = ?, images = ? WHERE id = ?");
+        $u->bind_param("sssi", $title, $category, $imagesStr, $id);
         if ($u->execute()) $success = "Gallery updated.";
         else $errors[] = "DB error: " . $conn->error;
     }
 }
 
 // -------------------------
-// SEARCH params
+// SEARCH & FILTER params
 // -------------------------
 $searchQ = trim($_GET['q'] ?? '');
+$categoryFilter = trim($_GET['category'] ?? '');
+$date_from = $_GET['date_from'] ?? '';
+$date_to = $_GET['date_to'] ?? '';
+$sort = $_GET['sort'] ?? 'date_desc';
+
+// Pagination
+$page = isset($_GET['page']) ? (int)$_GET['page'] : 1;
+if ($page < 1) $page = 1;
+$limit = 10;
+$offset = ($page - 1) * $limit;
 
 // -------------------------
-// FETCH GALLERIES (with search)
+// FETCH GALLERIES (with search, category, and sort)
 // -------------------------
 $where = [];
 $params = [];
 $types = '';
 
 if ($searchQ !== '') {
-    $where[] = "(title LIKE ? OR images LIKE ?)";
-    $params[] = "%{$searchQ}%";
-    $params[] = "%{$searchQ}%";
+    $where[] = "(title LIKE ? OR category LIKE ?)";
+    $search_param = "%{$searchQ}%";
+    $params[] = $search_param;
+    $params[] = $search_param;
     $types .= 'ss';
 }
 
-$sql = "SELECT * FROM galleries";
-if (!empty($where)) $sql .= " WHERE " . implode(' AND ', $where);
-$sql .= " ORDER BY created_at DESC";
+if ($categoryFilter !== '') {
+    $where[] = "category = ?";
+    $params[] = $categoryFilter;
+    $types .= 's';
+}
 
-$galleries = [];
+if ($date_from !== '') {
+    $where[] = "DATE(created_at) >= ?";
+    $params[] = $date_from;
+    $types .= 's';
+}
+
+if ($date_to !== '') {
+    $where[] = "DATE(created_at) <= ?";
+    $params[] = $date_to;
+    $types .= 's';
+}
+
+$where_sql = !empty($where) ? " WHERE " . implode(' AND ', $where) : "";
+
+// Get total for pagination
+$count_sql = "SELECT COUNT(*) as total FROM galleries" . $where_sql;
 if (!empty($params)) {
-    $stmt = $conn->prepare($sql);
+    $stmt = $conn->prepare($count_sql);
     $stmt->bind_param($types, ...$params);
     $stmt->execute();
-    $result = $stmt->get_result();
+    $total_records = $stmt->get_result()->fetch_assoc()['total'];
 } else {
-    $result = $conn->query($sql);
+    $total_records = $conn->query($count_sql)->fetch_assoc()['total'];
 }
+$total_pages = ceil($total_records / $limit);
+
+$sql = "SELECT * FROM galleries" . $where_sql;
+
+// Apply sorting
+switch ($sort) {
+    case 'date_asc':
+        $sql .= " ORDER BY created_at ASC";
+        break;
+    case 'title_asc':
+        $sql .= " ORDER BY title ASC";
+        break;
+    case 'title_desc':
+        $sql .= " ORDER BY title DESC";
+        break;
+    case 'date_desc':
+    default:
+        $sql .= " ORDER BY created_at DESC";
+        break;
+}
+
+$sql .= " LIMIT ? OFFSET ?";
+$params[] = $limit;
+$params[] = $offset;
+$types .= 'ii';
+
+$galleries = [];
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$result = $stmt->get_result();
 
 if ($result && $result->num_rows > 0) {
     while ($r = $result->fetch_assoc()) {
@@ -189,9 +261,19 @@ if ($result && $result->num_rows > 0) {
         $galleries[] = [
             'id' => $r['id'],
             'title' => $r['title'],
+            'category' => $r['category'] ?? 'Uncategorized',
             'images' => $imgs,
             'created_at' => $r['created_at']
         ];
+    }
+}
+
+// Get all available categories
+$categories_result = $conn->query("SELECT DISTINCT category FROM galleries WHERE category IS NOT NULL AND category != '' ORDER BY category ASC");
+$available_categories = [];
+if ($categories_result && $categories_result->num_rows > 0) {
+    while ($cat_row = $categories_result->fetch_assoc()) {
+        $available_categories[] = $cat_row['category'];
     }
 }
 ?>
@@ -248,71 +330,63 @@ if ($result && $result->num_rows > 0) {
     margin: 0;
   }
 
-  /* Search Bar */
-  .search-container {
+  /* Filter Section */
+  .filter-section {
+    background: white;
+    padding: 24px;
+    border-radius: 16px;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    margin-bottom: 32px;
+    border: 1px solid #E8E8E8;
+  }
+  .form-label-sm {
+    font-size: 12px;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 4px;
+    display: block;
+  }
+  .filter-select {
+    border: 2px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 12px 16px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    background-color: white;
+    height: auto;
+    width: 100%;
+  }
+  .filter-select:focus {
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    outline: none;
+  }
+
+  /* Search Box */
+  .search-box {
     position: relative;
   }
-
-  .search-container input {
+  .search-box input {
+    width: 100%;
+    padding: 12px 16px 12px 45px;
+    border: 2px solid #e0e0e0;
     border-radius: 12px;
-    border: 2px solid rgba(255,255,255,0.3);
-    padding: 10px 16px 10px 45px;
-    background: rgba(255,255,255,0.15);
-    color: white;
-    backdrop-filter: blur(10px);
+    font-size: 14px;
+    transition: all 0.3s ease;
   }
-
-  .search-container input::placeholder {
-    color: rgba(255,255,255,0.7);
-  }
-
-  .search-container input:focus {
-    background: rgba(255,255,255,0.25);
-    border-color: rgba(255,255,255,0.5);
+  .search-box input:focus {
     outline: none;
-    box-shadow: 0 0 0 4px rgba(255,255,255,0.1);
+    border-color: #667eea;
+    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
   }
-
-  .search-container i {
+  .search-box i {
     position: absolute;
     left: 16px;
     top: 50%;
     transform: translateY(-50%);
-    color: rgba(255,255,255,0.8);
-    font-size: 1.1rem;
-  }
-
-  .btn-search {
-    background: rgba(255,255,255,0.25);
-    border: 2px solid rgba(255,255,255,0.4);
-    color: white;
-    border-radius: 12px;
-    padding: 10px 20px;
-    font-weight: 600;
-  }
-
-  .btn-search:hover {
-    background: rgba(255,255,255,0.35);
-    border-color: rgba(255,255,255,0.6);
-    color: white;
-  }
-
-  .btn-light {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border: none;
-    color: white;
-    padding: 12px 28px;
-    border-radius: 12px;
-    font-weight: 600;
-    box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  }
-
-  .btn-light:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
-    background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
-    color: white;
+    color: #94a3b8;
+    font-size: 18px;
   }
 
   /* Gallery Section */
@@ -659,6 +733,50 @@ if ($result && $result->num_rows > 0) {
   .gallery-section {
     animation: fadeInUp 0.5s ease-out;
   }
+
+  /* Bulk Action Bar */
+  .bulk-action-bar {
+    position: sticky;
+    top: 20px;
+    z-index: 1000;
+    background: white;
+    padding: 16px 24px;
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+    border: 1px solid #E8E8E8;
+    margin-bottom: 24px;
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    animation: slideInDown 0.3s ease-out;
+  }
+
+  @keyframes slideInDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+  }
+
+  .gallery-checkbox {
+    width: 24px;
+    height: 24px;
+    cursor: pointer;
+    border: 2px solid #667eea;
+    border-radius: 6px;
+  }
+
+  .btn-export-group .btn {
+    border-radius: 10px;
+    font-weight: 600;
+    padding: 10px 20px;
+  }
+
+  .pagination-container {
+    background: white;
+    padding: 20px;
+    border-radius: 16px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+    margin-top: 32px;
+  }
 </style>
 </head>
 <body>
@@ -674,16 +792,103 @@ if ($result && $result->num_rows > 0) {
         <h2><i class="bi bi-images"></i> Gallery Management</h2>
         <p class="meta">Upload, organize, and manage your photo galleries</p>
       </div>
-      <div class="d-flex gap-2 align-items-center flex-wrap">
-        <form class="d-flex search-container" method="GET" style="gap:.5rem;">
+      <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modalAdd" style="background: white; color: #667eea; border: none; padding: 12px 28px; border-radius: 12px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.1);">
+        <i class="bi bi-plus-circle me-2"></i> New Gallery
+      </button>
+    </div>
+  </div>
+
+  <!-- Advanced Filter Section -->
+  <div class="filter-section">
+    <form method="GET" id="filterForm" class="row g-3">
+      <div class="col-md-3">
+        <label class="form-label-sm">Search</label>
+        <div class="search-box">
           <i class="bi bi-search"></i>
-          <input name="q" class="form-control" type="search" placeholder="Search galleries..." value="<?= e($searchQ) ?>">
-          <button class="btn btn-search" type="submit"><i class="bi bi-search"></i></button>
-        </form>
-        <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modalAdd">
-          <i class="bi bi-plus-circle me-2"></i> New Gallery
-        </button>
+          <input type="text" name="q" placeholder="Search gallery title..." value="<?= e($searchQ) ?>" autocomplete="off">
+        </div>
       </div>
+      
+      <div class="col-md-2">
+        <label class="form-label-sm">Category</label>
+        <select name="category" class="form-select filter-select">
+          <option value="">All Categories</option>
+          <?php foreach ($available_categories as $cat): ?>
+            <option value="<?= e($cat) ?>" <?= $categoryFilter === $cat ? 'selected' : '' ?>><?= e($cat) ?></option>
+          <?php endforeach; ?>
+        </select>
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label-sm">Date From</label>
+        <input type="date" name="date_from" class="form-control filter-select" value="<?= e($date_from) ?>">
+      </div>
+
+      <div class="col-md-2">
+        <label class="form-label-sm">Date To</label>
+        <input type="date" name="date_to" class="form-control filter-select" value="<?= e($date_to) ?>">
+      </div>
+
+      <div class="col-md-3">
+        <label class="form-label-sm">Sort By</label>
+        <select name="sort" class="form-select filter-select">
+          <option value="date_desc" <?= $sort === 'date_desc' ? 'selected' : '' ?>>Newest First</option>
+          <option value="date_asc" <?= $sort === 'date_asc' ? 'selected' : '' ?>>Oldest First</option>
+          <option value="title_asc" <?= $sort === 'title_asc' ? 'selected' : '' ?>>Title (A-Z)</option>
+          <option value="title_desc" <?= $sort === 'title_desc' ? 'selected' : '' ?>>Title (Z-A)</option>
+        </select>
+      </div>
+
+      <div class="col-12 d-flex justify-content-between align-items-center mt-3">
+        <div class="d-flex gap-2">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px; background: #667eea; border: none; border-radius: 12px; font-weight: 600;">
+            <i class="bi bi-funnel me-2"></i> Apply Filters
+          </button>
+          <a href="galleries.php" class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="padding: 10px 24px; border-radius: 12px; border: 2px solid #e0e0e0; color: #64748b; font-weight: 600;">
+            <i class="bi bi-arrow-clockwise me-2"></i> Reset
+          </a>
+        </div>
+        
+        <div class="dropdown">
+          <button class="btn btn-outline-success dropdown-toggle" type="button" data-bs-toggle="dropdown" style="padding: 10px 24px; border-radius: 12px; font-weight: 600; border: 2px solid #10b981; color: #10b981;">
+            <i class="bi bi-download me-2"></i> Export Data
+          </button>
+          <ul class="dropdown-menu dropdown-menu-end">
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="bulkExport('csv')"><i class="bi bi-filetype-csv me-2"></i>Export as CSV</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="bulkExport('pdf')"><i class="bi bi-file-earmark-pdf me-2"></i>Export as PDF</a></li>
+            <li><a class="dropdown-item" href="javascript:void(0)" onclick="bulkExport('excel')"><i class="bi bi-file-earmark-excel me-2"></i>Export as Excel</a></li>
+          </ul>
+        </div>
+      </div>
+    </form>
+  </div>
+
+  <!-- Bulk Actions Bar -->
+  <div id="bulkActionBar" class="bulk-action-bar">
+    <div class="d-flex align-items-center gap-3">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="selectAllGalleries" style="width: 20px; height: 20px;">
+        <label class="form-check-label ms-2 fw-600" for="selectAllGalleries">Select All</label>
+      </div>
+      <span id="selectedCount" class="badge bg-primary rounded-pill px-3 py-2" style="font-size: 14px;">0 Selected</span>
+    </div>
+    <div class="d-flex gap-2">
+      <button onclick="bulkArchive()" class="btn btn-warning d-flex align-items-center gap-2 text-white">
+        <i class="bi bi-archive"></i> Archive Selected
+      </button>
+      <div class="dropdown">
+        <button class="btn btn-success dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
+          <i class="bi bi-download"></i> Export Selected
+        </button>
+        <ul class="dropdown-menu">
+          <li><a class="dropdown-item" href="javascript:void(0)" onclick="bulkExport('csv', true)">CSV Format</a></li>
+          <li><a class="dropdown-item" href="javascript:void(0)" onclick="bulkExport('pdf', true)">PDF Format</a></li>
+          <li><a class="dropdown-item" href="javascript:void(0)" onclick="bulkExport('excel', true)">Excel Format</a></li>
+        </ul>
+      </div>
+      <button onclick="clearSelection()" class="btn btn-outline-secondary">
+        <i class="bi bi-x-circle"></i> Clear
+      </button>
     </div>
   </div>
 
@@ -697,12 +902,16 @@ if ($result && $result->num_rows > 0) {
     <div class="gallery-section">
       <div class="gallery-header">
         <div class="d-flex align-items-center gap-3 flex-wrap">
+          <input type="checkbox" class="form-check-input gallery-checkbox-item" value="<?= $g['id'] ?>" onchange="updateBulkBar()">
           <h5 class="gallery-title mb-0">
             <i class="bi bi-folder-fill"></i> 
             <?= e($g['title']) ?>
           </h5>
           <span class="image-count-badge">
-            <i class="bi bi-images me-1"></i><?= $imageCount ?> <?= $imageCount === 1 ? 'Image' : 'Images' ?>
+            <i class="bi bi-images me-1"></i><?= count($g['images']) ?> <?= count($g['images']) === 1 ? 'Image' : 'Images' ?>
+          </span>
+          <span class="badge bg-info" style="padding: 6px 12px; font-size: 0.85rem;">
+            <i class="bi bi-tag me-1"></i><?= e($g['category']) ?>
           </span>
           <span class="gallery-date">
             <i class="bi bi-calendar-event"></i>
@@ -713,19 +922,19 @@ if ($result && $result->num_rows > 0) {
           <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEdit<?= $g['id'] ?>">
             <i class="bi bi-pencil me-1"></i> Edit
           </button>
-          <form method="POST" class="d-inline" onsubmit="return confirm('Delete this entire gallery and all its images?');">
+          <form method="POST" class="d-inline" onsubmit="return confirm('Move this gallery to the archive?');">
             <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-            <input type="hidden" name="action" value="delete">
+            <input type="hidden" name="action" value="archive">
             <input type="hidden" name="id" value="<?= (int)$g['id'] ?>">
-            <button type="submit" class="btn btn-sm btn-danger">
-              <i class="bi bi-trash me-1"></i> Delete
+            <button type="submit" class="btn btn-sm btn-warning text-white">
+              <i class="bi bi-archive me-1"></i> Archive
             </button>
           </form>
         </div>
       </div>
 
       <div class="row g-4">
-        <?php foreach ($allImages as $i => $img): ?>
+        <?php foreach ($g['images'] as $i => $img): ?>
           <div class="col-lg-3 col-md-4 col-sm-6">
             <div class="gallery-card" data-bs-toggle="modal" data-bs-target="#modalView<?= $g['id'] ?>">
               <img src="<?= $uploadDirRel . e($img) ?>" alt="<?= e($g['title']) ?>">
@@ -748,20 +957,20 @@ if ($result && $result->num_rows > 0) {
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body p-0">
-              <div id="<?= $carouselId ?>" class="carousel slide" data-bs-ride="carousel">
+              <div id="carousel<?= $g['id'] ?>" class="carousel slide" data-bs-ride="carousel">
                 <div class="carousel-inner">
-                  <?php foreach ($allImages as $i => $img): ?>
+                  <?php foreach ($g['images'] as $i => $img): ?>
                     <div class="carousel-item <?= $i === 0 ? 'active' : '' ?>">
                       <img src="<?= $uploadDirRel . e($img) ?>" class="d-block w-100" style="max-height:70vh;object-fit:contain;">
                     </div>
                   <?php endforeach; ?>
                 </div>
-                <?php if (count($allImages) > 1): ?>
-                  <button class="carousel-control-prev" type="button" data-bs-target="#<?= $carouselId ?>" data-bs-slide="prev">
+                <?php if (count($g['images']) > 1): ?>
+                  <button class="carousel-control-prev" type="button" data-bs-target="#carousel<?= $g['id'] ?>" data-bs-slide="prev">
                     <span class="carousel-control-prev-icon" aria-hidden="true"></span>
                     <span class="visually-hidden">Previous</span>
                   </button>
-                  <button class="carousel-control-next" type="button" data-bs-target="#<?= $carouselId ?>" data-bs-slide="next">
+                  <button class="carousel-control-next" type="button" data-bs-target="#carousel<?= $g['id'] ?>" data-bs-slide="next">
                     <span class="carousel-control-next-icon" aria-hidden="true"></span>
                     <span class="visually-hidden">Next</span>
                   </button>
@@ -792,6 +1001,18 @@ if ($result && $result->num_rows > 0) {
                 </div>
 
                 <div class="mb-4">
+                  <label class="form-label">Category</label>
+                  <select name="category" class="form-select" required>
+                    <option value="">-- Select Category --</option>
+                    <option value="Events" <?= $g['category'] === 'Events' ? 'selected' : '' ?>>Events</option>
+                    <option value="Meetings" <?= $g['category'] === 'Meetings' ? 'selected' : '' ?>>Meetings</option>
+                    <option value="Trainings" <?= $g['category'] === 'Trainings' ? 'selected' : '' ?>>Trainings</option>
+                    <option value="Activities" <?= $g['category'] === 'Activities' ? 'selected' : '' ?>>Activities</option>
+                    <option value="Awards" <?= $g['category'] === 'Awards' ? 'selected' : '' ?>>Awards</option>
+                  </select>
+                </div>
+
+                <div class="mb-4">
                   <label class="form-label">Add More Images</label>
                   <div class="upload-box" onclick="document.getElementById('editFiles<?= $g['id'] ?>').click();">
                     <i class="bi bi-cloud-upload"></i>
@@ -816,6 +1037,30 @@ if ($result && $result->num_rows > 0) {
 
     </div>
     <?php endforeach; ?>
+
+    <!-- Pagination -->
+    <?php if ($total_pages > 1): ?>
+    <div class="pagination-container d-flex justify-content-between align-items-center flex-wrap gap-3">
+      <div class="text-muted small">
+        Showing <?= $offset + 1 ?> to <?= min($offset + $limit, $total_records) ?> of <?= $total_records ?> galleries
+      </div>
+      <nav>
+        <ul class="pagination mb-0">
+          <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>"><i class="bi bi-chevron-left"></i></a>
+          </li>
+          <?php for ($i = 1; $i <= $total_pages; $i++): ?>
+            <li class="page-item <?= $i === $page ? 'active' : '' ?>">
+              <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $i])) ?>"><?= $i ?></a>
+            </li>
+          <?php endfor; ?>
+          <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+            <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>"><i class="bi bi-chevron-right"></i></a>
+          </li>
+        </ul>
+      </nav>
+    </div>
+    <?php endif; ?>
 
   <?php else: ?>
     <div class="empty-state">
@@ -845,6 +1090,18 @@ if ($result && $result->num_rows > 0) {
           <div class="mb-4">
             <label class="form-label">Gallery Title</label>
             <input type="text" name="title" class="form-control" placeholder="Enter gallery name..." required>
+          </div>
+
+          <div class="mb-4">
+            <label class="form-label">Category</label>
+            <select name="category" class="form-select" required>
+              <option value="">-- Select Category --</option>
+              <option value="Events">Events</option>
+              <option value="Meetings">Meetings</option>
+              <option value="Trainings">Trainings</option>
+              <option value="Activities">Activities</option>
+              <option value="Awards">Awards</option>
+            </select>
           </div>
 
           <div class="mb-4">
@@ -980,6 +1237,85 @@ document.addEventListener('DOMContentLoaded', function(){
   <?php foreach ($galleries as $g): ?>
   setupPreview('editFiles<?= $g['id'] ?>','previewEdit<?= $g['id'] ?>');
   <?php endforeach; ?>
+
+  // Bulk Selection Logic
+  const selectAllBtn = document.getElementById('selectAllGalleries');
+  const checkboxes = document.querySelectorAll('.gallery-checkbox-item');
+  const bulkBar = document.getElementById('bulkActionBar');
+  const selectedCount = document.getElementById('selectedCount');
+
+  if (selectAllBtn) {
+    selectAllBtn.addEventListener('change', function() {
+      checkboxes.forEach(cb => cb.checked = this.checked);
+      updateBulkBar();
+    });
+  }
+
+  window.updateBulkBar = function() {
+    const checked = document.querySelectorAll('.gallery-checkbox-item:checked');
+    const count = checked.length;
+    
+    if (count > 0) {
+      bulkBar.style.display = 'flex';
+      selectedCount.textContent = count + ' Selected';
+    } else {
+      bulkBar.style.display = 'none';
+      if (selectAllBtn) selectAllBtn.checked = false;
+    }
+  }
+
+  window.clearSelection = function() {
+    checkboxes.forEach(cb => cb.checked = false);
+    if (selectAllBtn) selectAllBtn.checked = false;
+    updateBulkBar();
+  }
+
+  window.bulkArchive = function() {
+    const checked = document.querySelectorAll('.gallery-checkbox-item:checked');
+    const ids = Array.from(checked).map(cb => cb.value);
+    
+    if (ids.length === 0) return;
+
+    Swal.fire({
+      title: 'Archive Galleries?',
+      text: `You are about to move ${ids.length} galleries to the archive.`,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#f59e0b',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Yes, archive them!'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        window.location.href = `bulk_delete_galleries.php?ids=${ids.join(',')}&action=archive`;
+      }
+    });
+  }
+
+  window.bulkExport = function(format, selectedOnly = false) {
+    let ids = 'all';
+    if (selectedOnly) {
+      const checked = document.querySelectorAll('.gallery-checkbox-item:checked');
+      ids = Array.from(checked).map(cb => cb.value).join(',');
+    }
+    
+    const searchParams = new URLSearchParams(window.location.search);
+    const q = searchParams.get('q') || '';
+    const category = searchParams.get('category') || '';
+    const date_from = searchParams.get('date_from') || '';
+    const date_to = searchParams.get('date_to') || '';
+    const sort = searchParams.get('sort') || '';
+    
+    const url = `export_selected_galleries.php?ids=${ids}&format=${format}&q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}&date_from=${date_from}&date_to=${date_to}&sort=${sort}`;
+    window.open(url, '_blank');
+    
+    Swal.fire({
+      icon: 'info',
+      title: 'Export Started',
+      text: 'Your file is being generated and will download shortly.',
+      timer: 2000,
+      showConfirmButton: false
+    });
+  }
 
   // Close mobile nav automatically if open
   document.querySelectorAll('.navbar-collapse .nav-link').forEach(a => {

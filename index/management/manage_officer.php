@@ -68,8 +68,8 @@ if (isset($_POST['ajax_action'])) {
                 $stmt->close();
                 break;
                 
-            case 'delete':
-                // Prevent deleting the last admin
+            case 'archive':
+                // Prevent archiving the last admin
                 $admin_check = $conn->query("SELECT COUNT(*) as admin_count FROM users WHERE role IN ('officer', 'admin') AND is_admin=1");
                 $admin_row = $admin_check->fetch_assoc();
                 
@@ -77,17 +77,30 @@ if (isset($_POST['ajax_action'])) {
                 $officer_data = $officer_check->fetch_assoc();
                 
                 if ($officer_data['is_admin'] == 1 && $admin_row['admin_count'] <= 1) {
-                    $response['message'] = 'Cannot delete the last admin account!';
+                    $response['message'] = 'Cannot archive the last admin account!';
                 } else {
-                    $stmt = $conn->prepare("DELETE FROM users WHERE id=? AND role IN ('officer', 'admin')");
-                    $stmt->bind_param("i", $officer_id);
-                    if ($stmt->execute() && $stmt->affected_rows > 0) {
+                    try {
+                        $conn->begin_transaction();
+                        
+                        // Move to archive
+                        $stmt = $conn->prepare("INSERT INTO users_archive (original_id, username, email, password, role, status, is_admin, created_at) SELECT id, username, email, password, role, status, is_admin, created_at FROM users WHERE id=?");
+                        $stmt->bind_param("i", $officer_id);
+                        $stmt->execute();
+                        $stmt->close();
+                        
+                        // Delete from main
+                        $stmt = $conn->prepare("DELETE FROM users WHERE id=? AND role IN ('officer', 'admin')");
+                        $stmt->bind_param("i", $officer_id);
+                        $stmt->execute();
+                        $stmt->close();
+                        
+                        $conn->commit();
                         $response['success'] = true;
-                        $response['message'] = 'Officer deleted successfully!';
-                    } else {
-                        $response['message'] = 'Failed to delete officer.';
+                        $response['message'] = 'Officer archived successfully!';
+                    } catch (Exception $e) {
+                        $conn->rollback();
+                        $response['message'] = 'Error archiving officer: ' . $e->getMessage();
                     }
-                    $stmt->close();
                 }
                 break;
                 
@@ -186,49 +199,54 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         /* Page Header */
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            padding: 32px;
-            border-radius: 20px;
+            padding: 24px 32px;
+            border-radius: 16px;
             color: white;
-            margin-bottom: 32px;
-            box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+            margin-bottom: 24px;
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
         }
         .page-header h2 {
-            font-size: 32px;
+            font-size: 26px;
             font-weight: 700;
             margin: 0;
             display: flex;
             align-items: center;
-            gap: 16px;
+            gap: 12px;
+        }
+        .page-header p {
+            font-size: 14px;
+            margin-top: 4px;
+            opacity: 0.9;
         }
 
 
         /* Card Styles */
         .card { 
             border: none; 
-            border-radius: 20px; 
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12); 
+            border-radius: 16px; 
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
             margin-bottom: 24px;
             background: white;
             overflow: hidden;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.3s ease;
         }
         
         .card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.08);
         }
         
         .card-header { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white; 
-            font-weight: 600; 
-            font-size: 18px;
-            padding: 20px 24px;
-            border-bottom: none;
+            background: #f8fafc;
+            color: #1e293b; 
+            font-weight: 700; 
+            font-size: 16px;
+            padding: 16px 24px;
+            border-bottom: 1px solid #f1f5f9;
         }
         
         .card-header i {
-            margin-right: 10px;
+            margin-right: 8px;
+            color: #667eea;
         }
         
         .card-body { 
@@ -238,11 +256,12 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
 
         /* Form Styles */
         .form-select, .form-control { 
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            padding: 12px 16px;
-            transition: all 0.3s ease;
-            font-size: 15px;
+            border: 1.5px solid #e2e8f0;
+            border-radius: 10px;
+            padding: 10px 16px;
+            transition: all 0.2s ease;
+            font-size: 14px;
+            color: #1e293b;
         }
         
         .form-select:focus, .form-control:focus {
@@ -253,19 +272,21 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         
         .form-label {
             font-weight: 600;
-            color: #2d3748;
-            margin-bottom: 8px;
-            font-size: 14px;
+            color: #475569;
+            margin-bottom: 6px;
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
         }
 
 
         /* Button Styles */
         .btn { 
-            font-size: 15px;
-            padding: 12px 24px;
-            border-radius: 12px;
+            font-size: 14px;
+            padding: 10px 20px;
+            border-radius: 10px;
             font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: all 0.2s ease;
             border: none;
             display: inline-flex;
             align-items: center;
@@ -274,167 +295,168 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .btn-primary { 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: #667eea;
             color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
         }
         
         .btn-primary:hover { 
-            transform: translateY(-2px);
-            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+            background: #5a6fd6;
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+            color: white;
         }
         
         .btn-success {
             background: #10b981;
             color: white;
-            box-shadow: 0 2px 8px rgba(16, 185, 129, 0.2);
         }
         
         .btn-success:hover {
             background: #059669;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+            color: white;
         }
         
         .btn-warning {
             background: #f59e0b;
             color: white;
-            box-shadow: 0 2px 8px rgba(245, 158, 11, 0.2);
         }
         
         .btn-warning:hover {
             background: #d97706;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.3);
+            color: white;
         }
         
         .btn-danger {
             background: #ef4444;
             color: white;
-            box-shadow: 0 2px 8px rgba(239, 68, 68, 0.2);
         }
         
         .btn-danger:hover {
             background: #dc2626;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+            color: white;
         }
         
         .btn-secondary { 
-            background: #6b7280;
+            background: #64748b;
             color: white;
-            box-shadow: 0 2px 8px rgba(107, 114, 128, 0.2);
         }
         
         .btn-secondary:hover { 
-            background: #4b5563;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
+            background: #475569;
+            color: white;
         }
 
 
         /* Table Styles */
         .table { 
-            font-size: 15px;
+            font-size: 14px;
             margin: 0;
         }
         
         .table thead th { 
-            background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-            color: white; 
-            border: none;
-            padding: 16px;
-            font-weight: 600;
-            font-size: 13px;
+            background: #f8fafc;
+            color: #64748b; 
+            border-bottom: 2px solid #f1f5f9;
+            padding: 14px 16px;
+            font-weight: 700;
+            font-size: 12px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
         
         .table tbody td {
-            padding: 16px;
+            padding: 14px 16px;
             vertical-align: middle;
-            border-color: #f1f3f5;
-        }
-        
-        .table-hover tbody tr {
-            transition: all 0.3s ease;
+            border-color: #f1f5f9;
+            color: #1e293b;
         }
         
         .table-hover tbody tr:hover { 
-            background-color: #f8f9ff;
-            transform: scale(1.005);
+            background-color: #f8faff;
         }
         
         .badge { 
-            font-size: 13px; 
-            padding: 6px 12px;
-            border-radius: 8px;
+            font-size: 12px; 
+            padding: 5px 10px;
+            border-radius: 6px;
             font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
         }
 
         .admin-row { 
-            background: linear-gradient(90deg, rgba(102, 126, 234, 0.08) 0%, rgba(118, 75, 162, 0.08) 100%) !important;
+            background: rgba(102, 126, 234, 0.04) !important;
             border-left: 4px solid #667eea;
         }
 
         .action-btn-group {
             display: flex;
-            gap: 6px;
+            gap: 4px;
             justify-content: center;
-            flex-wrap: wrap;
         }
         
         .action-btn-group .btn {
-            padding: 8px 16px;
-            font-size: 13px;
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 8px;
         }
         
         .stats-card {
             background: white;
             border-radius: 16px;
-            padding: 24px;
+            padding: 20px;
             text-align: center;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+            height: 100%;
+            border: 1px solid #f1f5f9;
         }
         
         .stats-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+            transform: translateY(-4px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
+            border-color: rgba(102, 126, 234, 0.2);
         }
         
         .stats-card .icon {
-            font-size: 48px;
-            margin-bottom: 12px;
+            font-size: 32px;
+            margin-bottom: 8px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 56px;
+            height: 56px;
+            border-radius: 12px;
+            background: #f8fafc;
         }
         
         .stats-card h3 {
-            font-size: 36px;
-            font-weight: 700;
-            margin: 12px 0 8px 0;
+            font-size: 28px;
+            font-weight: 800;
+            margin: 8px 0 4px 0;
+            color: #1e293b;
         }
         
         .stats-card p {
-            color: #718096;
+            color: #64748b;
             margin: 0;
-            font-size: 14px;
-            font-weight: 500;
+            font-size: 13px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
 
         /* Input Group Styling */
         .input-group .input-group-text {
-            border: 2px solid #e0e0e0;
+            border: 1.5px solid #e2e8f0;
             border-radius: 10px 0 0 10px;
             padding: 8px 12px;
+            background: #f8fafc;
+            color: #64748b;
         }
         
         .input-group .form-control {
-            border: 2px solid #e0e0e0;
+            border: 1.5px solid #e2e8f0;
             border-radius: 0 10px 10px 0;
-            padding: 8px 12px;
         }
         
         .input-group .form-control:focus {
@@ -442,16 +464,10 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
             box-shadow: none;
         }
         
-        .input-group .form-control:focus + .input-group-text,
-        .input-group .input-group-text:has(+ .form-control:focus) {
-            border-color: #667eea;
-        }
-        
-        .form-select-sm {
-            font-size: 14px;
+        .form-select-sm, .form-control-sm {
+            font-size: 13px;
             padding: 8px 12px;
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
+            border-radius: 8px;
         }
         
         .form-select-sm:focus {
@@ -531,49 +547,49 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
     <!-- Page Header -->
     <div class="page-header">
         <div>
-            <h2><i class="bi bi-people-fill"></i>Manage Officers</h2>
-            <p class="mb-0 mt-2" style="opacity: 0.9;">Manage officer accounts, permissions, and administrative access</p>
+            <h2><i class="bi bi-people-fill"></i> Manage Officers</h2>
+            <p class="mb-0">Manage officer accounts, permissions, and administrative access</p>
         </div>
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
+    <div class="row g-3 mb-4">
         <?php
         $total_officers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role IN ('officer', 'admin')")->fetch_assoc()['count'];
         $pending_officers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role IN ('officer', 'admin') AND status='pending'")->fetch_assoc()['count'];
         $approved_officers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role IN ('officer', 'admin') AND status='approved'")->fetch_assoc()['count'];
         $total_admins = $conn->query("SELECT COUNT(*) as count FROM users WHERE role IN ('officer', 'admin') AND is_admin=1")->fetch_assoc()['count'];
         ?>
-        <div class="col-md-3 mb-3">
-            <div class="stats-card" style="border-left: 4px solid #667eea;">
-                <div class="icon" style="color: #667eea;">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="border-top: 3px solid #667eea;">
+                <div class="icon" style="color: #667eea; background: rgba(102, 126, 234, 0.1);">
                     <i class="bi bi-people"></i>
                 </div>
                 <h3><?= $total_officers ?></h3>
                 <p>Total Officers</p>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="stats-card" style="border-left: 4px solid #f5576c;">
-                <div class="icon" style="color: #f5576c;">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="border-top: 3px solid #ef4444;">
+                <div class="icon" style="color: #ef4444; background: rgba(239, 68, 68, 0.1);">
                     <i class="bi bi-clock-history"></i>
                 </div>
                 <h3><?= $pending_officers ?></h3>
                 <p>Pending Approval</p>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="stats-card" style="border-left: 4px solid #38ef7d;">
-                <div class="icon" style="color: #11998e;">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="border-top: 3px solid #10b981;">
+                <div class="icon" style="color: #10b981; background: rgba(16, 185, 129, 0.1);">
                     <i class="bi bi-check-circle"></i>
                 </div>
                 <h3><?= $approved_officers ?></h3>
                 <p>Approved Officers</p>
             </div>
         </div>
-        <div class="col-md-3 mb-3">
-            <div class="stats-card" style="border-left: 4px solid #764ba2;">
-                <div class="icon" style="color: #764ba2;">
+        <div class="col-xl-3 col-md-6">
+            <div class="stats-card" style="border-top: 3px solid #764ba2;">
+                <div class="icon" style="color: #764ba2; background: rgba(118, 75, 162, 0.1);">
                     <i class="bi bi-shield-check"></i>
                 </div>
                 <h3><?= $total_admins ?></h3>
@@ -716,8 +732,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                                             </button>
                                         <?php endif; ?>
 
-                                        <button class="btn btn-danger btn-sm actionBtn" data-action="delete" data-id="<?= $row['id'] ?>" title="Delete officer">
-                                            <i class="bi bi-trash"></i> Delete
+                                        <button class="btn btn-warning btn-sm actionBtn text-white" data-action="archive" data-id="<?= $row['id'] ?>" title="Archive officer">
+                                            <i class="bi bi-archive"></i> Archive
                                         </button>
                                     </div>
                                 </td>
@@ -861,11 +877,11 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
                 confirmButton = '<i class="bi bi-x-lg me-1"></i>Reject';
                 confirmColor = '#f5576c';
                 break;
-            case 'delete':
-                title = 'Delete Officer?';
-                html = `Are you sure you want to delete <strong>${username}</strong>?<br><small class="text-danger">This action cannot be undone!</small>`;
-                confirmButton = '<i class="bi bi-trash me-1"></i>Delete';
-                confirmColor = '#fa709a';
+            case 'archive':
+                title = 'Archive Officer?';
+                html = `Are you sure you want to archive <strong>${username}</strong>?<br><small class="text-muted">This will move the account to the archive list.</small>`;
+                confirmButton = '<i class="bi bi-archive me-1"></i>Archive';
+                confirmColor = '#f59e0b';
                 break;
             case 'demote':
                 title = 'Remove Admin Privileges?';

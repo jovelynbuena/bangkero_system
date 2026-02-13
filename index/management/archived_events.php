@@ -34,10 +34,33 @@ if(isset($_GET['retrieve'])){
 
 // Fetch archived events
 $search = $_GET['search'] ?? '';
+$category_filter = $_GET['category'] ?? '';
+$sort = $_GET['sort'] ?? 'newest';
 $search_sql = $conn->real_escape_string($search);
-$sql = "SELECT * FROM events WHERE is_archived=1 AND 
-       (event_name LIKE '%$search_sql%' OR category LIKE '%$search_sql%' OR location LIKE '%$search_sql%') 
-       ORDER BY date DESC, time DESC";
+$category_sql = $conn->real_escape_string($category_filter);
+
+$conditions = ["is_archived=1"];
+
+if ($search !== '') {
+    $conditions[] = "(event_name LIKE '%$search_sql%' OR location LIKE '%$search_sql%')";
+}
+
+if ($category_filter !== '') {
+    $conditions[] = "category = '$category_sql'";
+}
+
+$sql = "SELECT * FROM events WHERE " . implode(" AND ", $conditions) . " ORDER BY ";
+
+if ($sort === 'oldest') {
+    $sql .= "date ASC, time ASC";
+} elseif ($sort === 'name_a') {
+    $sql .= "event_name ASC";
+} elseif ($sort === 'name_z') {
+    $sql .= "event_name DESC";
+} else {
+    $sql .= "date DESC, time DESC";
+}
+
 $result = $conn->query($sql);
 ?>
 <!DOCTYPE html>
@@ -225,20 +248,52 @@ body {
         <p>View and restore archived event records</p>
     </div>
 
-    <!-- Search Section -->
-    <div class="search-card">
-        <form method="GET" action="archived_events.php">
-            <div class="search-box">
-                <input type="text" 
-                       name="search" 
-                       class="form-control" 
-                       placeholder="Search by event name, category, or location..." 
-                       value="<?= htmlspecialchars($search) ?>">
-                <button type="submit">
-                    <i class="bi bi-search me-1"></i>Search
-                </button>
-            </div>
-        </form>
+    <!-- Professional Filter Toolbar -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-3">
+            <form method="GET" class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <!-- LEFT SIDE: Search & Filter -->
+                <div class="d-flex gap-2 flex-wrap align-items-center" style="flex: 1; min-width: 300px;">
+                    <!-- Search Input -->
+                    <div class="position-relative" style="flex: 1; min-width: 200px;">
+                        <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #999;"></i>
+                        <input type="text" name="search" class="form-control rounded-pill ps-5" 
+                               placeholder="Search by event name or location..."
+                               value="<?= htmlspecialchars($search) ?>">
+                    </div>
+                    
+                    <!-- Category Filter -->
+                    <select name="category" class="form-select rounded-pill shadow-sm" style="flex: 0 0 auto; min-width: 140px;">
+                        <option value="">All Categories</option>
+                        <option value="General" <?= $category_filter === 'General' ? 'selected' : '' ?>>General</option>
+                        <option value="Meeting" <?= $category_filter === 'Meeting' ? 'selected' : '' ?>>Meeting</option>
+                        <option value="Training" <?= $category_filter === 'Training' ? 'selected' : '' ?>>Training</option>
+                        <option value="Activity" <?= $category_filter === 'Activity' ? 'selected' : '' ?>>Activity</option>
+                    </select>
+                </div>
+
+                <!-- RIGHT SIDE: Sort, Reset -->
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <!-- Sort Dropdown -->
+                    <select name="sort" class="form-select rounded-pill shadow-sm" style="flex: 0 0 auto; min-width: 140px;" onchange="this.form.submit();">
+                        <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
+                        <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
+                        <option value="name_a" <?= $sort === 'name_a' ? 'selected' : '' ?>>Name A-Z</option>
+                        <option value="name_z" <?= $sort === 'name_z' ? 'selected' : '' ?>>Name Z-A</option>
+                    </select>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-search me-2"></i>Search
+                    </button>
+
+                    <!-- Reset Button -->
+                    <a href="archived_events.php" class="btn btn-light border rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Reset
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Table -->
