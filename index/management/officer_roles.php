@@ -119,41 +119,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_role'])) {
 }
 
 // ========================================
-// DELETE ROLE WITH RESTRICTIONS
+// ARCHIVE ROLE WITH RESTRICTIONS
 // ========================================
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['delete_role'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_role'])) {
     $id = intval($_POST['id'] ?? 0);
     
     // ✅ RESTRICTION 1: Validate ID
     if ($id <= 0) {
         $errorMsg = "Invalid role ID!";
     } else {
-        // ✅ RESTRICTION 2: Check if role is assigned to any officers
-        // (Assuming there's a relationship between officers and roles)
-        // Uncomment if you have officer_users table with role_id
-        /*
-        $checkUsage = $conn->prepare("SELECT COUNT(*) as count FROM officer_users WHERE role_id = ?");
-        $checkUsage->bind_param("i", $id);
-        $checkUsage->execute();
-        $result = $checkUsage->get_result();
-        $row = $result->fetch_assoc();
-        
-        if ($row['count'] > 0) {
-            $errorMsg = "Cannot delete this role! It is currently assigned to " . $row['count'] . " officer(s).";
-        } else {
-        */
+        try {
+            $conn->begin_transaction();
+            
+            // Move to archive
+            $stmt = $conn->prepare("INSERT INTO officer_roles_archive (original_id, role_name, description, created_at) SELECT id, role_name, description, created_at FROM officer_roles WHERE id=?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+            
+            // Delete from main
             $stmt = $conn->prepare("DELETE FROM officer_roles WHERE id=?");
             $stmt->bind_param("i", $id);
-            
-            if ($stmt->execute()) {
-                $successMsg = "Role deleted successfully!";
-            } else {
-                $errorMsg = "Database error: " . $conn->error;
-            }
+            $stmt->execute();
             $stmt->close();
-        /*}
-        $checkUsage->close();
-        */
+            
+            $conn->commit();
+            $successMsg = "Role archived successfully!";
+        } catch (Exception $e) {
+            $conn->rollback();
+            $errorMsg = "Error archiving role: " . $e->getMessage();
+        }
     }
 }
 
@@ -608,12 +603,12 @@ $totalRoles = $rolesResult->num_rows;
                                                 data-description="<?= htmlspecialchars($row['description'] ?? '') ?>">
                                                 <i class="bi bi-pencil-square"></i> Edit
                                             </button>
-                                            <button class="btn btn-danger btn-sm" 
+                                            <button class="btn btn-info btn-sm" 
                                                 data-bs-toggle="modal"
-                                                data-bs-target="#deleteModal"
+                                                data-bs-target="#archiveModal"
                                                 data-id="<?= htmlspecialchars($row['id'] ?? '') ?>"
                                                 data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>">
-                                                <i class="bi bi-trash"></i> Delete
+                                                <i class="bi bi-archive"></i> Archive
                                             </button>
                                         </td>
                                     </tr>
@@ -679,26 +674,26 @@ $totalRoles = $rolesResult->num_rows;
   </div>
 </div>
 
-<!-- Delete Role Modal -->
-<div class="modal fade" id="deleteModal" tabindex="-1">
+<!-- Archive Role Modal -->
+<div class="modal fade" id="archiveModal" tabindex="-1">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <form method="post">
-        <div class="modal-header bg-danger-custom">
-          <h5 class="modal-title"><i class="bi bi-exclamation-triangle-fill me-2"></i>Confirm Delete</h5>
+        <div class="modal-header bg-info text-white">
+          <h5 class="modal-title"><i class="bi bi-archive-fill me-2"></i>Confirm Archive</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body text-center">
-          <input type="hidden" name="id" id="delete_id">
+          <input type="hidden" name="id" id="archive_id">
           <div class="mb-3">
-            <i class="bi bi-exclamation-circle text-danger" style="font-size: 64px;"></i>
+            <i class="bi bi-archive text-info" style="font-size: 64px;"></i>
           </div>
-          <p class="fs-5 mb-3">Are you sure you want to delete <strong id="delete_name"></strong>?</p>
-          <p class="text-muted">This action cannot be undone.</p>
+          <p class="fs-5 mb-3">Are you sure you want to archive <strong id="archive_name"></strong>?</p>
+          <p class="text-muted">This will move the role to the archive list.</p>
         </div>
         <div class="modal-footer justify-content-center">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" name="delete_role" class="btn btn-danger"><i class="bi bi-trash me-2"></i>Delete</button>
+          <button type="submit" name="archive_role" class="btn btn-info text-white"><i class="bi bi-archive me-2"></i>Archive</button>
         </div>
       </form>
     </div>
@@ -780,13 +775,13 @@ editModal.addEventListener('show.bs.modal', e => {
 });
 
 // ========================================
-// DELETE MODAL HANDLER
+// ARCHIVE MODAL HANDLER
 // ========================================
-const deleteModal = document.getElementById('deleteModal');
-deleteModal.addEventListener('show.bs.modal', e => {
+const archiveModal = document.getElementById('archiveModal');
+archiveModal.addEventListener('show.bs.modal', e => {
     const b = e.relatedTarget;
-    document.getElementById('delete_id').value = b.getAttribute('data-id') ?? '';
-    document.getElementById('delete_name').innerText = b.getAttribute('data-name') ?? '';
+    document.getElementById('archive_id').value = b.getAttribute('data-id') ?? '';
+    document.getElementById('archive_name').innerText = b.getAttribute('data-name') ?? '';
 });
 
 // ========================================

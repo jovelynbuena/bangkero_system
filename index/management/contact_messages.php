@@ -45,23 +45,35 @@ if (isset($_GET['action']) && $_GET['action'] == 'mark_read' && isset($_GET['id'
 }
 
 // ========================================
-// DELETE ACTION (SECURE)
+// ARCHIVE ACTION (SECURE)
 // ========================================
-if (isset($_GET['action']) && $_GET['action'] == 'delete' && isset($_GET['id'])) {
+if (isset($_GET['action']) && $_GET['action'] == 'archive' && isset($_GET['id'])) {
     $id = intval($_GET['id']);
     
     if ($id <= 0) {
         $errorMsg = "Invalid message ID!";
     } else {
-        $stmt = $conn->prepare("DELETE FROM contact_messages WHERE id=?");
-        $stmt->bind_param("i", $id);
-        
-        if ($stmt->execute()) {
-            $successMsg = "Message deleted successfully!";
-        } else {
-            $errorMsg = "Error deleting message!";
+        try {
+            $conn->begin_transaction();
+            
+            // Move to archive
+            $stmt = $conn->prepare("INSERT INTO contact_messages_archive (original_id, name, email, message, status, created_at) SELECT id, name, email, message, status, created_at FROM contact_messages WHERE id=?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+            
+            // Delete from main
+            $stmt = $conn->prepare("DELETE FROM contact_messages WHERE id=?");
+            $stmt->bind_param("i", $id);
+            $stmt->execute();
+            $stmt->close();
+            
+            $conn->commit();
+            $successMsg = "Message archived successfully!";
+        } catch (Exception $e) {
+            $conn->rollback();
+            $errorMsg = "Error archiving message: " . $e->getMessage();
         }
-        $stmt->close();
     }
     
     $_SESSION['swal'] = ['type' => ($successMsg ? 'success' : 'error'), 'message' => ($successMsg ?: $errorMsg)];
@@ -499,8 +511,8 @@ $result = $conn->query("SELECT * FROM contact_messages ORDER BY
                                             <i class="bi bi-envelope-open"></i>
                                         </button>
                                     <?php endif; ?>
-                                    <button class="btn btn-danger btn-sm delete-message" data-id="<?= $row['id'] ?>" title="Delete Message">
-                                        <i class="bi bi-trash"></i>
+                                    <button class="btn btn-warning btn-sm archive-message" data-id="<?= $row['id'] ?>" title="Archive Message">
+                                        <i class="bi bi-archive"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -651,21 +663,21 @@ filterAndPaginate();
 // ========================================
 // SWEETALERT ACTIONS
 // ========================================
-document.querySelectorAll('.delete-message').forEach(btn => {
+document.querySelectorAll('.archive-message').forEach(btn => {
     btn.addEventListener('click', function() {
         const id = this.getAttribute('data-id');
         Swal.fire({
-            title: 'Delete Message?',
-            text: "This message will be permanently deleted!",
+            title: 'Archive Message?',
+            text: "This message will be moved to the archive.",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#ef4444',
+            confirmButtonColor: '#f59e0b',
             cancelButtonColor: '#6b7280',
-            confirmButtonText: '<i class="bi bi-trash me-2"></i>Yes, Delete',
+            confirmButtonText: '<i class="bi bi-archive me-2"></i>Yes, Archive',
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
-                window.location.href = "?action=delete&id=" + id;
+                window.location.href = "?action=archive&id=" + id;
             }
         });
     });

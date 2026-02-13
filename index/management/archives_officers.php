@@ -65,7 +65,26 @@ if (isset($_GET['retrieve']) && $userId) {
 
 // Optional search
 $search = $_GET['search'] ?? '';
+$sort = $_GET['sort'] ?? 'position';
 $search_safe = $conn->real_escape_string($search);
+
+$conditions = [];
+if ($search !== '') {
+    $conditions[] = "(m.name LIKE '%$search_safe%' OR r.role_name LIKE '%$search_safe%')";
+}
+
+$where_clause = !empty($conditions) ? "WHERE " . implode(" AND ", $conditions) : "";
+
+$order_by = "r.role_name ASC";
+if ($sort === 'newest') {
+    $order_by = "o.term_end DESC";
+} elseif ($sort === 'oldest') {
+    $order_by = "o.term_end ASC";
+} elseif ($sort === 'name_a') {
+    $order_by = "m.name ASC";
+} elseif ($sort === 'name_z') {
+    $order_by = "m.name DESC";
+}
 
 $sql = "
     SELECT 
@@ -78,8 +97,8 @@ $sql = "
     FROM officers_archive o
     JOIN members m ON o.member_id = m.id
     JOIN officer_roles r ON o.role_id = r.id
-    WHERE m.name LIKE '%$search_safe%' OR r.role_name LIKE '%$search_safe%'
-    ORDER BY r.role_name ASC
+    $where_clause
+    ORDER BY $order_by
 ";
 
 $result = $conn->query($sql);
@@ -232,6 +251,45 @@ body {
     color: white;
 }
 
+.btn-delete-perm {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    border: none;
+    border-radius: 8px;
+    padding: 8px 16px;
+    color: white;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.btn-delete-perm:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+    color: white;
+}
+
+/* Bulk Action Bar */
+.bulk-action-bar {
+    background: white;
+    padding: 16px 24px;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    display: none;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 24px;
+    border-left: 5px solid #667eea;
+    animation: slideInDown 0.3s ease-out;
+}
+
+@keyframes slideInDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+
 .empty-state {
     text-align: center;
     padding: 60px 20px;
@@ -263,20 +321,67 @@ body {
         <p>View and restore archived officer records</p>
     </div>
 
-    <!-- Search Section -->
-    <div class="search-card">
-        <form method="GET" action="archives_officers.php">
-            <div class="search-box">
-                <input type="text" 
-                       name="search" 
-                       class="form-control" 
-                       placeholder="Search by name or position..." 
-                       value="<?= htmlspecialchars($search) ?>">
-                <button type="submit">
-                    <i class="bi bi-search me-1"></i>Search
-                </button>
+    <!-- Bulk Actions -->
+    <div id="bulkActionBar" class="bulk-action-bar">
+        <div class="d-flex align-items-center gap-3">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="selectAllOfficers" style="width: 20px; height: 20px;">
+                <label class="form-check-label ms-2 fw-bold text-primary" for="selectAllOfficers">Select All</label>
             </div>
-        </form>
+            <span id="selectedCount" class="badge bg-primary rounded-pill px-3 py-2" style="font-size: 14px;">0 Selected</span>
+        </div>
+        <div class="d-flex gap-2">
+            <button onclick="bulkAction('restore')" class="btn btn-success rounded-pill px-4">
+                <i class="bi bi-arrow-counterclockwise me-2"></i>Restore Selected
+            </button>
+            <button onclick="bulkAction('delete')" class="btn btn-danger rounded-pill px-4">
+                <i class="bi bi-trash-fill me-2"></i>Delete Permanently
+            </button>
+            <button onclick="clearSelection()" class="btn btn-outline-secondary rounded-pill px-4">
+                <i class="bi bi-x-circle me-2"></i>Clear
+            </button>
+        </div>
+    </div>
+
+    <!-- Professional Filter Toolbar -->
+
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-3">
+            <form method="GET" class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <!-- LEFT SIDE: Search -->
+                <div class="d-flex gap-2 flex-wrap align-items-center" style="flex: 1; min-width: 250px;">
+                    <!-- Search Input -->
+                    <div class="position-relative" style="flex: 1; min-width: 200px;">
+                        <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #999;"></i>
+                        <input type="text" name="search" class="form-control rounded-pill ps-5" 
+                               placeholder="Search by name or position..."
+                               value="<?= htmlspecialchars($search) ?>">
+                    </div>
+                </div>
+
+                <!-- RIGHT SIDE: Sort, Reset -->
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <!-- Sort Dropdown -->
+                    <select name="sort" class="form-select rounded-pill shadow-sm" style="flex: 0 0 auto; min-width: 140px;" onchange="this.form.submit();">
+                        <option value="position" <?= $sort === 'position' ? 'selected' : '' ?>>By Position</option>
+                        <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
+                        <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
+                        <option value="name_a" <?= $sort === 'name_a' ? 'selected' : '' ?>>Name A-Z</option>
+                        <option value="name_z" <?= $sort === 'name_z' ? 'selected' : '' ?>>Name Z-A</option>
+                    </select>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-search me-2"></i>Search
+                    </button>
+
+                    <!-- Reset Button -->
+                    <a href="archives_officers.php" class="btn btn-light border rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Reset
+                    </a>
+                </div>
+            </form>
+        </div>
     </div>
 
     <!-- Table -->
@@ -285,6 +390,7 @@ body {
             <table class="table">
                 <thead>
                     <tr>
+                        <th width="40px"></th>
                         <th class="text-center">#</th>
                         <th class="text-center">Photo</th>
                         <th>Member Name</th>
@@ -299,7 +405,11 @@ body {
                         <?php $count = 1; ?>
                         <?php while ($row = $result->fetch_assoc()): ?>
                             <tr>
+                                <td>
+                                    <input type="checkbox" class="form-check-input officer-checkbox" value="<?= $row['id'] ?>" onchange="updateBulkBar()">
+                                </td>
                                 <td class="text-center"><strong><?= $count++ ?></strong></td>
+
                                 <td class="text-center">
                                     <?php if (!empty($row['image'])): ?>
                                         <img src="../../uploads/<?= htmlspecialchars($row['image']) ?>" class="officer-img" alt="Officer">
@@ -312,10 +422,16 @@ body {
                                 <td class="text-center"><?= ($row['term_start'] !== "0000-00-00") ? date('M d, Y', strtotime($row['term_start'])) : 'N/A' ?></td>
                                 <td class="text-center"><?= ($row['term_end'] !== "0000-00-00") ? date('M d, Y', strtotime($row['term_end'])) : 'N/A' ?></td>
                                 <td class="text-center">
-                                    <button class="btn-restore" onclick="confirmRetrieve(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['member_name'])) ?>')">
-                                        <i class="bi bi-arrow-counterclockwise"></i> Restore
-                                    </button>
+                                    <div class="d-flex justify-content-center gap-2">
+                                        <button class="btn-restore" onclick="confirmRetrieve(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['member_name'])) ?>')">
+                                            <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                        </button>
+                                        <button class="btn-delete-perm" onclick="confirmDeletePerm(<?= $row['id'] ?>, '<?= htmlspecialchars(addslashes($row['member_name'])) ?>')">
+                                            <i class="bi bi-trash"></i> Delete
+                                        </button>
+                                    </div>
                                 </td>
+
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
@@ -392,6 +508,63 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
+    // Bulk Selection Logic
+    const selectAllBtn = document.getElementById('selectAllOfficers');
+    const checkboxes = document.querySelectorAll('.officer-checkbox');
+    const bulkBar = document.getElementById('bulkActionBar');
+    const selectedCount = document.getElementById('selectedCount');
+
+    if (selectAllBtn) {
+        selectAllBtn.addEventListener('change', function() {
+            checkboxes.forEach(cb => cb.checked = this.checked);
+            updateBulkBar();
+        });
+    }
+
+    window.updateBulkBar = function() {
+        const checked = document.querySelectorAll('.officer-checkbox:checked');
+        const count = checked.length;
+        
+        if (count > 0) {
+            bulkBar.style.display = 'flex';
+            selectedCount.textContent = count + ' Selected';
+        } else {
+            bulkBar.style.display = 'none';
+            if (selectAllBtn) selectAllBtn.checked = false;
+        }
+    }
+
+    window.clearSelection = function() {
+        checkboxes.forEach(cb => cb.checked = false);
+        if (selectAllBtn) selectAllBtn.checked = false;
+        updateBulkBar();
+    }
+
+    window.bulkAction = function(action) {
+        const checked = document.querySelectorAll('.officer-checkbox:checked');
+        const ids = Array.from(checked).map(cb => cb.value);
+        
+        if (ids.length === 0) return;
+
+        const actionText = action === 'restore' ? 'Restore' : 'Permanently Delete';
+        const actionIcon = action === 'restore' ? 'question' : 'warning';
+        const confirmColor = action === 'restore' ? '#10b981' : '#ef4444';
+
+        Swal.fire({
+            title: `${actionText} Selected Officers?`,
+            text: `You are about to ${actionText.toLowerCase()} ${ids.length} officers. ${action === 'delete' ? 'This cannot be undone!' : ''}`,
+            icon: actionIcon,
+            showCancelButton: true,
+            confirmButtonColor: confirmColor,
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: `Yes, ${actionText}!`
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = `bulk_manage_archives.php?type=officers&ids=${ids.join(',')}&action=${action}`;
+            }
+        });
+    }
+
 function confirmRetrieve(id, name) {
     Swal.fire({
         title: 'Restore Officer?',
@@ -410,6 +583,22 @@ function confirmRetrieve(id, name) {
     });
 }
 
+function confirmDeletePerm(id, name) {
+    Swal.fire({
+        title: 'Delete Permanently?',
+        text: `Are you sure you want to permanently delete officer "${name}"? This action cannot be undone!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Delete Permanently'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `bulk_manage_archives.php?type=officers&ids=${id}&action=delete`;
+        }
+    });
+}
+
 <?php if (isset($_GET['retrieved'])): ?>
     Swal.fire({
         icon: 'success',
@@ -419,6 +608,17 @@ function confirmRetrieve(id, name) {
         showConfirmButton: false
     });
 <?php endif; ?>
+
+<?php if (isset($_GET['bulk_success'])): ?>
+    Swal.fire({ 
+        icon: 'success', 
+        title: 'Success!', 
+        text: '<?= $_GET['count'] ?> officers were <?= $_GET['action'] === 'restore' ? 'restored' : 'permanently deleted' ?>.', 
+        timer: 3000, 
+        showConfirmButton: false 
+    });
+<?php endif; ?>
+
 </script>
 
 </body>

@@ -267,19 +267,102 @@ if (isset($_GET['archive'])) {
 -------------------------- */
 $membersResult = $conn->query("SELECT id, name FROM members ORDER BY name ASC");
 $rolesResult   = $conn->query("SELECT id, role_name FROM officer_roles ORDER BY role_name ASC");
-$sql = "
-    SELECT 
-        o.id, o.member_id, m.name AS member_name, o.role_id, r.role_name AS position, 
-        o.term_start, o.term_end, o.image, o.description
-    FROM officers o
-    JOIN members m ON o.member_id = m.id
-    JOIN officer_roles r ON o.role_id = r.id
-    ORDER BY r.role_name ASC
-";
-$result = $conn->query($sql);
 
-/* add explicit count (used for quick debug / display) */
-$officers_count = ($result) ? $result->num_rows : 0;
+// Get search and filter parameters
+$search = trim($_GET['search'] ?? '');
+$role_filter = $_GET['role_filter'] ?? '';
+$term_status = $_GET['term_status'] ?? 'all'; // current, previous, all
+$sort = $_GET['sort'] ?? 'pos_asc';
+
+// Build base conditions
+$current_where = "o.term_end >= CURDATE()";
+$previous_where = "o.term_end < CURDATE()";
+$common_where = [];
+$params = [];
+$types = '';
+
+if (!empty($search)) {
+    $common_where[] = "(m.name LIKE ? OR r.role_name LIKE ? OR o.description LIKE ?)";
+    $search_param = "%{$search}%";
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $types .= 'sss';
+}
+
+if (!empty($role_filter)) {
+    $common_where[] = "o.role_id = ?";
+    $params[] = $role_filter;
+    $types .= 'i';
+}
+
+$common_where_sql = !empty($common_where) ? " AND " . implode(" AND ", $common_where) : "";
+
+// Sort logic
+$order_sql = "ORDER BY r.role_name ASC";
+if ($sort === 'pos_desc') {
+    $order_sql = "ORDER BY r.role_name DESC";
+} elseif ($sort === 'name_asc') {
+    $order_sql = "ORDER BY m.name ASC";
+} elseif ($sort === 'name_desc') {
+    $order_sql = "ORDER BY m.name DESC";
+} elseif ($sort === 'term_new') {
+    $order_sql = "ORDER BY o.term_start DESC";
+} elseif ($sort === 'term_old') {
+    $order_sql = "ORDER BY o.term_start ASC";
+}
+
+// 1. Fetch CURRENT OFFICERS
+$current_result = null;
+if ($term_status === 'all' || $term_status === 'current') {
+    $current_sql = "
+        SELECT 
+            o.id, o.member_id, m.name AS member_name, o.role_id, r.role_name AS position, 
+            o.term_start, o.term_end, o.image, o.description
+        FROM officers o
+        JOIN members m ON o.member_id = m.id
+        JOIN officer_roles r ON o.role_id = r.id
+        WHERE {$current_where} {$common_where_sql}
+        {$order_sql}
+    ";
+    
+    if (!empty($params)) {
+        $stmt = $conn->prepare($current_sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $current_result = $stmt->get_result();
+    } else {
+        $current_result = $conn->query($current_sql);
+    }
+}
+$current_count = ($current_result) ? $current_result->num_rows : 0;
+
+// 2. Fetch PREVIOUS OFFICERS
+$previous_result = null;
+if ($term_status === 'all' || $term_status === 'previous') {
+    $previous_sql = "
+        SELECT 
+            o.id, o.member_id, m.name AS member_name, o.role_id, r.role_name AS position, 
+            o.term_start, o.term_end, o.image, o.description
+        FROM officers o
+        JOIN members m ON o.member_id = m.id
+        JOIN officer_roles r ON o.role_id = r.id
+        WHERE {$previous_where} {$common_where_sql}
+        {$order_sql}
+    ";
+    
+    if (!empty($params)) {
+        $stmt = $conn->prepare($previous_sql);
+        $stmt->bind_param($types, ...$params);
+        $stmt->execute();
+        $previous_result = $stmt->get_result();
+    } else {
+        $previous_result = $conn->query($previous_sql);
+    }
+}
+$previous_count = ($previous_result) ? $previous_result->num_rows : 0;
+
+$officers_count = $current_count + $previous_count;
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -332,6 +415,22 @@ $officers_count = ($result) ? $result->num_rows : 0;
             font-weight: 600;
         }
 
+        /* Filter Section */
+        .filter-section {
+            background: white;
+            padding: 24px;
+            border-radius: 16px;
+            box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+            margin-bottom: 32px;
+        }
+        .form-label-sm {
+            font-size: 12px;
+            font-weight: 600;
+            color: #64748b;
+            margin-bottom: 4px;
+            display: block;
+        }
+
         /* Add Officer Button */
         .btn-add-officer {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -351,6 +450,128 @@ $officers_count = ($result) ? $result->num_rows : 0;
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
             background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+            color: white;
+        }
+
+        /* Filter Controls */
+        .filter-select {
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            padding: 12px 16px;
+            font-size: 14px;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            background-color: white;
+            height: auto;
+        }
+        .filter-select:focus {
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            outline: none;
+        }
+
+        /* Search Box */
+        .search-box {
+            position: relative;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 12px 16px 12px 45px;
+            border: 2px solid #e0e0e0;
+            border-radius: 12px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .search-box input:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        }
+        .search-box i {
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            font-size: 18px;
+        }
+
+        /* Action Bar */
+        .action-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            flex-wrap: wrap;
+            gap: 16px;
+        }
+
+        /* Bulk Selection */
+        .officer-row.selected {
+            background-color: #eff6ff;
+        }
+        .form-check-input {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        /* Export Dropdown */
+        .btn-export {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white !important;
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-export:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+            color: white !important;
+        }
+        .dropdown { position: relative; }
+        .dropdown-menu {
+            display: none;
+            border-radius: 12px;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+            border: none;
+            padding: 8px;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            min-width: 200px;
+            z-index: 1050;
+            background: white;
+        }
+        .dropdown.show .dropdown-menu { display: block; }
+
+        /* Section Header */
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 32px;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        .section-header h3 {
+            margin: 0;
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        .section-header .badge {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            font-size: 12px;
+            padding: 4px 12px;
         }
 
         /* Table Container */
@@ -360,10 +581,9 @@ $officers_count = ($result) ? $result->num_rows : 0;
             padding: 24px;
             box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
             overflow: hidden;
+            margin-bottom: 32px;
         }
-        .table {
-            margin-bottom: 0;
-        }
+        .table { margin-bottom: 0; }
         .table thead th {
             background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
             color: white;
@@ -380,9 +600,6 @@ $officers_count = ($result) ? $result->num_rows : 0;
             vertical-align: middle;
             border-bottom: 1px solid #f0f0f0;
         }
-        .table tbody tr {
-            transition: all 0.3s ease;
-        }
         .table tbody tr:hover {
             background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
             transform: translateX(4px);
@@ -390,15 +607,11 @@ $officers_count = ($result) ? $result->num_rows : 0;
 
         /* Officer Image */
         .officer-img {
-            width: 60px;
-            height: 60px;
+            width: 50px;
+            height: 50px;
             object-fit: cover;
-            border-radius: 12px;
+            border-radius: 50%;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-            transition: transform 0.3s ease;
-        }
-        .officer-img:hover {
-            transform: scale(1.1);
         }
 
         /* Action Buttons */
@@ -420,12 +633,12 @@ $officers_count = ($result) ? $result->num_rows : 0;
             color: white;
         }
         .btn-archive {
-            background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+            background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
             color: white;
         }
         .btn-archive:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+            box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
             color: white;
         }
 
@@ -442,42 +655,11 @@ $officers_count = ($result) ? $result->num_rows : 0;
             padding: 24px;
             border: none;
         }
-        .modal-header .modal-title {
-            font-weight: 700;
-            font-size: 24px;
-        }
-        .modal-header .btn-close {
-            filter: brightness(0) invert(1);
-            opacity: 0.8;
-        }
-        .modal-body {
-            padding: 32px;
-        }
-        .modal-footer {
-            padding: 24px;
-            border-top: 1px solid #f0f0f0;
-        }
+        .modal-header .modal-title { font-weight: 700; font-size: 24px; }
+        .modal-header .btn-close { filter: brightness(0) invert(1); opacity: 0.8; }
+        .modal-body { padding: 32px; }
+        .modal-footer { padding: 24px; border-top: 1px solid #f0f0f0; }
 
-        /* Form Controls */
-        .form-label {
-            font-weight: 600;
-            color: #2c3e50;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
-        .form-select, .form-control {
-            border: 2px solid #e0e0e0;
-            border-radius: 10px;
-            padding: 12px 16px;
-            transition: all 0.3s ease;
-            font-size: 14px;
-        }
-        .form-select:focus, .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
-        }
-
-        /* Submit Button */
         .btn-submit {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             color: white;
@@ -489,46 +671,24 @@ $officers_count = ($result) ? $result->num_rows : 0;
             box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
             transition: all 0.3s ease;
         }
-        .btn-submit:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
-        }
+        .btn-submit:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5); }
 
-        /* Image Preview */
         .img-preview {
-            width: 120px;
-            height: 120px;
-            border-radius: 12px;
-            object-fit: cover;
-            margin-top: 12px;
+            width: 120px; height: 120px; border-radius: 12px;
+            object-fit: cover; margin-top: 12px;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
         }
 
-        /* Empty State */
         .empty-state {
-            text-align: center;
-            padding: 60px 20px;
-            color: #94a3b8;
+            text-align: center; padding: 60px 20px; color: #94a3b8;
         }
-        .empty-state i {
-            font-size: 64px;
-            margin-bottom: 20px;
-            opacity: 0.5;
-        }
+        .empty-state i { font-size: 64px; margin-bottom: 20px; opacity: 0.5; }
 
         @media (max-width: 991.98px) { 
-            .main-content { 
-                margin-left: 0; 
-                padding: 16px; 
-            }
-            .page-header {
-                padding: 24px;
-            }
-            .page-header h2 {
-                font-size: 24px;
-                flex-direction: column;
-                align-items: flex-start;
-            }
+            .main-content { margin-left: 0; padding: 16px; }
+            .page-header { padding: 24px; }
+            .page-header h2 { font-size: 24px; flex-direction: column; align-items: flex-start; }
+            .filter-section { padding: 16px; }
         }
     </style>
 </head>
@@ -543,7 +703,7 @@ $officers_count = ($result) ? $result->num_rows : 0;
                 <h2>
                     <i class="bi bi-people-fill"></i>
                     Officers Management
-                    <span class="badge"><?php echo $officers_count; ?> Active</span>
+                    <span class="badge"><?php echo $current_count; ?> Active</span>
                 </h2>
                 <p class="mb-0 mt-2" style="opacity: 0.9;">Manage organization officers and their terms</p>
             </div>
@@ -554,66 +714,168 @@ $officers_count = ($result) ? $result->num_rows : 0;
         </div>
     </div>
 
-    <!-- Officers Table -->
+    <!-- Advanced Filter Section -->
+    <div class="filter-section mb-4">
+        <form method="GET" id="filterForm" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label-sm">Search</label>
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="search" placeholder="Name, position, desc..." value="<?php echo htmlspecialchars($search); ?>" autocomplete="off">
+                </div>
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label-sm">Position</label>
+                <select name="role_filter" class="form-select filter-select">
+                    <option value="">All Positions</option>
+                    <?php $rolesResult->data_seek(0); while ($r = $rolesResult->fetch_assoc()): ?>
+                        <option value="<?= $r['id'] ?>" <?= $role_filter == $r['id'] ? 'selected' : '' ?>>
+                            <?= htmlspecialchars($r['role_name']) ?>
+                        </option>
+                    <?php endwhile; ?>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label-sm">Term Status</label>
+                <select name="term_status" class="form-select filter-select">
+                    <option value="all" <?= $term_status === 'all' ? 'selected' : '' ?>>All Terms</option>
+                    <option value="current" <?= $term_status === 'current' ? 'selected' : '' ?>>Current Only</option>
+                    <option value="previous" <?= $term_status === 'previous' ? 'selected' : '' ?>>Previous Only</option>
+                </select>
+            </div>
+
+            <div class="col-md-2">
+                <label class="form-label-sm">Sort By</label>
+                <select name="sort" class="form-select filter-select">
+                    <option value="pos_asc" <?= $sort === 'pos_asc' ? 'selected' : '' ?>>Position (A-Z)</option>
+                    <option value="pos_desc" <?= $sort === 'pos_desc' ? 'selected' : '' ?>>Position (Z-A)</option>
+                    <option value="name_asc" <?= $sort === 'name_asc' ? 'selected' : '' ?>>Name (A-Z)</option>
+                    <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : '' ?>>Name (Z-A)</option>
+                    <option value="term_new" <?= $sort === 'term_new' ? 'selected' : '' ?>>Newest Term</option>
+                    <option value="term_old" <?= $sort === 'term_old' ? 'selected' : '' ?>>Oldest Term</option>
+                </select>
+            </div>
+
+            <div class="col-md-3 d-flex align-items-end gap-2">
+                <button type="submit" class="btn btn-primary flex-grow-1" style="padding: 12px 16px;">
+                    <i class="bi bi-funnel"></i> Apply
+                </button>
+                <a href="officerslist.php" class="btn btn-outline-secondary flex-grow-1" style="padding: 12px 16px;">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+        <div class="d-flex gap-2 align-items-center">
+            <div id="bulkActionsContainer" style="display:none;" class="d-flex gap-2">
+                <span id="selectedCount" class="badge bg-primary" style="font-size: 14px; padding: 10px 16px;">0 selected</span>
+                <button id="btnBulkArchive" class="btn btn-warning btn-sm text-white">
+                    <i class="bi bi-archive"></i> Archive Selected
+                </button>
+                <button id="btnDeselectAll" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+            
+            <div class="dropdown" id="exportDropdownContainer">
+                <button class="btn-export dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-download me-1"></i> Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end">
+                    <li><a class="dropdown-item" href="#" onclick="exportData('csv'); return false;"><i class="bi bi-filetype-csv me-2"></i>CSV Format</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData('pdf'); return false;"><i class="bi bi-file-earmark-pdf me-2"></i>PDF Document</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData('print'); return false;"><i class="bi bi-printer me-2"></i>Print Preview</a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="text-muted small fw-semibold">
+            Showing <?= $officers_count ?> officers
+        </div>
+    </div>
+
+    <!-- Officers Sections -->
     <div class="table-container">
-        <div class="table-responsive">
-            <table class="table align-middle text-center">
+        <!-- CURRENT OFFICERS -->
+        <?php if ($term_status === 'all' || $term_status === 'current'): ?>
+        <div class="section-header">
+            <i class="bi bi-star-fill" style="color: #f59e0b;"></i>
+            <h3>Current Officers</h3>
+            <span class="badge"><?php echo $current_count; ?> Active</span>
+        </div>
+        
+        <div class="table-responsive <?= $term_status === 'all' ? 'mb-5' : '' ?>">
+            <table class="table align-middle">
                 <thead>
                     <tr>
-                        <th style="width: 60px;">#</th>
-                        <th style="width: 100px;">Photo</th>
-                        <th>Member Name</th>
+                        <th style="width: 50px;" class="text-center">
+                            <input type="checkbox" class="form-check-input selectAll" title="Select All">
+                        </th>
+                        <th style="width: 60px;" class="text-center">#</th>
+                        <th>Officer</th>
                         <th>Position</th>
-                        <th>Term Start</th>
-                        <th>Term End</th>
-                        <th style="width: 200px;">Actions</th>
+                        <th>Term Duration</th>
+                        <th class="text-center" style="width: 150px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody>
-                <?php if ($result && $result->num_rows > 0): $i=1; while ($row = $result->fetch_assoc()): ?>
-                    <tr>
-                        <td><strong><?= $i++ ?></strong></td>
-                        <td>
-                            <?php if ($row['image']): ?>
-                                <img src="../../uploads/officers/<?= htmlspecialchars($row['image']) ?>" class="officer-img" alt="Officer">
-                            <?php else: ?>
-                                <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; color: white; font-weight: 700; font-size: 20px; margin: 0 auto;">
-                                    <?= strtoupper(substr($row['member_name'], 0, 1)) ?>
-                                </div>
-                            <?php endif; ?>
+                <?php if ($current_result && $current_result->num_rows > 0): $i=1; while ($row = $current_result->fetch_assoc()): ?>
+                    <tr class="officer-row">
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input officer-checkbox" value="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['member_name']) ?>">
                         </td>
-                        <td><strong><?= htmlspecialchars($row['member_name']) ?></strong></td>
+                        <td class="text-center"><strong><?= $i++ ?></strong></td>
                         <td>
-                            <span style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 6px 12px; border-radius: 8px; font-weight: 600; font-size: 13px;">
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="../../uploads/officers/<?= htmlspecialchars($row['image'] ?? 'default.png') ?>" 
+                                     class="officer-img" 
+                                     alt="Officer"
+                                     onerror="if (!this.getAttribute('data-tried-fallback')) { this.setAttribute('data-tried-fallback', 'true'); this.src='https://ui-avatars.com/api/?name=<?= urlencode($row['member_name']) ?>&background=random&color=fff'; }">
+                                <div>
+                                    <div class="fw-bold"><?= htmlspecialchars($row['member_name']) ?></div>
+                                    <div class="text-muted small">ID: #<?= $row['id'] ?></div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-primary bg-opacity-10 text-primary border border-primary border-opacity-25 px-3 py-2">
                                 <?= htmlspecialchars($row['position']) ?>
                             </span>
                         </td>
-                        <td><?= date('M d, Y', strtotime($row['term_start'])) ?></td>
-                        <td><?= date('M d, Y', strtotime($row['term_end'])) ?></td>
                         <td>
-                            <button 
-                                class="btn btn-edit btn-sm editBtn me-2"
-                                data-id="<?= $row['id'] ?>"
-                                data-member="<?= htmlspecialchars($row['member_name']) ?>"
-                                data-memberid="<?= $row['member_id'] ?>"
-                                data-role="<?= $row['role_id'] ?>"
-                                data-start="<?= $row['term_start'] ?>"
-                                data-end="<?= $row['term_end'] ?>"
-                                data-desc="<?= htmlspecialchars($row['description']) ?>"
-                                data-image="<?= htmlspecialchars($row['image']) ?>"
-                            ><i class="bi bi-pencil-square"></i></button>
-                            <button class="btn btn-archive btn-sm" onclick="confirmArchive(<?= $row['id'] ?>)">
-                                <i class="bi bi-archive"></i>
-                            </button>
+                            <div class="small fw-semibold text-dark"><?= date('M d, Y', strtotime($row['term_start'])) ?></div>
+                            <div class="text-muted small">to <?= date('M d, Y', strtotime($row['term_end'])) ?></div>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <button class="btn btn-edit btn-sm editBtn"
+                                    data-id="<?= $row['id'] ?>"
+                                    data-member="<?= htmlspecialchars($row['member_name']) ?>"
+                                    data-memberid="<?= $row['member_id'] ?>"
+                                    data-role="<?= $row['role_id'] ?>"
+                                    data-start="<?= $row['term_start'] ?>"
+                                    data-end="<?= $row['term_end'] ?>"
+                                    data-desc="<?= htmlspecialchars($row['description']) ?>"
+                                    data-image="<?= htmlspecialchars($row['image']) ?>"
+                                ><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-archive btn-sm archive-btn" data-id="<?= $row['id'] ?>">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                            </div>
                         </td>
                     </tr>
                 <?php endwhile; else: ?>
                     <tr>
-                        <td colspan="7">
+                        <td colspan="6">
                             <div class="empty-state">
                                 <i class="bi bi-inbox"></i>
-                                <h5>No Officers Assigned Yet</h5>
-                                <p>Click "Assign New Officer" to get started</p>
+                                <h5>No current officers found matching your criteria</h5>
                             </div>
                         </td>
                     </tr>
@@ -621,7 +883,92 @@ $officers_count = ($result) ? $result->num_rows : 0;
                 </tbody>
             </table>
         </div>
+        <?php endif; ?>
+
+        <!-- PREVIOUS OFFICERS -->
+        <?php if ($term_status === 'all' || $term_status === 'previous'): ?>
+        <div class="section-header">
+            <i class="bi bi-clock-history" style="color: #94a3b8;"></i>
+            <h3>Previous Officers</h3>
+            <span class="badge" style="background: #94a3b8;"><?php echo $previous_count; ?> History</span>
+        </div>
+
+        <div class="table-responsive">
+            <table class="table align-middle">
+                <thead>
+                    <tr>
+                        <th style="width: 50px;" class="text-center">
+                            <input type="checkbox" class="form-check-input selectAll" title="Select All">
+                        </th>
+                        <th style="width: 60px;" class="text-center">#</th>
+                        <th>Officer</th>
+                        <th>Position</th>
+                        <th>Term Duration</th>
+                        <th class="text-center" style="width: 150px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                <?php if ($previous_result && $previous_result->num_rows > 0): $i=1; while ($row = $previous_result->fetch_assoc()): ?>
+                    <tr class="officer-row" style="opacity: 0.85;">
+                        <td class="text-center">
+                            <input type="checkbox" class="form-check-input officer-checkbox" value="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['member_name']) ?>">
+                        </td>
+                        <td class="text-center"><strong><?= $i++ ?></strong></td>
+                        <td>
+                            <div class="d-flex align-items-center gap-3">
+                                <img src="../../uploads/officers/<?= htmlspecialchars($row['image'] ?? 'default.png') ?>" 
+                                     class="officer-img" 
+                                     alt="Officer"
+                                     onerror="if (!this.getAttribute('data-tried-fallback')) { this.setAttribute('data-tried-fallback', 'true'); this.src='https://ui-avatars.com/api/?name=<?= urlencode($row['member_name']) ?>&background=random&color=fff'; }">
+                                <div>
+                                    <div class="fw-bold"><?= htmlspecialchars($row['member_name']) ?></div>
+                                    <div class="text-muted small">Term Ended</div>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary bg-opacity-10 text-secondary border border-secondary border-opacity-25 px-3 py-2">
+                                <?= htmlspecialchars($row['position']) ?>
+                            </span>
+                        </td>
+                        <td>
+                            <div class="small fw-semibold text-muted"><?= date('M d, Y', strtotime($row['term_start'])) ?></div>
+                            <div class="text-muted small">Ended <?= date('M d, Y', strtotime($row['term_end'])) ?></div>
+                        </td>
+                        <td class="text-center">
+                            <div class="d-flex justify-content-center gap-2">
+                                <button class="btn btn-edit btn-sm editBtn"
+                                    data-id="<?= $row['id'] ?>"
+                                    data-member="<?= htmlspecialchars($row['member_name']) ?>"
+                                    data-memberid="<?= $row['member_id'] ?>"
+                                    data-role="<?= $row['role_id'] ?>"
+                                    data-start="<?= $row['term_start'] ?>"
+                                    data-end="<?= $row['term_end'] ?>"
+                                    data-desc="<?= htmlspecialchars($row['description']) ?>"
+                                    data-image="<?= htmlspecialchars($row['image']) ?>"
+                                ><i class="bi bi-pencil-square"></i></button>
+                                <button class="btn btn-archive btn-sm archive-btn" data-id="<?= $row['id'] ?>">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endwhile; else: ?>
+                    <tr>
+                        <td colspan="6">
+                            <div class="empty-state">
+                                <i class="bi bi-inbox"></i>
+                                <h5>No previous officers found matching your criteria</h5>
+                            </div>
+                        </td>
+                    </tr>
+                <?php endif; ?>
+                </tbody>
+            </table>
+        </div>
+        <?php endif; ?>
     </div>
+</div>
 </div>
 
 <!-- Add Officer Modal -->
@@ -765,29 +1112,175 @@ $officers_count = ($result) ? $result->num_rows : 0;
 <!-- JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// confirm archive
-function confirmArchive(id) {
-    Swal.fire({
-        title: 'Archive Officer?',
-        text: 'This will move the officer to the archive.',
-        icon: 'warning',
-        showCancelButton: true,
-        confirmButtonColor: '#ff7043',
-        cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, archive'
-    }).then((result) => {
-        if (result.isConfirmed) {
-            window.location.href = 'officerslist.php?archive=' + id;
+// ==========================================
+// BULK SELECTION FUNCTIONALITY
+// ==========================================
+let selectedOfficers = [];
+
+// Handle "Select All" for each table
+document.querySelectorAll('.selectAll').forEach(selectBtn => {
+    selectBtn.addEventListener('change', function() {
+        const table = this.closest('table');
+        const checkboxes = table.querySelectorAll('.officer-checkbox');
+        checkboxes.forEach(cb => {
+            cb.checked = this.checked;
+            updateRowSelection(cb);
+        });
+        updateBulkActions();
+    });
+});
+
+// Individual Checkbox Change
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('officer-checkbox')) {
+        updateRowSelection(e.target);
+        updateBulkActions();
+        
+        // Update "Select All" for the specific table
+        const table = e.target.closest('table');
+        const checkboxes = table.querySelectorAll('.officer-checkbox');
+        const checkedCount = table.querySelectorAll('.officer-checkbox:checked').length;
+        const selectAllBtn = table.querySelector('.selectAll');
+        if (selectAllBtn) {
+            selectAllBtn.checked = checkedCount === checkboxes.length;
+            selectAllBtn.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
         }
+    }
+});
+
+function updateRowSelection(checkbox) {
+    const row = checkbox.closest('tr');
+    if (checkbox.checked) {
+        row.classList.add('selected');
+    } else {
+        row.classList.remove('selected');
+    }
+}
+
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.officer-checkbox:checked');
+    const count = checkboxes.length;
+    const bulkContainer = document.getElementById('bulkActionsContainer');
+    const selectedCountBadge = document.getElementById('selectedCount');
+    
+    if (count > 0) {
+        bulkContainer.style.setProperty('display', 'flex', 'important');
+        selectedCountBadge.textContent = `${count} selected`;
+        selectedOfficers = Array.from(checkboxes).map(cb => ({
+            id: cb.value,
+            name: cb.dataset.name
+        }));
+    } else {
+        bulkContainer.style.setProperty('display', 'none', 'important');
+        selectedOfficers = [];
+    }
+}
+
+// Bulk Archive
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'btnBulkArchive' || e.target.closest('#btnBulkArchive')) {
+        if (selectedOfficers.length === 0) return;
+        
+        Swal.fire({
+            title: 'Archive Selected Officers?',
+            html: `Move <strong>${selectedOfficers.length}</strong> officers to archive?<br><br>` +
+                  `<div style="max-height: 200px; overflow-y: auto; text-align: left; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">` +
+                  selectedOfficers.map(m => `• ${m.name}`).join('<br>') +
+                  `</div>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f59e0b',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, archive them!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                // We'll reuse the archive logic, but for multiple IDs
+                const ids = selectedOfficers.map(o => o.id).join(',');
+                window.location.href = `bulk_delete_officers.php?ids=${ids}&action=archive`;
+            }
+        });
+    }
+});
+
+// Deselect All
+document.getElementById('btnDeselectAll')?.addEventListener('click', function() {
+    document.querySelectorAll('.officer-checkbox:checked').forEach(cb => {
+        cb.checked = false;
+        updateRowSelection(cb);
+    });
+    document.querySelectorAll('.selectAll').forEach(s => {
+        s.checked = false;
+        s.indeterminate = false;
+    });
+    updateBulkActions();
+});
+
+// ==========================================
+// DROPDOWN FIX
+// ==========================================
+document.addEventListener('click', function(e) {
+    const dropdownToggle = e.target.closest('.dropdown-toggle');
+    const openDropdowns = document.querySelectorAll('.dropdown.show');
+
+    if (dropdownToggle) {
+        const dropdown = dropdownToggle.closest('.dropdown');
+        const isShow = dropdown.classList.contains('show');
+        openDropdowns.forEach(d => d.classList.remove('show'));
+        if (!isShow) dropdown.classList.add('show');
+        e.preventDefault();
+        e.stopPropagation();
+    } else {
+        openDropdowns.forEach(d => d.classList.remove('show'));
+    }
+});
+
+// ==========================================
+// EXPORT FUNCTIONALITY
+// ==========================================
+function exportData(format) {
+    const currentParams = new URLSearchParams(window.location.search);
+    let url = (format === 'csv') ? 'export_officers_csv.php' : 'export_officers_pdf.php';
+    if (format === 'print') url = 'export_officers_print.php';
+    
+    window.open(`${url}?${currentParams.toString()}`, '_blank');
+    
+    Swal.fire({
+        icon: 'success',
+        title: 'Export Started!',
+        text: `Preparing ${format.toUpperCase()} export...`,
+        timer: 1500,
+        showConfirmButton: false
     });
 }
+
+// Individual Archive confirmation
+document.addEventListener('click', function(e) {
+    const archiveBtn = e.target.closest('.archive-btn');
+    if (archiveBtn) {
+        const id = archiveBtn.dataset.id;
+        Swal.fire({
+            title: 'Archive Officer?',
+            text: 'Move this officer to the history/archive?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f59e0b',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: '<i class="bi bi-archive-fill me-2"></i>Yes, archive it!',
+            cancelButtonText: 'Cancel'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                window.location.href = 'officerslist.php?archive=' + id;
+            }
+        });
+    }
+});
 
 // Fill and open Edit modal
 document.querySelectorAll('.editBtn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.getElementById('edit_officer_id').value = btn.dataset.id;
         document.getElementById('edit_member_name').value = btn.dataset.member;
-        // set role select
         document.getElementById('edit_role_id').value = btn.dataset.role;
         document.getElementById('edit_term_start').value = btn.dataset.start;
         document.getElementById('edit_term_end').value = btn.dataset.end;
@@ -801,66 +1294,44 @@ document.querySelectorAll('.editBtn').forEach(btn => {
             imgPreview.classList.add('d-none');
             imgPreview.src = "";
         }
-
-        // reset file input
-        const fileInput = document.getElementById('edit_image');
-        fileInput.value = "";
-        // show modal
+        document.getElementById('edit_image').value = "";
         new bootstrap.Modal(document.getElementById('editOfficerModal')).show();
     });
 });
 
-// preview new image when selecting file (add modal)
-document.getElementById('add_image')?.addEventListener('change', function(e) {
-    const [file] = this.files;
-    const preview = document.getElementById('add_preview');
-    if (file) {
-        preview.src = URL.createObjectURL(file);
-        preview.classList.remove('d-none');
-    } else {
-        preview.classList.add('d-none');
-    }
+// preview images
+['add_image', 'edit_image'].forEach(id => {
+    document.getElementById(id)?.addEventListener('change', function(e) {
+        const [file] = this.files;
+        const preview = document.getElementById(id.replace('image', 'preview'));
+        if (file) {
+            preview.src = URL.createObjectURL(file);
+            preview.classList.remove('d-none');
+        } else {
+            preview.classList.add('d-none');
+        }
+    });
 });
 
-// preview new image when selecting file (edit modal)
-document.getElementById('edit_image')?.addEventListener('change', function(e) {
-    const [file] = this.files;
-    const preview = document.getElementById('edit_preview');
-    if (file) {
-        preview.src = URL.createObjectURL(file);
-        preview.classList.remove('d-none');
-    } else {
-        preview.classList.add('d-none');
-    }
-});
-
-// SweetAlert messages after server response
+// SweetAlert messages
 <?php if ($alertMsg): ?>
 Swal.fire({
     icon: '<?= $alertType ?>',
     title: '<?= ucfirst($alertType) ?>!',
     text: '<?= addslashes($alertMsg) ?>',
     confirmButtonColor: '<?= $alertType === "success" ? "#667eea" : "#ef4444" ?>',
-    confirmButtonText: 'OK',
-    allowOutsideClick: false
+    confirmButtonText: 'OK'
 }).then(() => {
-    <?php if ($alertType === "success"): ?>
-        window.location.href = "officerslist.php";
-    <?php endif; ?>
+    <?php if ($alertType === "success"): ?> window.location.href = "officerslist.php"; <?php endif; ?>
 });
 <?php endif; ?>
 
 <?php if (isset($_GET['archived'])): ?>
-Swal.fire({
-    icon: 'success',
-    title: 'Archived!',
-    text: 'Officer moved to archive successfully.',
-    timer: 2500,
-    showConfirmButton: false,
-    confirmButtonColor: '#667eea'
-}).then(() => {
-    window.location.href = "officerslist.php";
-});
+Swal.fire({ icon: 'success', title: 'Archived!', text: 'Officer moved to archive.', timer: 2000, showConfirmButton: false });
+<?php endif; ?>
+
+<?php if (isset($_GET['bulk_archived'])): ?>
+Swal.fire({ icon: 'success', title: 'Bulk Archive Done!', text: '<?= intval($_GET['bulk_archived']) ?> officers archived.', timer: 2500, showConfirmButton: false });
 <?php endif; ?>
 </script>
 </body>

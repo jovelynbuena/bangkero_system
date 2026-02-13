@@ -33,8 +33,8 @@ $assocAddress = htmlspecialchars($config['assoc_address'] ?? '123 Association St
 
 // Pages for dropdowns
 $managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php'];
-$archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php'];
-$utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php'];
+$archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php'];
+$utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php'];
 $settingsPages = ['system_config.php','profile_settings.php'];
 
 // Determine if dropdowns should be open
@@ -623,6 +623,31 @@ body.sidebar-open {
             <a href="<?= BASE_URL; ?>management/archived_events.php"
                class="<?= ($current_page == 'archived_events.php') ? 'active' : ''; ?>">
                <i class="bi bi-calendar-x"></i> Archived Events
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_awards.php"
+               class="<?= ($current_page == 'archives_awards.php') ? 'active' : ''; ?>">
+               <i class="bi bi-trophy-fill" style="opacity: 0.7;"></i> Archived Awards
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_galleries.php"
+               class="<?= ($current_page == 'archives_galleries.php') ? 'active' : ''; ?>">
+               <i class="bi bi-images" style="opacity: 0.7;"></i> Archived Galleries
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_contact_messages.php"
+               class="<?= ($current_page == 'archives_contact_messages.php') ? 'active' : ''; ?>">
+               <i class="bi bi-envelope-fill" style="opacity: 0.7;"></i> Archived Messages
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_officer_roles.php"
+               class="<?= ($current_page == 'archives_officer_roles.php') ? 'active' : ''; ?>">
+               <i class="bi bi-person-check-fill" style="opacity: 0.7;"></i> Archived Roles
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_users.php"
+               class="<?= ($current_page == 'archives_users.php') ? 'active' : ''; ?>">
+               <i class="bi bi-shield-lock-fill" style="opacity: 0.7;"></i> Archived Accounts
             </a>
 
             <a href="<?= BASE_URL; ?>announcement/archived_announcement.php"

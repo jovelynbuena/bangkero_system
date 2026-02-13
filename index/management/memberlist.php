@@ -274,8 +274,14 @@ if (isset($_GET['archive'])) {
                 // Archive exists, insert data
                 try {
                     $stmt = $conn->prepare("
-                        INSERT INTO member_archive (member_id, name, email, phone, archived_at)
-                        SELECT id, name, email, phone, NOW()
+                        INSERT INTO member_archive (
+                            member_id, name, dob, gender, phone, email, address, 
+                            work_type, license_number, boat_name, fishing_area, 
+                            emergency_name, emergency_phone, agreement, image, archived_at
+                        )
+                        SELECT id, name, dob, gender, phone, email, address, 
+                               work_type, license_number, boat_name, fishing_area, 
+                               emergency_name, emergency_phone, agreement, image, NOW()
                         FROM members
                         WHERE id = ?
                     ");
@@ -283,12 +289,13 @@ if (isset($_GET['archive'])) {
                     $stmt->execute();
                     $stmt->close();
                 } catch (Exception $e) {
-                    // If insert fails (e.g., duplicate), just continue to delete
+                    // If insert fails (e.g., duplicate), just continue to remove
                 }
             }
             
-            // Delete from members table
+            // Remove from members table after archiving
             $deleteStmt = $conn->prepare("DELETE FROM members WHERE id = ?");
+
             $deleteStmt->bind_param("i", $id);
             
             if ($deleteStmt->execute()) {
@@ -309,11 +316,104 @@ if (isset($_GET['archive'])) {
 }
 
 /* --------------------------
-   📋 FETCH MEMBERS
+   📋 FETCH STATISTICS
 -------------------------- */
-$sql = "SELECT * FROM members ORDER BY name ASC";
-$result = $conn->query($sql);
-$members_count = $result ? $result->num_rows : 0;
+$stats_members = $conn->query("SELECT COUNT(*) AS total FROM members");
+$total_members = $stats_members->fetch_assoc()['total'] ?? 0;
+
+$stats_officers = $conn->query("SELECT COUNT(*) AS total FROM officers");
+$total_officers = $stats_officers->fetch_assoc()['total'] ?? 0;
+
+/* --------------------------
+   📋 FETCH MEMBERS WITH FILTERING
+-------------------------- */
+$search = trim($_GET['search'] ?? '');
+$role = $_GET['role'] ?? '';
+$sort = $_GET['sort'] ?? 'name_asc';
+
+$where_clauses = [];
+$params = [];
+$types = '';
+
+// Search filter
+if (!empty($search)) {
+    $where_clauses[] = "(name LIKE ? OR phone LIKE ? OR email LIKE ? OR id LIKE ?)";
+    $search_param = "%{$search}%";
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $params[] = $search_param;
+    $types .= 'ssss';
+}
+
+// Role filter (only Member, Officer handled by subquery)
+if ($role === 'officer') {
+    $where_clauses[] = "id IN (SELECT member_id FROM officers)";
+} elseif ($role === 'member') {
+    $where_clauses[] = "id NOT IN (SELECT member_id FROM officers)";
+}
+
+// Build WHERE clause
+$where_sql = !empty($where_clauses) ? " WHERE " . implode(" AND ", $where_clauses) : "";
+
+// Sort order
+$order_sql = "ORDER BY name ASC";
+if ($sort === 'name_desc') {
+    $order_sql = "ORDER BY name DESC";
+} elseif ($sort === 'date_new') {
+    $order_sql = "ORDER BY created_at DESC";
+} elseif ($sort === 'date_old') {
+    $order_sql = "ORDER BY created_at ASC";
+}
+
+// Date range filter
+$date_from = $_GET['date_from'] ?? '';
+$date_to = $_GET['date_to'] ?? '';
+if (!empty($date_from) && !empty($date_to)) {
+    $where_clauses[] = "DATE(created_at) BETWEEN ? AND ?";
+    $params[] = $date_from;
+    $params[] = $date_to;
+    $types .= 'ss';
+} elseif (!empty($date_from)) {
+    $where_clauses[] = "DATE(created_at) >= ?";
+    $params[] = $date_from;
+    $types .= 's';
+} elseif (!empty($date_to)) {
+    $where_clauses[] = "DATE(created_at) <= ?";
+    $params[] = $date_to;
+    $types .= 's';
+}
+
+// Pagination
+$page = max(1, intval($_GET['page'] ?? 1));
+$per_page = 10;
+$offset = ($page - 1) * $per_page;
+
+// Get total count for pagination
+$count_sql = "SELECT COUNT(*) as total FROM members {$where_sql}";
+if (!empty($params)) {
+    $count_stmt = $conn->prepare($count_sql);
+    $count_stmt->bind_param($types, ...$params);
+    $count_stmt->execute();
+    $total_records = $count_stmt->get_result()->fetch_assoc()['total'];
+} else {
+    $total_records = $conn->query($count_sql)->fetch_assoc()['total'];
+}
+$total_pages = ceil($total_records / $per_page);
+
+// Fetch members with pagination
+$sql = "SELECT * FROM members {$where_sql} {$order_sql} LIMIT {$per_page} OFFSET {$offset}";
+
+if (!empty($params)) {
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param($types, ...$params);
+    $stmt->execute();
+    $result = $stmt->get_result();
+} else {
+    $result = $conn->query($sql);
+}
+
+$members_count = $total_records;
 ?>
 
 
@@ -341,7 +441,7 @@ $members_count = $result ? $result->num_rows : 0;
         min-height: 100vh; 
     }
 
-    /* Header Section */
+    /* Page Header */
     .page-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         padding: 32px;
@@ -365,6 +465,173 @@ $members_count = $result ? $result->num_rows : 0;
         border-radius: 12px;
         font-size: 16px;
         font-weight: 600;
+    }
+
+    /* Statistics Dashboard */
+    .statistics-dashboard {
+        margin-bottom: 32px;
+    }
+    .stat-card {
+        background: white;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        gap: 20px;
+        height: 100%;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+    }
+    .stat-icon {
+        width: 64px;
+        height: 64px;
+        border-radius: 16px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 28px;
+        flex-shrink: 0;
+    }
+    .stat-primary .stat-icon {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
+    .stat-success .stat-icon {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white;
+    }
+    .stat-info .stat-icon {
+        background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+        color: white;
+    }
+    .stat-warning .stat-icon {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+    .stat-content h3 {
+        font-size: 32px;
+        font-weight: 800;
+        margin: 0;
+        color: #1e293b;
+    }
+    .stat-content p {
+        margin: 0;
+        color: #64748b;
+        font-size: 14px;
+        font-weight: 500;
+    }
+
+    /* Filter Section */
+    .filter-section {
+        background: white;
+        padding: 24px;
+        border-radius: 16px;
+        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+    .form-label-sm {
+        font-size: 12px;
+        font-weight: 600;
+        color: #64748b;
+        margin-bottom: 4px;
+        display: block;
+    }
+    .filter-select {
+        border: 2px solid #e0e0e0;
+        border-radius: 10px;
+        padding: 10px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.3s ease;
+        background-color: white;
+    }
+    .filter-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    }
+    .filter-info {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        color: #64748b;
+        font-weight: 500;
+        font-size: 14px;
+    }
+
+    /* Bulk Selection & Actions */
+    .member-checkbox {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    #selectAll {
+        width: 18px;
+        height: 18px;
+        cursor: pointer;
+    }
+    .member-row {
+        transition: all 0.2s ease;
+    }
+    .member-row:hover {
+        background-color: #f8fafc;
+    }
+    .member-row.selected {
+        background-color: #eff6ff;
+    }
+
+    /* Export Dropdown */
+    .btn-export {
+        background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+        color: white !important;
+        padding: 10px 20px;
+        border-radius: 10px;
+        border: none;
+        font-weight: 600;
+        font-size: 14px;
+        transition: all 0.3s ease;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .btn-export:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(16, 185, 129, 0.4);
+        color: white !important;
+    }
+    .dropdown {
+        position: relative;
+    }
+    .dropdown-menu {
+        display: none;
+        border-radius: 12px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+        border: none;
+        padding: 8px;
+        position: absolute;
+        top: 100%;
+        right: 0;
+        min-width: 200px;
+        z-index: 1000;
+        background: white;
+    }
+    .dropdown.show .dropdown-menu {
+        display: block;
+    }
+    .dropdown-item {
+        border-radius: 8px;
+        padding: 10px 16px;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+    .dropdown-item:hover {
+        background-color: #f8fafc;
+        color: #667eea;
+    }
+    .dropdown-item i {
+        width: 20px;
     }
 
     /* Action Bar */
@@ -518,12 +785,12 @@ $members_count = $result ? $result->num_rows : 0;
         color: white;
     }
     .btn-archive {
-        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
         color: white;
     }
     .btn-archive:hover {
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
         color: white;
     }
 
@@ -623,6 +890,41 @@ $members_count = $result ? $result->num_rows : 0;
         opacity: 0.5;
     }
 
+    /* Pagination */
+    .pagination {
+        gap: 4px;
+    }
+    .pagination-info {
+        font-size: 14px;
+        font-weight: 500;
+    }
+    .page-link {
+        border: 2px solid #e0e0e0;
+        color: #667eea;
+        border-radius: 8px;
+        margin: 0 2px;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        padding: 8px 12px;
+    }
+    .page-link:hover {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        border-color: #667eea;
+        transform: translateY(-2px);
+    }
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        border-color: #667eea;
+        color: white;
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    }
+    .page-item.disabled .page-link {
+        border-color: #f0f0f0;
+        color: #cbd5e1;
+        background: #f8fafc;
+    }
+
     @media (max-width: 991.98px) { 
         .main-content { 
             margin-left: 0; 
@@ -642,6 +944,25 @@ $members_count = $result ? $result->num_rows : 0;
         }
         .search-box {
             width: 100%;
+        }
+        .stat-card {
+            flex-direction: column;
+            text-align: center;
+        }
+        .filter-section {
+            padding: 15px;
+        }
+        #bulkActionsContainer {
+            width: 100%;
+            justify-content: space-between !important;
+        }
+        .pagination {
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        .pagination-info {
+            font-size: 12px;
+            margin-bottom: 10px;
         }
     }
 </style>
@@ -668,21 +989,143 @@ $members_count = $result ? $result->num_rows : 0;
         </div>
     </div>
 
-    <!-- Action Bar -->
-    <div class="action-bar">
-        <div class="d-flex gap-2">
-            <a href="export_members_csv.php" class="btn-export btn-csv" target="_blank">
-                <i class="bi bi-filetype-csv"></i>
-                Export CSV
-            </a>
-            <a href="export_members_print.php" class="btn-export btn-pdf" target="_blank">
-                <i class="bi bi-file-earmark-pdf"></i>
-                Export PDF
-            </a>
+    <!-- Statistics Dashboard -->
+    <div class="statistics-dashboard">
+        <div class="row g-4 mb-4">
+            <div class="col-md-6">
+                <div class="stat-card stat-primary">
+                    <div class="stat-icon">
+                        <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3><?php echo $total_members; ?></h3>
+                        <p>Total Members</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="stat-card stat-success">
+                    <div class="stat-icon">
+                        <i class="bi bi-award-fill"></i>
+                    </div>
+                    <div class="stat-content">
+                        <h3><?php echo $total_officers; ?></h3>
+                        <p>Total Officers</p>
+                    </div>
+                </div>
+            </div>
         </div>
-        <div class="search-box">
-            <i class="bi bi-search"></i>
-            <input type="text" id="searchInput" placeholder="Search members..." autocomplete="off">
+    </div>
+
+    <!-- Advanced Filter Section -->
+    <div class="filter-section mb-4">
+        <form method="GET" id="filterForm" class="row g-3">
+            <!-- Search -->
+            <div class="col-md-3">
+                <label class="form-label-sm">Search</label>
+                <div class="search-box">
+                    <i class="bi bi-search"></i>
+                    <input type="text" name="search" id="searchInput" placeholder="Name, email, phone, ID..." autocomplete="off" value="<?php echo htmlspecialchars($search); ?>">
+                </div>
+            </div>
+            
+            <!-- Role Filter -->
+            <div class="col-md-3">
+                <label class="form-label-sm">Role</label>
+                <select name="role" id="roleFilter" class="form-select filter-select">
+                    <option value="">All Roles</option>
+                    <option value="officer" <?php echo $role === 'officer' ? 'selected' : ''; ?>>Officer</option>
+                    <option value="member" <?php echo $role === 'member' ? 'selected' : ''; ?>>Member</option>
+                </select>
+            </div>
+            
+            <!-- Date Range -->
+            <div class="col-md-2">
+                <label class="form-label-sm">Date From</label>
+                <input type="date" name="date_from" id="dateFrom" class="form-control filter-select" value="<?php echo isset($_GET['date_from']) ? htmlspecialchars($_GET['date_from']) : ''; ?>">
+            </div>
+            
+            <div class="col-md-2">
+                <label class="form-label-sm">Date To</label>
+                <input type="date" name="date_to" id="dateTo" class="form-control filter-select" value="<?php echo isset($_GET['date_to']) ? htmlspecialchars($_GET['date_to']) : ''; ?>">
+            </div>
+            
+            <!-- Sort -->
+            <div class="col-md-2">
+                <label class="form-label-sm">Sort</label>
+                <select name="sort" id="sortFilter" class="form-select filter-select">
+                    <option value="name_asc" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>A-Z</option>
+                    <option value="name_desc" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Z-A</option>
+                    <option value="date_new" <?php echo $sort === 'date_new' ? 'selected' : ''; ?>>Newest</option>
+                    <option value="date_old" <?php echo $sort === 'date_old' ? 'selected' : ''; ?>>Oldest</option>
+                </select>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div class="col-md-12 d-flex gap-2">
+                <button type="submit" class="btn btn-primary">
+                    <i class="bi bi-funnel"></i> Apply Filters
+                </button>
+                <a href="memberlist.php" class="btn btn-outline-secondary">
+                    <i class="bi bi-arrow-clockwise"></i> Reset All
+                </a>
+            </div>
+        </form>
+    </div>
+
+    <!-- Bulk Actions & Export Bar -->
+    <div class="action-bar">
+        <div class="d-flex gap-2 align-items-center flex-wrap">
+            <!-- Bulk Actions (Hidden by default, shown when items selected) -->
+            <div id="bulkActionsContainer" style="display:none;" class="d-flex gap-2">
+                <span id="selectedCount" class="badge bg-primary" style="font-size: 14px; padding: 10px 16px;">0 selected</span>
+                <button id="btnBulkArchive" class="btn btn-warning btn-sm text-white">
+                    <i class="bi bi-archive"></i> Archive Selected
+                </button>
+                <button id="btnBulkExport" class="btn btn-success btn-sm">
+                    <i class="bi bi-download"></i> Export Selected
+                </button>
+                <button id="btnDeselectAll" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x-circle"></i> Clear
+                </button>
+            </div>
+            
+            <!-- Export Dropdown -->
+            <div class="dropdown">
+                <button class="btn-export dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download me-1"></i> Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown" style="z-index: 1050;">
+                    <li><a class="dropdown-item" href="#" onclick="exportData('csv'); return false;">
+                        <i class="bi bi-filetype-csv me-2"></i>CSV Format
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData('pdf'); return false;">
+                        <i class="bi bi-file-earmark-pdf me-2"></i>PDF Document
+                    </a></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData('excel'); return false;">
+                        <i class="bi bi-file-earmark-excel me-2"></i>Excel Spreadsheet
+                    </a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="exportData('print'); return false;">
+                        <i class="bi bi-printer me-2"></i>Print Preview
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+        
+        <div class="filter-info">
+            <span id="filterInfoText">
+                <?php 
+                if (!empty($search) || !empty($role)) {
+                    $active_filters = [];
+                    if (!empty($search)) $active_filters[] = "Search: \"" . htmlspecialchars($search) . "\"";
+                    if (!empty($role)) $active_filters[] = "Role: " . ucfirst($role);
+                    echo "Filtered: " . implode(" | ", $active_filters) . " (" . $members_count . " results)";
+                } else {
+                    echo "Showing all " . $members_count . " members";
+                }
+                ?>
+            </span>
         </div>
     </div>
 
@@ -692,29 +1135,63 @@ $members_count = $result ? $result->num_rows : 0;
             <table class="table align-middle">
                 <thead>
                     <tr>
+                        <th style="width: 50px;" class="text-center">
+                            <input type="checkbox" id="selectAll" class="form-check-input" title="Select All">
+                        </th>
                         <th style="width: 60px;" class="text-center">#</th>
-                        <th>Name</th>
+                        <th>Member Info</th>
                         <th>Contact</th>
-                        <th>Address</th>
-                        <th class="text-center" style="width: 250px;">Actions</th>
+                        <th>Role</th>
+                        <th>Joined</th>
+                        <th class="text-center" style="width: 180px;">Actions</th>
                     </tr>
                 </thead>
                 <tbody id="membersTableBody">
-                <?php if ($result && $result->num_rows > 0): $count = 1; ?>
+                <?php if ($result && $result->num_rows > 0): $count = 1 + $offset; ?>
                     <?php while ($row = $result->fetch_assoc()): 
                         $nameParts = explode(' ', $row['name']);
                         $first_name = $nameParts[0] ?? '';
                         $middle_initial = $nameParts[1] ?? '';
                         $last_name = $nameParts[2] ?? '';
                     ?>
-                        <tr>
+                        <tr class="member-row">
+                            <td class="text-center">
+                                <input type="checkbox" class="form-check-input member-checkbox" value="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['name']) ?>">
+                            </td>
                             <td class="text-center"><strong><?= $count++ ?></strong></td>
-                            <td><strong><?= htmlspecialchars($row['name']) ?></strong></td>
+                            <td>
+                                <div class="d-flex align-items-center gap-3">
+                                    <img src="../../uploads/members/<?= htmlspecialchars($row['image'] ?? 'default_member.png') ?>" 
+                                         alt="<?= htmlspecialchars($row['name']) ?>" 
+                                         style="width: 48px; height: 48px; border-radius: 50%; object-fit: cover;"
+                                         onerror="if (!this.getAttribute('data-tried-fallback')) { this.setAttribute('data-tried-fallback', 'true'); this.src='https://ui-avatars.com/api/?name=<?= urlencode($row['name']) ?>&background=random&color=fff'; }">
+                                    <div>
+                                        <strong style="font-size: 15px;"><?= htmlspecialchars($row['name']) ?></strong>
+                                        <div class="text-muted small">#<?= $row['id'] ?></div>
+                                    </div>
+                                </div>
+                            </td>
                             <td>
                                 <div><i class="bi bi-telephone-fill text-muted me-2"></i><?= htmlspecialchars($row['phone']) ?></div>
-                                <div class="mt-1"><i class="bi bi-envelope-fill text-muted me-2"></i><?= htmlspecialchars($row['email']) ?></div>
+                                <div class="mt-1"><i class="bi bi-envelope-fill text-muted me-2"></i><small><?= htmlspecialchars($row['email']) ?></small></div>
                             </td>
-                            <td><?= htmlspecialchars($row['address']) ?></td>
+                            <td>
+                                <?php 
+                                $check_officer = $conn->prepare("SELECT id FROM officers WHERE member_id = ? LIMIT 1");
+                                $check_officer->bind_param("i", $row['id']);
+                                $check_officer->execute();
+                                $check_officer->store_result();
+                                if ($check_officer->num_rows > 0) {
+                                    echo '<span class="badge bg-primary">Officer</span>';
+                                } else {
+                                    echo '<span class="badge bg-info">Member</span>';
+                                }
+                                $check_officer->close();
+                                ?>
+                            </td>
+                            <td class="text-muted small">
+                                <?= isset($row['created_at']) ? date('M d, Y', strtotime($row['created_at'])) : 'N/A' ?>
+                            </td>
                             <td class="text-center">
                                 <a href="../view_member_info.php?id=<?= $row['id'] ?>" class="btn btn-view btn-sm">
                                     <i class="bi bi-eye"></i>
@@ -739,7 +1216,7 @@ $members_count = $result ? $result->num_rows : 0;
                                     data-agreement="<?= $row['agreement'] ?>"
                                     data-image="<?= htmlspecialchars($row['image']) ?>"
                                 ><i class="bi bi-pencil-square"></i></button>
-                                <button class="btn btn-archive btn-sm archive-btn" data-id="<?= $row['id'] ?>">
+                                <button class="btn btn-warning btn-sm archive-btn text-white" data-id="<?= $row['id'] ?>">
                                     <i class="bi bi-archive"></i>
                                 </button>
                             </td>
@@ -747,7 +1224,7 @@ $members_count = $result ? $result->num_rows : 0;
                     <?php endwhile; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="5">
+                        <td colspan="7">
                             <div class="empty-state">
                                 <i class="bi bi-inbox"></i>
                                 <h5>No Members Found</h5>
@@ -759,6 +1236,54 @@ $members_count = $result ? $result->num_rows : 0;
                 </tbody>
             </table>
         </div>
+        
+        <!-- Pagination -->
+        <?php if ($total_pages > 1): ?>
+        <div class="d-flex justify-content-between align-items-center mt-4 px-3">
+            <div class="pagination-info text-muted small">
+                Showing <?= $offset + 1 ?> to <?= min($offset + $per_page, $total_records) ?> of <?= $total_records ?> members
+            </div>
+            <nav>
+                <ul class="pagination pagination-sm mb-0">
+                    <!-- Previous Button -->
+                    <li class="page-item <?= $page <= 1 ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page - 1])) ?>">
+                            <i class="bi bi-chevron-left"></i>
+                        </a>
+                    </li>
+                    
+                    <?php
+                    $start_page = max(1, $page - 2);
+                    $end_page = min($total_pages, $page + 2);
+                    
+                    if ($start_page > 1) {
+                        echo '<li class="page-item"><a class="page-link" href="?' . http_build_query(array_merge($_GET, ['page' => 1])) . '">1</a></li>';
+                        if ($start_page > 2) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                    }
+                    
+                    for ($i = $start_page; $i <= $end_page; $i++) {
+                        $active = $i === $page ? 'active' : '';
+                        echo '<li class="page-item ' . $active . '">';
+                        echo '<a class="page-link" href="?' . http_build_query(array_merge($_GET, ['page' => $i])) . '">' . $i . '</a>';
+                        echo '</li>';
+                    }
+                    
+                    if ($end_page < $total_pages) {
+                        if ($end_page < $total_pages - 1) echo '<li class="page-item disabled"><span class="page-link">...</span></li>';
+                        echo '<li class="page-item"><a class="page-link" href="?' . http_build_query(array_merge($_GET, ['page' => $total_pages])) . '">' . $total_pages . '</a></li>';
+                    }
+                    ?>
+                    
+                    <!-- Next Button -->
+                    <li class="page-item <?= $page >= $total_pages ? 'disabled' : '' ?>">
+                        <a class="page-link" href="?<?= http_build_query(array_merge($_GET, ['page' => $page + 1])) ?>">
+                            <i class="bi bi-chevron-right"></i>
+                        </a>
+                    </li>
+                </ul>
+            </nav>
+        </div>
+        <?php endif; ?>
     </div>
 </div>
 
@@ -1026,10 +1551,7 @@ document.querySelectorAll('.editBtn').forEach(btn => {
             imgPreview.src = "";
         }
 
-        // reset file input
         document.getElementById('edit_image').value = "";
-        
-        // show modal
         new bootstrap.Modal(document.getElementById('editMemberModal')).show();
     });
 });
@@ -1058,27 +1580,178 @@ document.getElementById('edit_image')?.addEventListener('change', function(e) {
     }
 });
 
-// Live search/filter
-const searchInput = document.getElementById('searchInput');
-const tableBody = document.getElementById('membersTableBody');
-const rows = tableBody.getElementsByTagName('tr');
+// ==========================================
+// BULK SELECTION FUNCTIONALITY
+// ==========================================
+let selectedMembers = [];
 
-searchInput.addEventListener('input', function() {
-    const filter = this.value.toLowerCase();
-
-    Array.from(rows).forEach(row => {
-        if (row.cells.length < 4) return; // Skip empty state row
-        
-        const name = row.cells[1].textContent.toLowerCase();
-        const contact = row.cells[2].textContent.toLowerCase();
-        const address = row.cells[3].textContent.toLowerCase();
-
-        if (name.includes(filter) || contact.includes(filter) || address.includes(filter)) {
-            row.style.display = '';
-        } else {
-            row.style.display = 'none';
-        }
+// Select All Checkbox
+document.getElementById('selectAll')?.addEventListener('change', function() {
+    const checkboxes = document.querySelectorAll('.member-checkbox');
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = this.checked;
+        updateRowSelection(checkbox);
     });
+    updateBulkActions();
+});
+
+// Individual Checkbox Change
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('member-checkbox')) {
+        updateRowSelection(e.target);
+        updateBulkActions();
+        
+        // Update "Select All" checkbox state
+        const checkboxes = document.querySelectorAll('.member-checkbox');
+        const checkedCount = document.querySelectorAll('.member-checkbox:checked').length;
+        const selectAllCheckbox = document.getElementById('selectAll');
+        if (selectAllCheckbox) {
+            selectAllCheckbox.checked = checkedCount === checkboxes.length;
+            selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < checkboxes.length;
+        }
+    }
+});
+
+// Update Row Visual Selection
+function updateRowSelection(checkbox) {
+    const row = checkbox.closest('tr');
+    if (checkbox.checked) {
+        row.classList.add('selected');
+    } else {
+        row.classList.remove('selected');
+    }
+}
+
+// Update Bulk Actions Visibility
+function updateBulkActions() {
+    const checkboxes = document.querySelectorAll('.member-checkbox:checked');
+    const count = checkboxes.length;
+    const bulkContainer = document.getElementById('bulkActionsContainer');
+    const selectedCountBadge = document.getElementById('selectedCount');
+    
+    if (count > 0) {
+        bulkContainer.style.setProperty('display', 'flex', 'important');
+        selectedCountBadge.textContent = `${count} selected`;
+        selectedMembers = Array.from(checkboxes).map(cb => ({
+            id: cb.value,
+            name: cb.dataset.name
+        }));
+    } else {
+        bulkContainer.style.setProperty('display', 'none', 'important');
+        selectedMembers = [];
+    }
+}
+
+// Bulk Archive
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'btnBulkArchive' || e.target.closest('#btnBulkArchive')) {
+        if (selectedMembers.length === 0) return;
+        
+        Swal.fire({
+            title: 'Archive Selected Members?',
+            html: `You are about to archive <strong>${selectedMembers.length}</strong> member(s):<br><br>` +
+                  `<div style="max-height: 200px; overflow-y: auto; text-align: left; padding: 10px; background: #f8fafc; border-radius: 8px; border: 1px solid #e2e8f0;">` +
+                  selectedMembers.map(m => `• ${m.name}`).join('<br>') +
+                  `</div>`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f59e0b',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, archive them!',
+            cancelButtonText: 'Cancel',
+            allowOutsideClick: false
+        }).then((result) => {
+            if (result.isConfirmed) {
+                const ids = selectedMembers.map(m => m.id).join(',');
+                window.location.href = `bulk_delete.php?ids=${ids}&action=archive`;
+            }
+        });
+    }
+});
+
+// Bulk Export
+document.getElementById('btnBulkExport')?.addEventListener('click', function() {
+    if (selectedMembers.length === 0) return;
+    
+    const ids = selectedMembers.map(m => m.id).join(',');
+    window.open(`export_selected.php?ids=${ids}&format=csv`, '_blank');
+    
+    Swal.fire({
+        icon: 'success',
+        title: 'Export Started!',
+        text: `Exporting ${selectedMembers.length} member(s)...`,
+        timer: 2000,
+        showConfirmButton: false
+    });
+});
+
+// Deselect All
+document.getElementById('btnDeselectAll')?.addEventListener('click', function() {
+    document.querySelectorAll('.member-checkbox:checked').forEach(cb => {
+        cb.checked = false;
+        updateRowSelection(cb);
+    });
+    document.getElementById('selectAll').checked = false;
+    updateBulkActions();
+});
+
+// ==========================================
+// EXPORT FUNCTIONALITY
+// ==========================================
+function exportData(format) {
+    const currentParams = new URLSearchParams(window.location.search);
+    
+    let url = '';
+    switch(format) {
+        case 'csv':
+            url = 'export_members_csv.php';
+            break;
+        case 'pdf':
+            url = 'export_members_pdf.php';
+            break;
+        case 'excel':
+            url = 'export_members_excel.php';
+            break;
+        case 'print':
+            url = 'export_members_print.php';
+            break;
+    }
+    
+    // Append current filters to export
+    if (url) {
+        window.open(`${url}?${currentParams.toString()}`, '_blank');
+    }
+    
+    Swal.fire({
+        icon: 'success',
+        title: 'Export Started!',
+        text: `Preparing ${format.toUpperCase()} export...`,
+        timer: 1500,
+        showConfirmButton: false
+    });
+}
+
+// Dropdown Toggle Fix
+document.addEventListener('click', function(e) {
+    const dropdownToggle = e.target.closest('.dropdown-toggle');
+    const openDropdowns = document.querySelectorAll('.dropdown.show');
+
+    if (dropdownToggle) {
+        const dropdown = dropdownToggle.closest('.dropdown');
+        const isShow = dropdown.classList.contains('show');
+        
+        // Close all dropdowns
+        openDropdowns.forEach(d => d.classList.remove('show'));
+        
+        if (!isShow) {
+            dropdown.classList.add('show');
+        }
+        e.preventDefault();
+        e.stopPropagation();
+    } else {
+        // Close dropdowns when clicking outside
+        openDropdowns.forEach(d => d.classList.remove('show'));
+    }
 });
 
 // Archive confirmation
@@ -1092,9 +1765,9 @@ document.querySelectorAll('.archive-btn').forEach(btn => {
             text: "Are you sure you want to move this member to the archive?",
             icon: 'warning',
             showCancelButton: true,
-            confirmButtonColor: '#ef4444',
+            confirmButtonColor: '#f59e0b',
             cancelButtonColor: '#6c757d',
-            confirmButtonText: 'Yes, archive it!',
+            confirmButtonText: '<i class="bi bi-archive-fill me-2"></i>Yes, archive it!',
             cancelButtonText: 'Cancel'
         }).then((result) => {
             if (result.isConfirmed) {
@@ -1116,8 +1789,7 @@ Swal.fire({
 }).then(() => {
     <?php if ($alertType === "success"): ?>
         window.location.href = "memberlist.php";
-    <?php endif; ?>
-});
+    <?php endif; ?> });
 <?php endif; ?>
 
 <?php if (isset($_GET['archived'])): ?>
@@ -1133,11 +1805,24 @@ Swal.fire({
 });
 <?php endif; ?>
 
+<?php if (isset($_GET['bulk_archived'])): ?>
+Swal.fire({
+    icon: 'success',
+    title: 'Bulk Archive Successful!',
+    text: '<?= intval($_GET['bulk_archived']) ?> member(s) have been moved to archive.',
+    timer: 3000,
+    showConfirmButton: false,
+    confirmButtonColor: '#667eea'
+}).then(() => {
+    window.location.href = "memberlist.php";
+});
+<?php endif; ?>
+
 <?php if (isset($_GET['error'])): ?>
 Swal.fire({
     icon: 'error',
     title: 'Error!',
-    text: 'Failed to archive member. Please try again.',
+    text: 'An error occurred. Please try again.',
     confirmButtonColor: '#ef4444'
 }).then(() => {
     window.location.href = "memberlist.php";
