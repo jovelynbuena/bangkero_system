@@ -1,8 +1,75 @@
 <?php
 include('../../config/db_connect.php');
 
+// Ensure who_we_are table exists (for About Us history section)
+$conn->query("CREATE TABLE IF NOT EXISTS who_we_are (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    content LONGTEXT NOT NULL,
+    image VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Ensure core_values table exists (for Core Values section)
+$conn->query("CREATE TABLE IF NOT EXISTS core_values (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Fetch Who We Are entries for history section
+$whoResult = $conn->query("SELECT * FROM who_we_are ORDER BY created_at ASC");
+
+$whoEntries = [];
+if ($whoResult && $whoResult->num_rows > 0) {
+    while ($row = $whoResult->fetch_assoc()) {
+        $whoEntries[] = $row;
+    }
+}
+
+// Fetch Mission & Vision content
+$missionText = '';
+$visionText = '';
+$mvResult = $conn->query("SELECT * FROM mission_vision ORDER BY id ASC LIMIT 1");
+if ($mvResult && $mvResult->num_rows > 0) {
+    $mvRow = $mvResult->fetch_assoc();
+    $missionText = $mvRow['mission'];
+    $visionText = $mvRow['vision'];
+}
+
+// Fetch Core Values content
+$coreValues = [];
+$valuesResult = $conn->query("SELECT * FROM core_values ORDER BY sort_order ASC, created_at ASC");
+if ($valuesResult && $valuesResult->num_rows > 0) {
+    while ($row = $valuesResult->fetch_assoc()) {
+        $coreValues[] = $row;
+    }
+}
+
+// Fetch Association at a Glance content
+$glanceOverview = '';
+$glanceYear = 0;
+$glanceMembers = 0;
+$glanceProjects = 0;
+$glanceEvents = 0;
+
+$glanceResult = $conn->query("SELECT * FROM association_glance ORDER BY id ASC LIMIT 1");
+if ($glanceResult && $glanceResult->num_rows > 0) {
+    $glanceRow = $glanceResult->fetch_assoc();
+    $glanceOverview = $glanceRow['overview'];
+    $glanceYear = (int)$glanceRow['founded_year'];
+    $glanceMembers = (int)$glanceRow['members_count'];
+    $glanceProjects = (int)$glanceRow['projects_count'];
+    $glanceEvents = (int)$glanceRow['events_count'];
+}
+
+
 // Fetch officers with member names and role names
 $query = "
+
     SELECT 
         officers.id,
         officer_roles.role_name AS position,
@@ -516,15 +583,24 @@ while ($row = $result->fetch_assoc()) {
 <div class="container about-content">
   <h2 class="text-center mb-2">A Brief History</h2>
   <div class="divider"></div>
-  <p class="mb-4 text-center">
-    The Bankero & Fishermen Association was founded in November 2009 in Barretto, Olongapo City under the leadership of Mr. Noliboy Cocjin. Starting with around 300–400 members, the association has since grown and organized its members into smaller groups for more effective management.
-  </p>
-  <p class="mb-4 text-center">
-    Dedicated to supporting local boatmen and fishermen, the association serves as a vital link for their welfare and development. To strengthen communication and organizational efficiency, the association is now adopting the Bankero & Fishermen Association Management System, which will automate membership records, announcements, and event scheduling, while introducing SMS notifications for timely updates.
-  </p>
-  <p class="mb-4 text-center">
-    Through this modernization, the association continues its mission of empowering members, enhancing participation, and preserving the livelihood of the fishing community.
-  </p>
+
+  <?php if (!empty($whoEntries)): ?>
+    <?php foreach ($whoEntries as $entry): ?>
+      <p class="mb-4 text-center">
+        <?= nl2br(htmlspecialchars($entry['content'])) ?>
+      </p>
+    <?php endforeach; ?>
+  <?php else: ?>
+    <p class="mb-4 text-center">
+      The Bankero & Fishermen Association was founded in November 2009 in Barretto, Olongapo City under the leadership of Mr. Noliboy Cocjin. Starting with around 300–400 members, the association has since grown and organized its members into smaller groups for more effective management.
+    </p>
+    <p class="mb-4 text-center">
+      Dedicated to supporting local boatmen and fishermen, the association serves as a vital link for their welfare and development. To strengthen communication and organizational efficiency, the association is now adopting the Bankero & Fishermen Association Management System, which will automate membership records, announcements, and event scheduling, while introducing SMS notifications for timely updates.
+    </p>
+    <p class="mb-4 text-center">
+      Through this modernization, the association continues its mission of empowering members, enhancing participation, and preserving the livelihood of the fishing community.
+    </p>
+  <?php endif; ?>
 </div>
 
 <!-- Mission & Vision Section -->
@@ -539,7 +615,13 @@ while ($row = $result->fetch_assoc()) {
             <i class="bi bi-bullseye"></i>
           </div>
           <h3>Mission</h3>
-          <p>To empower local fishermen and boatmen through collaboration, sustainable practices, training programs, and strong leadership, ensuring the welfare and continuous development of our members and their families.</p>
+          <p>
+            <?php if ($missionText !== ''): ?>
+              <?= nl2br(htmlspecialchars($missionText)) ?>
+            <?php else: ?>
+              To empower local fishermen and boatmen through collaboration, sustainable practices, training programs, and strong leadership, ensuring the welfare and continuous development of our members and their families.
+            <?php endif; ?>
+          </p>
         </div>
       </div>
       <div class="col-md-6 mb-4">
@@ -548,7 +630,13 @@ while ($row = $result->fetch_assoc()) {
             <i class="bi bi-eye"></i>
           </div>
           <h3>Vision</h3>
-          <p>To be the leading fishermen association in the region, recognized for fostering unity, promoting sustainable fishing practices, and creating lasting opportunities for growth and prosperity in our community.</p>
+          <p>
+            <?php if ($visionText !== ''): ?>
+              <?= nl2br(htmlspecialchars($visionText)) ?>
+            <?php else: ?>
+              To be the leading fishermen association in the region, recognized for fostering unity, promoting sustainable fishing practices, and creating lasting opportunities for growth and prosperity in our community.
+            <?php endif; ?>
+          </p>
         </div>
       </div>
     </div>
@@ -560,70 +648,96 @@ while ($row = $result->fetch_assoc()) {
   <div class="container">
     <h2 class="text-center mb-2">Our Core Values</h2>
     <div class="divider"></div>
-    <div class="row mt-4">
-      <div class="col-md-4 col-sm-6 mb-3">
-        <div class="value-card">
-          <div class="value-icon">
-            <i class="bi bi-people-fill"></i>
+
+    <?php if (!empty($coreValues)): ?>
+      <div class="row mt-4">
+        <?php $iconClasses = ['bi-people-fill','bi-shield-check','bi-arrow-repeat','bi-trophy','bi-hand-thumbs-up','bi-heart-fill']; ?>
+        <?php foreach ($coreValues as $index => $value): ?>
+          <?php $iconClass = $iconClasses[$index % count($iconClasses)]; ?>
+          <div class="col-md-4 col-sm-6 mb-3">
+            <div class="value-card">
+              <div class="value-icon">
+                <i class="bi <?= htmlspecialchars($iconClass) ?>"></i>
+              </div>
+              <h4><?= htmlspecialchars($value['title']) ?></h4>
+              <p><?= nl2br(htmlspecialchars($value['description'])) ?></p>
+            </div>
           </div>
-          <h4>Unity</h4>
-          <p>We stand together as one community, supporting each other in times of need.</p>
+        <?php endforeach; ?>
+      </div>
+    <?php else: ?>
+      <div class="row mt-4">
+        <div class="col-md-4 col-sm-6 mb-3">
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="bi bi-people-fill"></i>
+            </div>
+            <h4>Unity</h4>
+            <p>We stand together as one community, supporting each other in times of need.</p>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6 mb-3">
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="bi bi-shield-check"></i>
+            </div>
+            <h4>Integrity</h4>
+            <p>We uphold honesty and transparency in all our actions and decisions.</p>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6 mb-3">
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="bi bi-arrow-repeat"></i>
+            </div>
+            <h4>Sustainability</h4>
+            <p>We promote responsible fishing practices to preserve marine resources for future generations.</p>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6 mb-3">
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="bi bi-trophy"></i>
+            </div>
+            <h4>Excellence</h4>
+            <p>We strive for the highest standards in everything we do, from leadership to community service.</p>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6 mb-3">
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="bi bi-hand-thumbs-up"></i>
+            </div>
+            <h4>Accountability</h4>
+            <p>We take responsibility for our commitments and deliver on our promises to members.</p>
+          </div>
+        </div>
+        <div class="col-md-4 col-sm-6 mb-3">
+          <div class="value-card">
+            <div class="value-icon">
+              <i class="bi bi-heart-fill"></i>
+            </div>
+            <h4>Compassion</h4>
+            <p>We care deeply for our members' welfare and work to improve their quality of life.</p>
+          </div>
         </div>
       </div>
-      <div class="col-md-4 col-sm-6 mb-3">
-        <div class="value-card">
-          <div class="value-icon">
-            <i class="bi bi-shield-check"></i>
-          </div>
-          <h4>Integrity</h4>
-          <p>We uphold honesty and transparency in all our actions and decisions.</p>
-        </div>
-      </div>
-      <div class="col-md-4 col-sm-6 mb-3">
-        <div class="value-card">
-          <div class="value-icon">
-            <i class="bi bi-arrow-repeat"></i>
-          </div>
-          <h4>Sustainability</h4>
-          <p>We promote responsible fishing practices to preserve marine resources for future generations.</p>
-        </div>
-      </div>
-      <div class="col-md-4 col-sm-6 mb-3">
-        <div class="value-card">
-          <div class="value-icon">
-            <i class="bi bi-trophy"></i>
-          </div>
-          <h4>Excellence</h4>
-          <p>We strive for the highest standards in everything we do, from leadership to community service.</p>
-        </div>
-      </div>
-      <div class="col-md-4 col-sm-6 mb-3">
-        <div class="value-card">
-          <div class="value-icon">
-            <i class="bi bi-hand-thumbs-up"></i>
-          </div>
-          <h4>Accountability</h4>
-          <p>We take responsibility for our commitments and deliver on our promises to members.</p>
-        </div>
-      </div>
-      <div class="col-md-4 col-sm-6 mb-3">
-        <div class="value-card">
-          <div class="value-icon">
-            <i class="bi bi-heart-fill"></i>
-          </div>
-          <h4>Compassion</h4>
-          <p>We care deeply for our members' welfare and work to improve their quality of life.</p>
-        </div>
-      </div>
-    </div>
+    <?php endif; ?>
   </div>
 </section>
+
 
 <!-- Stats Section with "At a Glance" intro -->
 <div class="container">
   <h2 class="text-center mt-5 mb-2" style="font-family: 'Poppins', sans-serif; color: var(--dark); font-weight: 800; font-size: 2.2rem; letter-spacing: -0.5px;">Bankero & Fishermen Association at a Glance</h2>
   <div class="divider"></div>
-  <p class="text-center mb-4">Since its founding in 2009, the Bankero & Fishermen Association has grown to over 250 members, successfully implementing 35 community projects and organizing 50 events to support and empower the local fishing community.</p>
+  <?php if ($glanceOverview !== ''): ?>
+    <p class="text-center mb-4">
+      <?= nl2br(htmlspecialchars($glanceOverview)) ?>
+    </p>
+  <?php else: ?>
+    <p class="text-center mb-4">Since its founding in 2009, the Bankero & Fishermen Association has grown to over 250 members, successfully implementing 35 community projects and organizing 50 events to support and empower the local fishing community.</p>
+  <?php endif; ?>
 </div>
 
 <!-- Stats Section -->
@@ -635,7 +749,7 @@ while ($row = $result->fetch_assoc()) {
           <div class="stat-icon" style="color: var(--primary);">
             <i class="bi bi-calendar3"></i>
           </div>
-          <div class="counter" data-target="2009">0</div>
+          <div class="counter" data-target="<?= $glanceYear > 0 ? (int)$glanceYear : 2009 ?>">0</div>
           <div class="stat-title">Founded</div>
         </div>
       </div>
@@ -644,7 +758,7 @@ while ($row = $result->fetch_assoc()) {
           <div class="stat-icon" style="color: var(--success);">
             <i class="bi bi-people"></i>
           </div>
-          <div class="counter" data-target="250">0</div>
+          <div class="counter" data-target="<?= $glanceMembers > 0 ? (int)$glanceMembers : 250 ?>">0</div>
           <div class="stat-title">Members</div>
         </div>
       </div>
@@ -653,7 +767,7 @@ while ($row = $result->fetch_assoc()) {
           <div class="stat-icon" style="color: var(--secondary);">
             <i class="bi bi-diagram-3"></i>
           </div>
-          <div class="counter" data-target="35">0</div>
+          <div class="counter" data-target="<?= $glanceProjects > 0 ? (int)$glanceProjects : 35 ?>">0</div>
           <div class="stat-title">Community Projects</div>
         </div>
       </div>
@@ -662,13 +776,14 @@ while ($row = $result->fetch_assoc()) {
           <div class="stat-icon" style="color: var(--accent);">
             <i class="bi bi-calendar2-event"></i>
           </div>
-          <div class="counter" data-target="50">0</div>
+          <div class="counter" data-target="<?= $glanceEvents > 0 ? (int)$glanceEvents : 50 ?>">0</div>
           <div class="stat-title">Events Organized</div>
         </div>
       </div>
     </div>
   </div>
 </section>
+
   <!-- Officers Intro Section -->
   <h2 class="officer-section-title">Board of Officers</h2>
   <div class="divider"></div>

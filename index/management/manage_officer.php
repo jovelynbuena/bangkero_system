@@ -15,8 +15,8 @@ if (isset($_POST['ajax_action'])) {
     $action = $_POST['ajax_action'];
     $officer_id = isset($_POST['officer_id']) ? intval($_POST['officer_id']) : 0;
     
-    // Validate officer_id
-    if ($officer_id <= 0) {
+    // Validate officer_id only for actions that actually use it
+    if (in_array($action, ['approve', 'reject', 'archive', 'demote'], true) && $officer_id <= 0) {
         $response['message'] = 'Invalid officer ID.';
         echo json_encode($response);
         exit;
@@ -82,8 +82,8 @@ if (isset($_POST['ajax_action'])) {
                     try {
                         $conn->begin_transaction();
                         
-                        // Move to archive
-                        $stmt = $conn->prepare("INSERT INTO users_archive (original_id, username, email, password, role, status, is_admin, created_at) SELECT id, username, email, password, role, status, is_admin, created_at FROM users WHERE id=?");
+                        // Move to archive (map password_hash into legacy password column for archive)
+                        $stmt = $conn->prepare("INSERT INTO users_archive (original_id, username, email, password, role, status, is_admin, created_at) SELECT id, username, email, password_hash, role, status, is_admin, created_at FROM users WHERE id=?");
                         $stmt->bind_param("i", $officer_id);
                         $stmt->execute();
                         $stmt->close();
@@ -125,7 +125,12 @@ if (isset($_POST['ajax_action'])) {
                 break;
                 
             case 'promote':
-                $user_id = intval($_POST['user_id']);
+                $user_id = isset($_POST['user_id']) ? intval($_POST['user_id']) : 0;
+
+                if ($user_id <= 0) {
+                    $response['message'] = 'Invalid officer ID.';
+                    break;
+                }
                 
                 // Validation: Check if user exists and is approved
                 $check = $conn->query("SELECT status, is_admin FROM users WHERE id=$user_id AND role='officer'");

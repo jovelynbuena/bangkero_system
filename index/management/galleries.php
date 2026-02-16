@@ -770,7 +770,13 @@ if ($categories_result && $categories_result->num_rows > 0) {
     padding: 10px 20px;
   }
 
+  /* Ensure dropdowns render even if some global CSS overrides Bootstrap */
+  .dropdown { position: relative; }
+  .dropdown-menu { z-index: 2000; }
+  .dropdown-menu.show { display: block !important; }
+
   .pagination-container {
+
     background: white;
     padding: 20px;
     border-radius: 16px;
@@ -1293,31 +1299,81 @@ document.addEventListener('DOMContentLoaded', function(){
 
   window.bulkExport = function(format, selectedOnly = false) {
     let ids = 'all';
+
     if (selectedOnly) {
       const checked = document.querySelectorAll('.gallery-checkbox-item:checked');
       ids = Array.from(checked).map(cb => cb.value).join(',');
+
+      if (!ids) {
+        Swal.fire({
+          icon: 'info',
+          title: 'No Selection',
+          text: 'Please select at least one gallery to export.',
+          timer: 2200,
+          showConfirmButton: false
+        });
+        return;
+      }
     }
-    
+
     const searchParams = new URLSearchParams(window.location.search);
     const q = searchParams.get('q') || '';
     const category = searchParams.get('category') || '';
     const date_from = searchParams.get('date_from') || '';
     const date_to = searchParams.get('date_to') || '';
     const sort = searchParams.get('sort') || '';
-    
+
     const url = `export_selected_galleries.php?ids=${ids}&format=${format}&q=${encodeURIComponent(q)}&category=${encodeURIComponent(category)}&date_from=${date_from}&date_to=${date_to}&sort=${sort}`;
-    window.open(url, '_blank');
-    
-    Swal.fire({
-      icon: 'info',
-      title: 'Export Started',
-      text: 'Your file is being generated and will download shortly.',
-      timer: 2000,
-      showConfirmButton: false
+
+    // Avoid popup-blocker issues: download formats should use same-tab navigation.
+    if (format === 'pdf' || format === 'print') {
+      window.open(url, '_blank');
+    } else {
+      window.location.href = url;
+    }
+  }
+
+  // Fallback dropdown toggling (in case Bootstrap JS CDN is blocked)
+  if (typeof window.bootstrap === 'undefined') {
+    function closeAllDropdowns() {
+      document.querySelectorAll('.dropdown-menu.show').forEach((m) => m.classList.remove('show'));
+      document.querySelectorAll('.dropdown.show').forEach((d) => d.classList.remove('show'));
+      document.querySelectorAll('[data-bs-toggle="dropdown"][aria-expanded="true"]').forEach((b) => b.setAttribute('aria-expanded', 'false'));
+    }
+
+    document.querySelectorAll('[data-bs-toggle="dropdown"]').forEach((btn) => {
+      btn.setAttribute('aria-expanded', 'false');
+
+      btn.addEventListener('click', (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const wrap = btn.closest('.dropdown');
+        const menu = wrap ? wrap.querySelector('.dropdown-menu') : null;
+        if (!wrap || !menu) return;
+
+        const willOpen = !menu.classList.contains('show');
+        closeAllDropdowns();
+
+        if (willOpen) {
+          wrap.classList.add('show');
+          btn.classList.add('show');
+          btn.setAttribute('aria-expanded', 'true');
+          menu.classList.add('show');
+        }
+      });
+    });
+
+    document.addEventListener('click', closeAllDropdowns);
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') closeAllDropdowns();
     });
   }
 
+
   // Close mobile nav automatically if open
+
   document.querySelectorAll('.navbar-collapse .nav-link').forEach(a => {
     a.addEventListener('click', () => {
       const toggler = document.querySelector('.navbar-toggler');
@@ -1327,7 +1383,8 @@ document.addEventListener('DOMContentLoaded', function(){
   });
 });
 </script>
-
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>
