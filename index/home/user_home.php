@@ -7,6 +7,67 @@ $nextEvent = $nextEventResult ? $nextEventResult->fetch_assoc() : null;
 
 $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_posted DESC LIMIT 3");
 
+// Ensure who_we_are table exists to prevent errors when home is loaded first
+$conn->query("CREATE TABLE IF NOT EXISTS who_we_are (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    content LONGTEXT NOT NULL,
+    image VARCHAR(255) DEFAULT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NULL DEFAULT NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Ensure partners_sponsors table exists
+$conn->query("CREATE TABLE IF NOT EXISTS partners_sponsors (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(255) NOT NULL,
+    logo_path VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'partner',
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Ensure home_carousel_slides table exists
+$conn->query("CREATE TABLE IF NOT EXISTS home_carousel_slides (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    subtitle TEXT NOT NULL,
+    image_path VARCHAR(255) NOT NULL,
+    primary_button_label VARCHAR(100) DEFAULT 'Learn More',
+    primary_button_link VARCHAR(255) DEFAULT 'about_us.php',
+    secondary_button_label VARCHAR(100) DEFAULT 'Join Us',
+    secondary_button_link VARCHAR(255) DEFAULT 'contact_us.php',
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Fetch Who We Are entries
+$whoResult = $conn->query("SELECT * FROM who_we_are ORDER BY created_at ASC");
+$whoEntries = [];
+if ($whoResult && $whoResult->num_rows > 0) {
+    while ($row = $whoResult->fetch_assoc()) {
+        $whoEntries[] = $row;
+    }
+}
+
+// Fetch partners & sponsors for homepage section
+$partnersResult = $conn->query("SELECT * FROM partners_sponsors ORDER BY sort_order ASC, created_at ASC");
+$partnersList = [];
+if ($partnersResult && $partnersResult->num_rows > 0) {
+    while ($row = $partnersResult->fetch_assoc()) {
+        $partnersList[] = $row;
+    }
+}
+
+// Fetch carousel slides for hero section
+$carouselSlides = [];
+$carouselResult = $conn->query("SELECT * FROM home_carousel_slides ORDER BY sort_order ASC, created_at ASC");
+if ($carouselResult && $carouselResult->num_rows > 0) {
+    while ($row = $carouselResult->fetch_assoc()) {
+        $carouselSlides[] = $row;
+    }
+}
+
 // Fetch gallery images for the Association Highlights section
 $galleryResult = $conn->query("SELECT id, title, category, images, created_at FROM galleries ORDER BY created_at DESC LIMIT 6");
 $galleryImages = [];
@@ -23,6 +84,15 @@ if ($galleryResult && $galleryResult->num_rows > 0) {
                 ];
             }
         }
+    }
+}
+
+// Fetch Featured Programs for homepage section
+$featuredProgramsResult = $conn->query("SELECT * FROM featured_programs ORDER BY sort_order ASC, created_at ASC");
+$featuredPrograms = [];
+if ($featuredProgramsResult && $featuredProgramsResult->num_rows > 0) {
+    while ($row = $featuredProgramsResult->fetch_assoc()) {
+        $featuredPrograms[] = $row;
     }
 }
 
@@ -1181,57 +1251,97 @@ if ($galleryResult && $galleryResult->num_rows > 0) {
 
 <!-- Hero Carousel -->
 <div id="heroCarousel" class="carousel slide" data-bs-ride="carousel">
-  <!-- Carousel Indicators (Dots) -->
-  <div class="carousel-indicators">
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
-    <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
-  </div>
+  <?php if (!empty($carouselSlides)): ?>
+    <!-- Dynamic indicators based on slides -->
+    <div class="carousel-indicators">
+      <?php foreach ($carouselSlides as $index => $slide): ?>
+        <button
+          type="button"
+          data-bs-target="#heroCarousel"
+          data-bs-slide-to="<?= $index ?>"
+          class="<?= $index === 0 ? 'active' : '' ?>"
+          <?= $index === 0 ? 'aria-current="true"' : '' ?>
+          aria-label="Slide <?= $index + 1 ?>">
+        </button>
+      <?php endforeach; ?>
+    </div>
 
-  <div class="carousel-inner">
-    <div class="carousel-item active" style="background-image: url('../images/home.jpg');">
-      <div class="carousel-caption text-center">
-        <h1>Welcome to Our Association</h1>
-        <p>Connecting members, sharing resources, and empowering leaders.</p>
-        <div class="carousel-btn-group">
-          <a href="about_us.php" class="carousel-btn carousel-btn-primary">
-            <i class="bi bi-info-circle"></i> Learn More
-          </a>
-          <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
-            <i class="bi bi-people-fill"></i> Join Us
-          </a>
+    <div class="carousel-inner">
+      <?php foreach ($carouselSlides as $index => $slide): ?>
+        <div class="carousel-item <?= $index === 0 ? 'active' : '' ?>" style="background-image: url('../../<?= htmlspecialchars($slide['image_path']) ?>');">
+          <div class="carousel-caption text-center">
+            <h1><?= htmlspecialchars($slide['title']) ?></h1>
+            <p><?= htmlspecialchars($slide['subtitle']) ?></p>
+            <div class="carousel-btn-group">
+              <?php if (!empty($slide['primary_button_link'])): ?>
+                <a href="<?= htmlspecialchars($slide['primary_button_link']) ?>" class="carousel-btn carousel-btn-primary">
+                  <i class="bi bi-info-circle"></i> <?= htmlspecialchars($slide['primary_button_label'] ?: 'Learn More') ?>
+                </a>
+              <?php endif; ?>
+              <?php if (!empty($slide['secondary_button_link'])): ?>
+                <a href="<?= htmlspecialchars($slide['secondary_button_link']) ?>" class="carousel-btn carousel-btn-secondary">
+                  <i class="bi bi-people-fill"></i> <?= htmlspecialchars($slide['secondary_button_label'] ?: 'Join Us') ?>
+                </a>
+              <?php endif; ?>
+            </div>
+          </div>
+        </div>
+      <?php endforeach; ?>
+    </div>
+  <?php else: ?>
+    <!-- Fallback static carousel when no slides are configured -->
+    <div class="carousel-indicators">
+      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="0" class="active" aria-current="true" aria-label="Slide 1"></button>
+      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="1" aria-label="Slide 2"></button>
+      <button type="button" data-bs-target="#heroCarousel" data-bs-slide-to="2" aria-label="Slide 3"></button>
+    </div>
+
+    <div class="carousel-inner">
+      <div class="carousel-item active" style="background-image: url('../images/home.jpg');">
+        <div class="carousel-caption text-center">
+          <h1>Welcome to Our Association</h1>
+          <p>Connecting members, sharing resources, and empowering leaders.</p>
+          <div class="carousel-btn-group">
+            <a href="about_us.php" class="carousel-btn carousel-btn-primary">
+              <i class="bi bi-info-circle"></i> Learn More
+            </a>
+            <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
+              <i class="bi bi-people-fill"></i> Join Us
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item" style="background-image: url('../images/slides2.jpg');">
+        <div class="carousel-caption text-center">
+          <h1>Together We Grow</h1>
+          <p>Building a stronger community through unity.</p>
+          <div class="carousel-btn-group">
+            <a href="about_us.php" class="carousel-btn carousel-btn-primary">
+              <i class="bi bi-info-circle"></i> Learn More
+            </a>
+            <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
+              <i class="bi bi-people-fill"></i> Join Us
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="carousel-item" style="background-image: url('../images/slide3.jpg');">
+        <div class="carousel-caption text-center">
+          <h1>Empowering Leaders</h1>
+          <p>Guiding the next generation of members.</p>
+          <div class="carousel-btn-group">
+            <a href="about_us.php" class="carousel-btn carousel-btn-primary">
+              <i class="bi bi-info-circle"></i> Learn More
+            </a>
+            <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
+              <i class="bi bi-people-fill"></i> Join Us
+            </a>
+          </div>
         </div>
       </div>
     </div>
-    <div class="carousel-item" style="background-image: url('../images/slides2.jpg');">
-      <div class="carousel-caption text-center">
-        <h1>Together We Grow</h1>
-        <p>Building a stronger community through unity.</p>
-        <div class="carousel-btn-group">
-          <a href="about_us.php" class="carousel-btn carousel-btn-primary">
-            <i class="bi bi-info-circle"></i> Learn More
-          </a>
-          <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
-            <i class="bi bi-people-fill"></i> Join Us
-          </a>
-        </div>
-      </div>
-    </div>
-    <div class="carousel-item" style="background-image: url('../images/slide3.jpg');">
-      <div class="carousel-caption text-center">
-        <h1>Empowering Leaders</h1>
-        <p>Guiding the next generation of members.</p>
-        <div class="carousel-btn-group">
-          <a href="about_us.php" class="carousel-btn carousel-btn-primary">
-            <i class="bi bi-info-circle"></i> Learn More
-          </a>
-          <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
-            <i class="bi bi-people-fill"></i> Join Us
-          </a>
-        </div>
-      </div>
-    </div>
-  </div>
+  <?php endif; ?>
+
   <button class="carousel-control-prev" type="button" data-bs-target="#heroCarousel" data-bs-slide="prev">
     <span class="carousel-control-prev-icon"></span>
   </button>
@@ -1240,13 +1350,35 @@ if ($galleryResult && $galleryResult->num_rows > 0) {
   </button>
 </div>
 
+
 <!-- Introduction Section -->
 <section class="intro-section text-center py-5">
   <div class="container">
     <h2 class="section-title mb-4">Who We Are</h2>
-    <p class="lead" style="max-width: 900px; margin: 0 auto; font-size: 1.15rem; line-height: 1.8; color: #4b5563;">
-      The <strong>Bankero & Fishermen Association</strong> is a community-driven organization dedicated to supporting local fishermen and their families. Founded in 2009, we promote sustainable fishing practices, strengthen unity among members, and provide opportunities for growth and livelihood development.
-    </p>
+
+    <?php if (!empty($whoEntries)): ?>
+      <?php
+        // Use only the first entry as a short teaser on the homepage
+        $whoTeaser = $whoEntries[0];
+        $fullText = $whoTeaser['content'];
+        $previewText = mb_strimwidth($fullText, 0, 350, '...');
+      ?>
+      <div class="mb-4">
+        <p class="lead" style="max-width: 900px; margin: 0 auto; font-size: 1.05rem; line-height: 1.8; color: #4b5563;">
+          <?= nl2br(htmlspecialchars($previewText)) ?>
+        </p>
+        <?php if (!empty($whoTeaser['image'])): ?>
+          <div class="mt-3">
+            <img src="../../uploads/who_we_are/<?= htmlspecialchars($whoTeaser['image']) ?>" alt="Who We Are" style="max-height:220px; border-radius:12px; box-shadow:0 8px 24px rgba(15,23,42,0.2);">
+          </div>
+        <?php endif; ?>
+      </div>
+    <?php else: ?>
+      <p class="text-muted" style="max-width: 900px; margin: 0 auto; font-size: 1rem;">
+        No "Who We Are" content has been added yet.
+      </p>
+    <?php endif; ?>
+
     <a href="about_us.php" class="btn btn-outline-primary mt-4">
       Learn More About Us <i class="bi bi-arrow-right ms-2"></i>
     </a>
@@ -1452,63 +1584,31 @@ if ($galleryResult && $galleryResult->num_rows > 0) {
     <h2>🌟 FEATURED PROGRAMS</h2>
     <p class="subtitle">Our Key Initiatives for Community Development</p>
     
-    <div class="row g-4">
-      <!-- Program 1: Coastal Clean-up Drives -->
-      <div class="col-md-6 col-lg-3">
-        <div class="program-card">
-          <div class="program-icon">
-            <i class="bi bi-water"></i>
+    <?php if (!empty($featuredPrograms)): ?>
+      <div class="row g-4">
+        <?php foreach ($featuredPrograms as $program): ?>
+          <div class="col-md-6 col-lg-3">
+            <div class="program-card">
+              <div class="program-icon">
+                <?php
+                  $iconClass = !empty($program['icon_class']) ? $program['icon_class'] : 'bi-badge-ad';
+                ?>
+                <i class="bi <?= htmlspecialchars($iconClass) ?>"></i>
+              </div>
+              <h4><?= htmlspecialchars($program['title']) ?></h4>
+              <p><?= nl2br(htmlspecialchars($program['description'])) ?></p>
+              <?php if (!empty($program['button_link'])): ?>
+                <a href="<?= htmlspecialchars($program['button_link']) ?>" class="btn-program">
+                  <?= htmlspecialchars($program['button_label'] ?: 'View Events') ?> <i class="bi bi-arrow-right"></i>
+                </a>
+              <?php endif; ?>
+            </div>
           </div>
-          <h4>Coastal Clean-up Drives</h4>
-          <p>Regular community-led initiatives to protect our marine environment, preserve coastal ecosystems, and maintain clean beaches for future generations.</p>
-          <a href="events.php?category=cleanup" class="btn-program">
-            View Events <i class="bi bi-arrow-right"></i>
-          </a>
-        </div>
+        <?php endforeach; ?>
       </div>
-      
-      <!-- Program 2: Fishermen Livelihood Support -->
-      <div class="col-md-6 col-lg-3">
-        <div class="program-card">
-          <div class="program-icon">
-            <i class="bi bi-briefcase"></i>
-          </div>
-          <h4>Fishermen Livelihood Support</h4>
-          <p>Providing financial assistance, equipment support, and sustainable fishing resources to help local fishermen improve their income and quality of life.</p>
-          <a href="events.php?category=livelihood" class="btn-program">
-            View Events <i class="bi bi-arrow-right"></i>
-          </a>
-        </div>
-      </div>
-      
-      <!-- Program 3: Safety & Maritime Training -->
-      <div class="col-md-6 col-lg-3">
-        <div class="program-card">
-          <div class="program-icon">
-            <i class="bi bi-shield-check"></i>
-          </div>
-          <h4>Safety & Maritime Training</h4>
-          <p>Comprehensive training programs covering sea safety, first aid, navigation, and emergency protocols to ensure the well-being of all fishermen.</p>
-          <a href="events.php?category=training" class="btn-program">
-            View Events <i class="bi bi-arrow-right"></i>
-          </a>
-        </div>
-      </div>
-      
-      <!-- Program 4: Environmental Protection -->
-      <div class="col-md-6 col-lg-3">
-        <div class="program-card">
-          <div class="program-icon">
-            <i class="bi bi-tree"></i>
-          </div>
-          <h4>Environmental Protection</h4>
-          <p>Advocacy and action programs focused on marine conservation, sustainable fishing practices, and educating the community about environmental responsibility.</p>
-          <a href="events.php?category=environment" class="btn-program">
-            View Events <i class="bi bi-arrow-right"></i>
-          </a>
-        </div>
-      </div>
-    </div>
+    <?php else: ?>
+      <p class="text-center text-muted mt-3">No featured programs have been configured yet.</p>
+    <?php endif; ?>
   </div>
 </section>
 
@@ -1773,39 +1873,56 @@ document.addEventListener('DOMContentLoaded', () => {
 <section class="partnerships py-5" style="background: linear-gradient(135deg, #ecf0f1 0%, #ffffff 100%);">
   <div class="container">
     <div class="text-center mb-5">
-      <h2 class="section-title">🤝 Our Partners</h2>
+      <h2 class="section-title">🤝 Our Partners &amp; Sponsors</h2>
       <p class="text-muted" style="font-size: 1.1rem; max-width: 700px; margin: 0 auto;">
-        We are proud to collaborate with institutions and organizations that share our vision of 
-        supporting local fishermen and preserving marine resources.
+        We are grateful to our partner institutions and generous sponsors who continuously support
+        our programs for local bangkeros and fisherfolk. Through their assistance, we are able to
+        strengthen community-based livelihood, promote responsible coastal tourism, and implement
+        initiatives that protect our marine environment.
       </p>
     </div>
     
     <!-- Partner Slider -->
     <div class="partner-slider-container position-relative" style="overflow: hidden; padding: 20px 0;">
       <div class="partner-track-wrapper d-flex align-items-center justify-content-center flex-wrap gap-4">
-        <!-- Partner 1 -->
-        <div class="partner-card">
-          <img src="../uploads/partners/olongapo.png" class="img-fluid mb-3" alt="Municipality of Olongapo" style="max-height: 90px;">
-          <p class="mt-2 text-dark small fw-semibold mb-0">Municipality of Olongapo City</p>
-        </div>
-        
-        <!-- Partner 2 -->
-        <div class="partner-card">
-          <img src="../uploads/partners/bfar.png" class="img-fluid mb-3" alt="BFAR" style="max-height: 90px;">
-          <p class="mt-2 text-dark small fw-semibold mb-0">Bureau of Fisheries & Aquatic Resources</p>
-        </div>
-        
-        <!-- Partner 3 -->
-        <div class="partner-card">
-          <img src="../uploads/partners/agriculture.png" class="img-fluid mb-3" alt="Agriculture" style="max-height: 90px;">
-          <p class="mt-2 text-dark small fw-semibold mb-0">Olongapo City Agriculture Department</p>
-        </div>
-        
-        <!-- Partner 4 -->
-        <div class="partner-card">
-          <img src="../uploads/partners/usaid.png" class="img-fluid mb-3" alt="USAID" style="max-height: 90px;">
-          <p class="mt-2 text-dark small fw-semibold mb-0">USAID</p>
-        </div>
+        <?php if (!empty($partnersList)): ?>
+          <?php foreach ($partnersList as $partner): ?>
+            <div class="partner-card text-center">
+              <img src="../../<?= htmlspecialchars($partner['logo_path']) ?>" class="img-fluid mb-3" alt="<?= htmlspecialchars($partner['name']) ?>" style="max-height: 90px;">
+              <p class="mt-2 text-dark small fw-semibold mb-0"><?= htmlspecialchars($partner['name']) ?></p>
+              <?php if (!empty($partner['type'])): ?>
+                <div class="mt-1">
+                  <?php if ($partner['type'] === 'sponsor'): ?>
+                    <span class="badge bg-warning text-dark small">Sponsor</span>
+                  <?php else: ?>
+                    <span class="badge bg-info text-dark small">Partner</span>
+                  <?php endif; ?>
+                </div>
+              <?php endif; ?>
+            </div>
+          <?php endforeach; ?>
+        <?php else: ?>
+          <!-- Fallback static partners when no records in DB yet -->
+          <div class="partner-card">
+            <img src="../uploads/partners/olongapo.png" class="img-fluid mb-3" alt="Municipality of Olongapo" style="max-height: 90px;">
+            <p class="mt-2 text-dark small fw-semibold mb-0">Municipality of Olongapo City</p>
+          </div>
+          
+          <div class="partner-card">
+            <img src="../uploads/partners/bfar.png" class="img-fluid mb-3" alt="BFAR" style="max-height: 90px;">
+            <p class="mt-2 text-dark small fw-semibold mb-0">Bureau of Fisheries &amp; Aquatic Resources</p>
+          </div>
+          
+          <div class="partner-card">
+            <img src="../uploads/partners/agriculture.png" class="img-fluid mb-3" alt="Agriculture" style="max-height: 90px;">
+            <p class="mt-2 text-dark small fw-semibold mb-0">Olongapo City Agriculture Department</p>
+          </div>
+          
+          <div class="partner-card">
+            <img src="../uploads/partners/usaid.png" class="img-fluid mb-3" alt="USAID" style="max-height: 90px;">
+            <p class="mt-2 text-dark small fw-semibold mb-0">USAID</p>
+          </div>
+        <?php endif; ?>
       </div>
     </div>
   </div>

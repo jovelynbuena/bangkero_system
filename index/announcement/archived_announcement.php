@@ -92,18 +92,37 @@ if (isset($_GET['retrieve'])) {
     }
 }
 
-// Fetch all archived announcements
+// Fetch all archived announcements with filtering
 $search = $_GET['search'] ?? '';
-if (!empty($search)) {
-    $stmt = $conn->prepare("SELECT * FROM archived_announcements WHERE title LIKE ? OR content LIKE ? ORDER BY date_posted DESC");
-    $search_param = "%{$search}%";
-    $stmt->bind_param("ss", $search_param, $search_param);
-    $stmt->execute();
-    $result = $stmt->get_result();
-} else {
-    $sql = "SELECT * FROM archived_announcements ORDER BY date_posted DESC";
-    $result = $conn->query($sql);
+$category_filter = $_GET['category'] ?? '';
+$sort = $_GET['sort'] ?? 'newest';
+
+$search_sql = $conn->real_escape_string($search);
+$category_sql = $conn->real_escape_string($category_filter);
+
+$conditions = ["1=1"];
+
+if ($search !== '') {
+    $conditions[] = "(title LIKE '%$search_sql%' OR content LIKE '%$search_sql%')";
 }
+
+if ($category_filter !== '') {
+    $conditions[] = "category = '$category_sql'";
+}
+
+$sql = "SELECT * FROM archived_announcements WHERE " . implode(" AND ", $conditions) . " ORDER BY ";
+
+if ($sort === 'oldest') {
+    $sql .= "date_posted ASC";
+} elseif ($sort === 'name_a') {
+    $sql .= "title ASC";
+} elseif ($sort === 'name_z') {
+    $sql .= "title DESC";
+} else {
+    $sql .= "date_posted DESC";
+}
+
+$result = $conn->query($sql);
 ?>
 
 <!DOCTYPE html>
@@ -315,60 +334,62 @@ body {
 <?php include('../navbar.php'); ?>
 
 <div class="main-content">
-    <!-- Page Header -->
-    <div class="page-header">
-        <h2><i class="bi bi-megaphone-fill me-2"></i>Archived Announcements</h2>
-        <p>View and restore archived announcement records</p>
-    </div>
-
-    <!-- Statistics -->
-    <div class="stats-card">
-        <div class="row">
-            <div class="col-md-6">
-                <div class="stat-item">
-                    <div class="stat-icon">
-                        <i class="bi bi-archive-fill"></i>
-                    </div>
-                    <h3><?= $result ? $result->num_rows : 0 ?></h3>
-                    <p>Total Archived</p>
-                </div>
-            </div>
-            <div class="col-md-6">
-                <div class="stat-item">
-                    <div class="stat-icon">
-                        <i class="bi bi-calendar-check"></i>
-                    </div>
-                    <h3>
-                        <?php 
-                        $month_count = 0;
-                        if($result && $result->num_rows > 0) {
-                            $result->data_seek(0);
-                            while($row = $result->fetch_assoc()) {
-                                if(date('Y-m', strtotime($row['date_posted'])) == date('Y-m')) {
-                                    $month_count++;
-                                }
-                            }
-                            $result->data_seek(0);
-                        }
-                        echo $month_count;
-                        ?>
-                    </h3>
-                    <p>Archived This Month</p>
-                </div>
-            </div>
+    <!-- Page Header (aligned with other archive pages) -->
+    <div class="page-header d-flex align-items-center">
+        <div>
+            <h2><i class="bi bi-megaphone-fill me-2"></i>Archived Announcements</h2>
+            <p class="mb-0">View and restore archived announcement records</p>
         </div>
     </div>
 
-    <!-- Search Section -->
-    <div class="search-card">
-        <div class="search-box">
-            <input type="text" 
-                   id="searchInput"
-                   class="form-control" 
-                   placeholder="Search by title or content...">
-            <button type="button" onclick="document.getElementById('searchInput').focus()">
-                <i class="bi bi-search me-1"></i>Search
-            </button>
+    <!-- Search & Filter Section -->
+    <div class="card shadow-sm border-0 mb-3">
+        <div class="card-body py-3">
+            <form method="GET" class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                <!-- LEFT SIDE: Search & Category -->
+                <div class="d-flex gap-2 flex-wrap align-items-center" style="flex: 1; min-width: 300px;">
+                    <!-- Search Input -->
+                    <div class="position-relative" style="flex: 1; min-width: 200px;">
+                        <i class="bi bi-search position-absolute" style="left: 12px; top: 50%; transform: translateY(-50%); color: #999;"></i>
+                        <input type="text" name="search" class="form-control rounded-pill ps-5" 
+                               placeholder="Search by title or content..."
+                               value="<?= htmlspecialchars($search) ?>">
+                    </div>
+
+                    <!-- Category Filter -->
+                    <select name="category" class="form-select rounded-pill shadow-sm" style="flex: 0 0 auto; min-width: 160px;">
+                        <option value="">All Categories</option>
+                        <option value="Announcement" <?= $category_filter === 'Announcement' ? 'selected' : '' ?>>Announcement</option>
+                        <option value="Event" <?= $category_filter === 'Event' ? 'selected' : '' ?>>Event</option>
+                        <option value="Fishing" <?= $category_filter === 'Fishing' ? 'selected' : '' ?>>Fishing</option>
+                        <option value="Meeting" <?= $category_filter === 'Meeting' ? 'selected' : '' ?>>Meeting</option>
+                        <option value="Reminder" <?= $category_filter === 'Reminder' ? 'selected' : '' ?>>Reminder</option>
+                        <option value="Emergency" <?= $category_filter === 'Emergency' ? 'selected' : '' ?>>Emergency</option>
+                        <option value="General" <?= $category_filter === 'General' ? 'selected' : '' ?>>General</option>
+                    </select>
+                </div>
+
+                <!-- RIGHT SIDE: Sort & Reset -->
+                <div class="d-flex gap-2 flex-wrap align-items-center">
+                    <!-- Sort Dropdown -->
+                    <select name="sort" class="form-select rounded-pill shadow-sm" style="flex: 0 0 auto; min-width: 160px;" onchange="this.form.submit();">
+                        <option value="newest" <?= $sort === 'newest' ? 'selected' : '' ?>>Newest First</option>
+                        <option value="oldest" <?= $sort === 'oldest' ? 'selected' : '' ?>>Oldest First</option>
+                        <option value="name_a" <?= $sort === 'name_a' ? 'selected' : '' ?>>Title A-Z</option>
+                        <option value="name_z" <?= $sort === 'name_z' ? 'selected' : '' ?>>Title Z-A</option>
+                    </select>
+
+                    <!-- Submit Button -->
+                    <button type="submit" class="btn btn-primary rounded-pill px-4 shadow-sm">
+                        <i class="bi bi-search me-2"></i>Search
+                    </button>
+
+                    <!-- Reset Button -->
+                    <a href="archived_announcement.php" class="btn btn-light border rounded-pill px-3 shadow-sm">
+                        <i class="bi bi-arrow-clockwise me-2"></i>Reset
+                    </a>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -428,7 +449,7 @@ body {
 <script>
 // Live Search Functionality
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.getElementById('searchInput');
+    const searchInput = document.querySelector('input[name="search"]');
     const tableRows = document.querySelectorAll('tbody tr');
     
     if (searchInput && tableRows.length > 0) {
@@ -443,9 +464,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
                 
                 const title = row.cells[1]?.textContent.toLowerCase() || '';
+                const category = row.cells[2]?.textContent.toLowerCase() || '';
                 const content = row.cells[4]?.textContent.toLowerCase() || '';
                 
-                if (title.includes(searchTerm) || content.includes(searchTerm)) {
+                if (title.includes(searchTerm) || category.includes(searchTerm) || content.includes(searchTerm)) {
                     row.style.display = '';
                     visibleCount++;
                 } else {

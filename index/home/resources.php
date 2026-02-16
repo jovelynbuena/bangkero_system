@@ -1,11 +1,39 @@
 <?php
-// Minimal server-side setup (no DB needed for static resources)
-$resources = [
-  ['id'=>'membership_form','title'=>'Membership Form','icon'=>'bi-file-earmark-person','color'=>'#0d6efd'],
-  ['id'=>'event_guidelines','title'=>'Event Guidelines','icon'=>'bi-journal-text','color'=>'#0dcaf0'],
-  ['id'=>'attendance_sheet','title'=>'Attendance Sheet','icon'=>'bi-file-earmark-spreadsheet','color'=>'#6c757d'],
-  ['id'=>'officers_list','title'=>'Officers List','icon'=>'bi-people','color'=>'#0d6efd'],
+require_once('../../config/db_connect.php');
+
+// Ensure downloadable_resources table exists (for Resources page)
+$conn->query("CREATE TABLE IF NOT EXISTS downloadable_resources (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    file_key VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    icon_class VARCHAR(100) DEFAULT NULL,
+    color_hex VARCHAR(20) DEFAULT '#0d6efd',
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Default static resources (fallback)
+$defaultResources = [
+  ['file_key' => 'membership_form','title' => 'Membership Form','icon_class' => 'bi-file-earmark-person','color_hex' => '#0d6efd'],
+  ['file_key' => 'event_guidelines','title' => 'Event Guidelines','icon_class' => 'bi-journal-text','color_hex' => '#0dcaf0'],
+  ['file_key' => 'attendance_sheet','title' => 'Attendance Sheet','icon_class' => 'bi-file-earmark-spreadsheet','color_hex' => '#6c757d'],
+  ['file_key' => 'officers_list','title' => 'Officers List','icon_class' => 'bi-people','color_hex' => '#0d6efd'],
 ];
+
+// Try to fetch dynamic resources from DB
+$resources = [];
+$result = $conn->query("SELECT * FROM downloadable_resources WHERE is_active = 1 ORDER BY sort_order ASC, created_at ASC");
+if ($result && $result->num_rows > 0) {
+    while ($row = $result->fetch_assoc()) {
+        $resources[] = $row;
+    }
+}
+
+// If none configured yet, use fallback static list
+if (empty($resources)) {
+    $resources = $defaultResources;
+}
 ?>
 <!doctype html>
 <html lang="en">

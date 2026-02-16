@@ -242,10 +242,15 @@ body {
 <?php include('../navbar.php'); ?>
 
 <div class="main-content">
-    <!-- Page Header -->
-    <div class="page-header">
-        <h2><i class="bi bi-calendar-x-fill me-2"></i>Archived Events</h2>
-        <p>View and restore archived event records</p>
+    <!-- Page Header (aligned with other archive pages) -->
+    <div class="page-header d-flex justify-content-between align-items-center">
+        <div>
+            <h2><i class="bi bi-calendar-x-fill me-2"></i>Archived Events</h2>
+            <p class="mb-0">View and restore archived event records</p>
+        </div>
+        <a href="events.php" class="btn btn-light rounded-pill px-4">
+            <i class="bi bi-arrow-left me-2"></i>Back to Events
+        </a>
     </div>
 
     <!-- Professional Filter Toolbar -->

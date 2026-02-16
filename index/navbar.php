@@ -35,7 +35,7 @@ $assocAddress = htmlspecialchars($config['assoc_address'] ?? '123 Association St
 $managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php'];
 $archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php'];
 $utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php'];
-$settingsPages = ['system_config.php','profile_settings.php'];
+$settingsPages = ['system_config.php','profile_settings.php','about_association_content.php'];
 
 // Determine if dropdowns should be open
 $isManagementOpen = in_array($current_page, $managementPages);
@@ -677,6 +677,11 @@ body.sidebar-open {
         <a href="<?= BASE_URL; ?>settings/config.php"
            class="<?= ($current_page == 'config.php') ? 'active' : ''; ?>">
            <i class="bi bi-sliders"></i> System Configuration
+        </a>
+
+        <a href="<?= BASE_URL; ?>settings/about_association_content.php"
+           class="<?= ($current_page == 'about_association_content.php') ? 'active' : ''; ?>">
+           <i class="bi bi-file-text"></i> Website Content
         </a>
         <?php endif; ?>
 

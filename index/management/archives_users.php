@@ -15,9 +15,9 @@ if (isset($_GET['restore'])) {
         try {
             $conn->begin_transaction();
             
-            // Restore user
+            // Restore user (map legacy password column back into password_hash)
             $stmt_insert = $conn->prepare("
-                INSERT INTO users (id, username, email, password, role, status, is_admin, created_at)
+                INSERT INTO users (id, username, email, password_hash, role, status, is_admin, created_at)
                 SELECT original_id, username, email, password, role, status, is_admin, created_at
                 FROM users_archive
                 WHERE archive_id = ?
