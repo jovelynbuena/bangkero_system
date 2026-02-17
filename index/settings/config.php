@@ -28,6 +28,20 @@ if (!$tableCheck || $tableCheck->num_rows == 0) {
                  VALUES (1, 'Bangkero & Fishermen Association', 'info@association.org', '+63 912 345 6789', '123 Association Street, Olongapo City, Philippines', '')");
 }
 
+// Ensure extended columns for auto-backup exist
+$colCheck = $conn->query("SHOW COLUMNS FROM system_config LIKE 'auto_backup_status'");
+if (!$colCheck || $colCheck->num_rows == 0) {
+    $conn->query("ALTER TABLE system_config ADD COLUMN auto_backup_status TINYINT(1) NOT NULL DEFAULT 0");
+}
+$colCheck = $conn->query("SHOW COLUMNS FROM system_config LIKE 'backup_storage_limit_mb'");
+if (!$colCheck || $colCheck->num_rows == 0) {
+    $conn->query("ALTER TABLE system_config ADD COLUMN backup_storage_limit_mb INT NOT NULL DEFAULT 100");
+}
+$colCheck = $conn->query("SHOW COLUMNS FROM system_config LIKE 'auto_backup_next_run'");
+if (!$colCheck || $colCheck->num_rows == 0) {
+    $conn->query("ALTER TABLE system_config ADD COLUMN auto_backup_next_run DATETIME NULL");
+}
+
 // Fetch existing config
 $configResult = $conn->query("SELECT * FROM system_config WHERE id=1");
 $config = $configResult && $configResult->num_rows > 0 ? $configResult->fetch_assoc() : null;
@@ -38,6 +52,9 @@ $assocEmail = $config['assoc_email'] ?? '';
 $assocPhone = $config['assoc_phone'] ?? '';
 $assocAddress = $config['assoc_address'] ?? '';
 $assocLogo = $config['assoc_logo'] ?? '';
+$autoBackupStatus = isset($config['auto_backup_status']) ? (int)$config['auto_backup_status'] : 0;
+$backupStorageLimitMb = isset($config['backup_storage_limit_mb']) ? (int)$config['backup_storage_limit_mb'] : 100;
+if ($backupStorageLimitMb <= 0) { $backupStorageLimitMb = 100; }
 
 // Handle form submission
 if (isset($_POST['save_config'])) {
@@ -45,6 +62,11 @@ if (isset($_POST['save_config'])) {
     $assocEmail = $conn->real_escape_string($_POST['assoc_email']);
     $assocPhone = $conn->real_escape_string($_POST['assoc_phone']);
     $assocAddress = $conn->real_escape_string($_POST['assoc_address']);
+
+    // Auto-backup settings
+    $autoBackupStatus = isset($_POST['auto_backup_status']) ? 1 : 0;
+    $backupStorageLimitMb = isset($_POST['backup_storage_limit_mb']) ? (int)$_POST['backup_storage_limit_mb'] : 100;
+    if ($backupStorageLimitMb <= 0) { $backupStorageLimitMb = 100; }
     
     // Keep current logo if no new upload
     $assocLogo = $config['assoc_logo'] ?? '';
@@ -79,12 +101,14 @@ if (isset($_POST['save_config'])) {
                 assoc_email='$assocEmail',
                 assoc_phone='$assocPhone',
                 assoc_address='$assocAddress',
-                assoc_logo='$assocLogo'
+                assoc_logo='$assocLogo',
+                auto_backup_status=$autoBackupStatus,
+                backup_storage_limit_mb=$backupStorageLimitMb
                 WHERE id=1";
     } else {
         // Insert new record
-        $sql = "INSERT INTO system_config (id, assoc_name, assoc_email, assoc_phone, assoc_address, assoc_logo)
-                VALUES (1, '$assocName', '$assocEmail', '$assocPhone', '$assocAddress', '$assocLogo')";
+        $sql = "INSERT INTO system_config (id, assoc_name, assoc_email, assoc_phone, assoc_address, assoc_logo, auto_backup_status, backup_storage_limit_mb)
+                VALUES (1, '$assocName', '$assocEmail', '$assocPhone', '$assocAddress', '$assocLogo', $autoBackupStatus, $backupStorageLimitMb)";
     }
 
     if ($conn->query($sql)) {
@@ -98,6 +122,8 @@ if (isset($_POST['save_config'])) {
             $assocPhone = $config['assoc_phone'];
             $assocAddress = $config['assoc_address'];
             $assocLogo = $config['assoc_logo'];
+            $autoBackupStatus = isset($config['auto_backup_status']) ? (int)$config['auto_backup_status'] : 0;
+            $backupStorageLimitMb = isset($config['backup_storage_limit_mb']) ? (int)$config['backup_storage_limit_mb'] : 100;
         }
     } else {
         $error = "Database Error: " . $conn->error;
@@ -448,6 +474,33 @@ textarea.form-control {
                               rows="4" 
                               required
                               placeholder="Enter complete address including barangay, city, province"><?= htmlspecialchars($assocAddress) ?></textarea>
+                </div>
+
+                <hr class="my-4">
+
+                <!-- Auto Backup Settings -->
+                <div class="mb-3">
+                    <label class="form-label">
+                        <i class="bi bi-cloud-check"></i> Auto Backup Settings
+                    </label>
+                    <div class="form-check form-switch mb-2">
+                        <input class="form-check-input" type="checkbox" role="switch" id="autoBackupStatus" name="auto_backup_status" value="1" <?= $autoBackupStatus ? 'checked' : '' ?>>
+                        <label class="form-check-label" for="autoBackupStatus">
+                            Enable automatic daily database backup (requires Task Scheduler)
+                        </label>
+                    </div>
+                    <div class="row g-2 align-items-center">
+                        <div class="col-auto">
+                            <label class="col-form-label" style="font-size: 0.9rem;">Storage limit for backups</label>
+                        </div>
+                        <div class="col-auto" style="max-width: 120px;">
+                            <input type="number" min="10" step="10" class="form-control" name="backup_storage_limit_mb" value="<?= (int)$backupStorageLimitMb ?>">
+                        </div>
+                        <div class="col-auto">
+                            <span class="form-text">MB (used by Backup & Restore page)</span>
+                        </div>
+                    </div>
+                    <small class="text-muted d-block mt-1">You still control the actual schedule via Windows Task Scheduler. This switch only allows or blocks auto backups.</small>
                 </div>
 
                 <!-- Submit Button -->
