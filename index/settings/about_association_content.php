@@ -93,6 +93,85 @@ $conn->query("CREATE TABLE IF NOT EXISTS downloadable_resources (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// ==================== ARCHIVE TABLES FOR WEBSITE CONTENT ====================
+// Archive for Who We Are entries
+$conn->query("CREATE TABLE IF NOT EXISTS who_we_are_archive (
+    archive_id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT,
+    title VARCHAR(255) NOT NULL,
+    content LONGTEXT NOT NULL,
+    image VARCHAR(255) DEFAULT NULL,
+    original_created_at DATETIME NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Archive for Featured Programs
+$conn->query("CREATE TABLE IF NOT EXISTS featured_programs_archive (
+    archive_id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    icon_class VARCHAR(100) DEFAULT NULL,
+    button_label VARCHAR(100) DEFAULT 'View Events',
+    button_link VARCHAR(255) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    original_created_at DATETIME NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Archive for Core Values
+$conn->query("CREATE TABLE IF NOT EXISTS core_values_archive (
+    archive_id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT,
+    title VARCHAR(255) NOT NULL,
+    description TEXT NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    original_created_at DATETIME NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Archive for Partners & Sponsors
+$conn->query("CREATE TABLE IF NOT EXISTS partners_sponsors_archive (
+    archive_id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT,
+    name VARCHAR(255) NOT NULL,
+    logo_path VARCHAR(255) NOT NULL,
+    type VARCHAR(50) NOT NULL DEFAULT 'partner',
+    sort_order INT NOT NULL DEFAULT 0,
+    original_created_at DATETIME NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Archive for Homepage Carousel slides
+$conn->query("CREATE TABLE IF NOT EXISTS home_carousel_slides_archive (
+    archive_id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT,
+    title VARCHAR(255) NOT NULL,
+    subtitle TEXT NOT NULL,
+    image_path VARCHAR(255) NOT NULL,
+    primary_button_label VARCHAR(100) DEFAULT 'Learn More',
+    primary_button_link VARCHAR(255) DEFAULT 'about_us.php',
+    secondary_button_label VARCHAR(100) DEFAULT 'Join Us',
+    secondary_button_link VARCHAR(255) DEFAULT 'contact_us.php',
+    sort_order INT NOT NULL DEFAULT 0,
+    original_created_at DATETIME NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Archive for Downloadable Resources
+$conn->query("CREATE TABLE IF NOT EXISTS downloadable_resources_archive (
+    archive_id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT,
+    file_key VARCHAR(100) NOT NULL,
+    title VARCHAR(255) NOT NULL,
+    icon_class VARCHAR(100) DEFAULT NULL,
+    color_hex VARCHAR(20) DEFAULT '#0d6efd',
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    original_created_at DATETIME NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 
 $who_error = '';
 $who_success = '';
@@ -110,6 +189,7 @@ $carousel_error = '';
 $carousel_success = '';
 $resources_error = '';
 $resources_success = '';
+
 
 
 
@@ -195,15 +275,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['who_action'])) {
             }
             $stmt->close();
         } elseif ($action === 'delete' && $id > 0) {
-            $stmt = $conn->prepare("DELETE FROM who_we_are WHERE id = ?");
-            $stmt->bind_param('i', $id);
-            if ($stmt->execute()) {
-                $who_success = 'Entry deleted successfully.';
+            // Archive instead of hard delete
+            $stmtSel = $conn->prepare("SELECT title, content, image, created_at FROM who_we_are WHERE id = ?");
+            $stmtSel->bind_param('i', $id);
+            if ($stmtSel->execute()) {
+                $resultSel = $stmtSel->get_result();
+                if ($row = $resultSel->fetch_assoc()) {
+                    $stmtArch = $conn->prepare("INSERT INTO who_we_are_archive (original_id, title, content, image, original_created_at) VALUES (?, ?, ?, ?, ?)");
+                    $origCreated = $row['created_at'] ?? null;
+                    $stmtArch->bind_param('issss', $id, $row['title'], $row['content'], $row['image'], $origCreated);
+                    if ($stmtArch->execute()) {
+                        $stmtDel = $conn->prepare("DELETE FROM who_we_are WHERE id = ?");
+                        $stmtDel->bind_param('i', $id);
+                        if ($stmtDel->execute()) {
+                            $who_success = 'Entry archived successfully.';
+                        } else {
+                            $who_error = 'Failed to remove entry after archiving.';
+                        }
+                        $stmtDel->close();
+                    } else {
+                        $who_error = 'Failed to archive entry.';
+                    }
+                    $stmtArch->close();
+                } else {
+                    $who_error = 'Entry not found for archiving.';
+                }
             } else {
-                $who_error = 'Failed to delete entry.';
+                $who_error = 'Failed to load entry for archiving.';
             }
-            $stmt->close();
+            $stmtSel->close();
         }
+
     }
 }
 
@@ -283,15 +385,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['program_action'])) {
             }
             $stmt->close();
         } elseif ($p_action === 'delete' && $p_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM featured_programs WHERE id = ?");
-            $stmt->bind_param('i', $p_id);
-            if ($stmt->execute()) {
-                $program_success = 'Featured program deleted successfully.';
+            // Archive instead of hard delete
+            $stmtSel = $conn->prepare("SELECT title, description, icon_class, button_label, button_link, sort_order, created_at FROM featured_programs WHERE id = ?");
+            $stmtSel->bind_param('i', $p_id);
+            if ($stmtSel->execute()) {
+                $resultSel = $stmtSel->get_result();
+                if ($row = $resultSel->fetch_assoc()) {
+                    $stmtArch = $conn->prepare("INSERT INTO featured_programs_archive (original_id, title, description, icon_class, button_label, button_link, sort_order, original_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $origCreated = $row['created_at'] ?? null;
+                    $stmtArch->bind_param('isssssis', $p_id, $row['title'], $row['description'], $row['icon_class'], $row['button_label'], $row['button_link'], $row['sort_order'], $origCreated);
+                    if ($stmtArch->execute()) {
+                        $stmtDel = $conn->prepare("DELETE FROM featured_programs WHERE id = ?");
+                        $stmtDel->bind_param('i', $p_id);
+                        if ($stmtDel->execute()) {
+                            $program_success = 'Featured program archived successfully.';
+                        } else {
+                            $program_error = 'Failed to remove featured program after archiving.';
+                        }
+                        $stmtDel->close();
+                    } else {
+                        $program_error = 'Failed to archive featured program.';
+                    }
+                    $stmtArch->close();
+                } else {
+                    $program_error = 'Featured program not found for archiving.';
+                }
             } else {
-                $program_error = 'Failed to delete featured program.';
+                $program_error = 'Failed to load featured program for archiving.';
             }
-            $stmt->close();
+            $stmtSel->close();
         }
+
     }
 }
 
@@ -371,15 +495,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['values_action'])) {
             }
             $stmt->close();
         } elseif ($v_action === 'delete' && $v_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM core_values WHERE id = ?");
-            $stmt->bind_param('i', $v_id);
-            if ($stmt->execute()) {
-                $values_success = 'Core value deleted successfully.';
+            // Archive instead of hard delete
+            $stmtSel = $conn->prepare("SELECT title, description, sort_order, created_at FROM core_values WHERE id = ?");
+            $stmtSel->bind_param('i', $v_id);
+            if ($stmtSel->execute()) {
+                $resultSel = $stmtSel->get_result();
+                if ($row = $resultSel->fetch_assoc()) {
+                    $stmtArch = $conn->prepare("INSERT INTO core_values_archive (original_id, title, description, sort_order, original_created_at) VALUES (?, ?, ?, ?, ?)");
+                    $origCreated = $row['created_at'] ?? null;
+                    $stmtArch->bind_param('issis', $v_id, $row['title'], $row['description'], $row['sort_order'], $origCreated);
+                    if ($stmtArch->execute()) {
+                        $stmtDel = $conn->prepare("DELETE FROM core_values WHERE id = ?");
+                        $stmtDel->bind_param('i', $v_id);
+                        if ($stmtDel->execute()) {
+                            $values_success = 'Core value archived successfully.';
+                        } else {
+                            $values_error = 'Failed to remove core value after archiving.';
+                        }
+                        $stmtDel->close();
+                    } else {
+                        $values_error = 'Failed to archive core value.';
+                    }
+                    $stmtArch->close();
+                } else {
+                    $values_error = 'Core value not found for archiving.';
+                }
             } else {
-                $values_error = 'Failed to delete core value.';
+                $values_error = 'Failed to load core value for archiving.';
             }
-            $stmt->close();
+            $stmtSel->close();
         }
+
     }
 }
 
@@ -439,15 +585,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['partners_action'])) {
             }
             $stmt->close();
         } elseif ($ps_action === 'delete' && $ps_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM partners_sponsors WHERE id = ?");
-            $stmt->bind_param('i', $ps_id);
-            if ($stmt->execute()) {
-                $partners_success = 'Partner / sponsor deleted successfully.';
+            // Archive instead of hard delete
+            $stmtSel = $conn->prepare("SELECT name, logo_path, type, sort_order, created_at FROM partners_sponsors WHERE id = ?");
+            $stmtSel->bind_param('i', $ps_id);
+            if ($stmtSel->execute()) {
+                $resultSel = $stmtSel->get_result();
+                if ($row = $resultSel->fetch_assoc()) {
+                    $stmtArch = $conn->prepare("INSERT INTO partners_sponsors_archive (original_id, name, logo_path, type, sort_order, original_created_at) VALUES (?, ?, ?, ?, ?, ?)");
+                    $origCreated = $row['created_at'] ?? null;
+                    $stmtArch->bind_param('isssis', $ps_id, $row['name'], $row['logo_path'], $row['type'], $row['sort_order'], $origCreated);
+                    if ($stmtArch->execute()) {
+                        $stmtDel = $conn->prepare("DELETE FROM partners_sponsors WHERE id = ?");
+                        $stmtDel->bind_param('i', $ps_id);
+                        if ($stmtDel->execute()) {
+                            $partners_success = 'Partner / sponsor archived successfully.';
+                        } else {
+                            $partners_error = 'Failed to remove partner / sponsor after archiving.';
+                        }
+                        $stmtDel->close();
+                    } else {
+                        $partners_error = 'Failed to archive partner / sponsor.';
+                    }
+                    $stmtArch->close();
+                } else {
+                    $partners_error = 'Partner / sponsor not found for archiving.';
+                }
             } else {
-                $partners_error = 'Failed to delete partner / sponsor.';
+                $partners_error = 'Failed to load partner / sponsor for archiving.';
             }
-            $stmt->close();
+            $stmtSel->close();
         }
+
     }
 }
 
@@ -507,15 +675,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['carousel_action'])) {
             }
             $stmt->close();
         } elseif ($c_action === 'delete' && $c_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM home_carousel_slides WHERE id = ?");
-            $stmt->bind_param('i', $c_id);
-            if ($stmt->execute()) {
-                $carousel_success = 'Carousel slide deleted successfully.';
+            // Archive instead of hard delete
+            $stmtSel = $conn->prepare("SELECT title, subtitle, image_path, primary_button_label, primary_button_link, secondary_button_label, secondary_button_link, sort_order, created_at FROM home_carousel_slides WHERE id = ?");
+            $stmtSel->bind_param('i', $c_id);
+            if ($stmtSel->execute()) {
+                $resultSel = $stmtSel->get_result();
+                if ($row = $resultSel->fetch_assoc()) {
+                    $stmtArch = $conn->prepare("INSERT INTO home_carousel_slides_archive (original_id, title, subtitle, image_path, primary_button_label, primary_button_link, secondary_button_label, secondary_button_link, sort_order, original_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                    $origCreated = $row['created_at'] ?? null;
+                    $stmtArch->bind_param('issssssiss', $c_id, $row['title'], $row['subtitle'], $row['image_path'], $row['primary_button_label'], $row['primary_button_link'], $row['secondary_button_label'], $row['secondary_button_link'], $row['sort_order'], $origCreated);
+                    if ($stmtArch->execute()) {
+                        $stmtDel = $conn->prepare("DELETE FROM home_carousel_slides WHERE id = ?");
+                        $stmtDel->bind_param('i', $c_id);
+                        if ($stmtDel->execute()) {
+                            $carousel_success = 'Carousel slide archived successfully.';
+                        } else {
+                            $carousel_error = 'Failed to remove carousel slide after archiving.';
+                        }
+                        $stmtDel->close();
+                    } else {
+                        $carousel_error = 'Failed to archive carousel slide.';
+                    }
+                    $stmtArch->close();
+                } else {
+                    $carousel_error = 'Carousel slide not found for archiving.';
+                }
             } else {
-                $carousel_error = 'Failed to delete carousel slide.';
+                $carousel_error = 'Failed to load carousel slide for archiving.';
             }
-            $stmt->close();
+            $stmtSel->close();
         }
+
     }
 }
 
@@ -672,15 +862,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resources_action'])) 
             }
             $stmt->close();
         } elseif ($r_action === 'delete' && $r_id > 0) {
-            $stmt = $conn->prepare("DELETE FROM downloadable_resources WHERE id = ?");
-            $stmt->bind_param('i', $r_id);
-            if ($stmt->execute()) {
-                $resources_success = 'Resource deleted successfully.';
+            // Archive instead of hard delete
+            $stmtSel = $conn->prepare("SELECT file_key, title, icon_class, color_hex, sort_order, is_active, created_at FROM downloadable_resources WHERE id = ?");
+            $stmtSel->bind_param('i', $r_id);
+            if ($stmtSel->execute()) {
+                $resultSel = $stmtSel->get_result();
+                if ($row = $resultSel->fetch_assoc()) {
+                    $stmtArch = $conn->prepare("INSERT INTO downloadable_resources_archive (original_id, file_key, title, icon_class, color_hex, sort_order, is_active, original_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+                    $origCreated = $row['created_at'] ?? null;
+                    $stmtArch->bind_param('issssiis', $r_id, $row['file_key'], $row['title'], $row['icon_class'], $row['color_hex'], $row['sort_order'], $row['is_active'], $origCreated);
+                    if ($stmtArch->execute()) {
+                        $stmtDel = $conn->prepare("DELETE FROM downloadable_resources WHERE id = ?");
+                        $stmtDel->bind_param('i', $r_id);
+                        if ($stmtDel->execute()) {
+                            $resources_success = 'Resource archived successfully.';
+                        } else {
+                            $resources_error = 'Failed to remove resource after archiving.';
+                        }
+                        $stmtDel->close();
+                    } else {
+                        $resources_error = 'Failed to archive resource.';
+                    }
+                    $stmtArch->close();
+                } else {
+                    $resources_error = 'Resource not found for archiving.';
+                }
             } else {
-                $resources_error = 'Failed to delete resource.';
+                $resources_error = 'Failed to load resource for archiving.';
             }
-            $stmt->close();
+            $stmtSel->close();
         }
+
 
     }
 }
