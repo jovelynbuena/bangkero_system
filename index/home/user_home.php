@@ -7,6 +7,24 @@ $nextEvent = $nextEventResult ? $nextEventResult->fetch_assoc() : null;
 
 $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_posted DESC LIMIT 3");
 
+// Fetch gallery images for the Association Highlights section
+$galleryResult = $conn->query("SELECT id, title, category, images, created_at FROM galleries ORDER BY created_at DESC LIMIT 6");
+$galleryImages = [];
+if ($galleryResult && $galleryResult->num_rows > 0) {
+    while ($row = $galleryResult->fetch_assoc()) {
+        // Split images (stored as comma-separated)
+        $images = !empty($row['images']) ? array_filter(array_map('trim', explode(',', $row['images']))) : [];
+        foreach ($images as $img) {
+            if (count($galleryImages) < 6) {
+                $galleryImages[] = [
+                    'filename' => $img,
+                    'title' => $row['title'],
+                    'category' => $row['category']
+                ];
+            }
+        }
+    }
+}
 
 ?>
 
@@ -121,7 +139,8 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: linear-gradient(135deg, rgba(44, 62, 80, 0.75) 0%, rgba(26, 37, 47, 0.85) 100%);
+      /* Lightened overlay for better image visibility */
+      background: linear-gradient(135deg, rgba(44, 62, 80, 0.45) 0%, rgba(26, 37, 47, 0.55) 100%);
       z-index: 1;
     }
     .carousel-caption {
@@ -147,6 +166,49 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       color: #ffffff;
       font-weight: 400;
       animation: fadeInUp 0.8s ease-out 0.2s backwards;
+    }
+    /* Carousel CTA Buttons */
+    .carousel-btn-group {
+      margin-top: 30px;
+      display: flex;
+      gap: 15px;
+      justify-content: center;
+      flex-wrap: wrap;
+      animation: fadeInUp 0.8s ease-out 0.4s backwards;
+    }
+    .carousel-btn {
+      padding: 14px 32px;
+      font-size: 1rem;
+      font-weight: 600;
+      border-radius: 50px;
+      text-decoration: none;
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+    }
+    .carousel-btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      border: 2px solid transparent;
+    }
+    .carousel-btn-primary:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.4);
+      color: white;
+    }
+    .carousel-btn-secondary {
+      background: rgba(255,255,255,0.15);
+      color: white;
+      border: 2px solid white;
+      backdrop-filter: blur(10px);
+    }
+    .carousel-btn-secondary:hover {
+      background: white;
+      color: var(--primary);
+      transform: translateY(-3px);
+      box-shadow: 0 6px 20px rgba(255, 255, 255, 0.4);
     }
     .carousel-control-prev,
     .carousel-control-next {
@@ -199,15 +261,242 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
         transform: translateY(0);
       }
     }
-    @keyframes fadeInUp {
-      from {
-        opacity: 0;
-        transform: translateY(30px);
-      }
-      to {
-        opacity: 1;
-        transform: translateY(0);
-      }
+    
+    /* ==================== GALLERY SECTION STYLES ==================== */
+    .gallery-section {
+      background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+      padding: 60px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .gallery-section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .gallery-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+      gap: 20px;
+      margin-bottom: 3rem;
+    }
+    .gallery-item {
+      position: relative;
+      border-radius: 16px;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      aspect-ratio: 4/3;
+    }
+    .gallery-item img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .gallery-item:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
+    }
+    .gallery-item:hover img {
+      transform: scale(1.1);
+    }
+    .gallery-overlay {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: linear-gradient(135deg, rgba(44, 62, 80, 0.7) 0%, rgba(26, 37, 47, 0.8) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+    .gallery-item:hover .gallery-overlay {
+      opacity: 1;
+    }
+    .gallery-overlay i {
+      font-size: 3rem;
+      color: white;
+      animation: zoomIn 0.3s ease;
+    }
+    @keyframes zoomIn {
+      from { transform: scale(0.5); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+    .btn-view-gallery {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      padding: 14px 40px;
+      border-radius: 50px;
+      font-weight: 600;
+      font-size: 1.05rem;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(44, 62, 80, 0.25);
+    }
+    .btn-view-gallery:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 25px rgba(44, 62, 80, 0.35);
+      color: white;
+    }
+    
+    /* ==================== FEATURED PROGRAMS SECTION ==================== */
+    .programs-section {
+      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      padding: 60px 0;
+      position: relative;
+    }
+    .programs-section h2 {
+      font-family: 'Poppins', sans-serif;
+      color: var(--dark);
+      font-weight: 700;
+      font-size: 2.5rem;
+      margin-bottom: 1rem;
+      text-align: center;
+    }
+    .programs-section .subtitle {
+      text-align: center;
+      color: #64748b;
+      font-size: 1.1rem;
+      margin-bottom: 3rem;
+    }
+    .program-card {
+      background: white;
+      border-radius: 20px;
+      padding: 35px 30px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+      height: 100%;
+      border: 2px solid transparent;
+      position: relative;
+      overflow: hidden;
+    }
+    .program-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 4px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      transform: scaleX(0);
+      transition: transform 0.4s ease;
+    }
+    .program-card:hover::before {
+      transform: scaleX(1);
+    }
+    .program-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
+      border-color: var(--primary);
+    }
+    .program-icon {
+      width: 70px;
+      height: 70px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.2);
+      transition: all 0.3s ease;
+    }
+    .program-card:hover .program-icon {
+      transform: scale(1.1) rotate(5deg);
+    }
+    .program-icon i {
+      font-size: 2rem;
+      color: white;
+    }
+    .program-card h4 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      color: var(--dark);
+      font-size: 1.3rem;
+      margin-bottom: 15px;
+    }
+    .program-card p {
+      color: #64748b;
+      line-height: 1.7;
+      margin-bottom: 20px;
+      font-size: 0.95rem;
+    }
+    .btn-program {
+      background: transparent;
+      color: var(--primary);
+      padding: 10px 24px;
+      border: 2px solid var(--primary);
+      border-radius: 50px;
+      font-weight: 600;
+      text-decoration: none;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.3s ease;
+      font-size: 0.9rem;
+    }
+    .btn-program:hover {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      color: white;
+      border-color: var(--secondary);
+      transform: translateX(5px);
+    }
+    
+    /* Lightbox Modal Styles */
+    .lightbox-modal {
+      display: none;
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.95);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+    .lightbox-modal.active {
+      display: flex;
+    }
+    .lightbox-content {
+      position: relative;
+      max-width: 90%;
+      max-height: 90%;
+    }
+    .lightbox-content img {
+      max-width: 100%;
+      max-height: 90vh;
+      object-fit: contain;
+      border-radius: 8px;
+      box-shadow: 0 10px 50px rgba(0,0,0,0.5);
+    }
+    .lightbox-close {
+      position: absolute;
+      top: -50px;
+      right: 0;
+      background: white;
+      border: none;
+      width: 45px;
+      height: 45px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 1.5rem;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.3s ease;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+    }
+    .lightbox-close:hover {
+      background: var(--primary);
+      color: white;
+      transform: rotate(90deg);
     }
     
     /* Modern Intro Section */
@@ -808,6 +1097,13 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       .awards-widget {
         margin-top: 0;
       }
+      .gallery-grid {
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 15px;
+      }
+      .program-card {
+        margin-bottom: 20px;
+      }
     }
     @media (max-width: 768px) {
       .carousel-caption h1 {
@@ -816,11 +1112,17 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       .carousel-caption p {
         font-size: 1rem;
       }
+      .carousel-btn {
+        padding: 12px 24px;
+        font-size: 0.9rem;
+      }
       .intro-section h2,
       .event-highlight h2,
       .announcements-section h2,
-      .partnerships h2 {
-        font-size: 1.5rem;
+      .partnerships h2,
+      .gallery-section h2,
+      .programs-section h2 {
+        font-size: 1.8rem;
       }
       .event-poster-wrapper {
         height: 280px;
@@ -847,6 +1149,29 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       .award-highlights {
         gap: 8px;
       }
+      .gallery-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      }
+      .programs-section .subtitle {
+        font-size: 1rem;
+      }
+    }
+    @media (max-width: 576px) {
+      .carousel-btn-group {
+        gap: 10px;
+      }
+      .carousel-btn {
+        padding: 10px 20px;
+        font-size: 0.85rem;
+      }
+      .gallery-grid {
+        grid-template-columns: 1fr;
+        gap: 15px;
+      }
+      .lightbox-close {
+        top: 10px;
+        right: 10px;
+      }
     }
   </style>
 </head>
@@ -868,18 +1193,42 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
       <div class="carousel-caption text-center">
         <h1>Welcome to Our Association</h1>
         <p>Connecting members, sharing resources, and empowering leaders.</p>
+        <div class="carousel-btn-group">
+          <a href="about_us.php" class="carousel-btn carousel-btn-primary">
+            <i class="bi bi-info-circle"></i> Learn More
+          </a>
+          <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
+            <i class="bi bi-people-fill"></i> Join Us
+          </a>
+        </div>
       </div>
     </div>
     <div class="carousel-item" style="background-image: url('../images/slides2.jpg');">
       <div class="carousel-caption text-center">
         <h1>Together We Grow</h1>
         <p>Building a stronger community through unity.</p>
+        <div class="carousel-btn-group">
+          <a href="about_us.php" class="carousel-btn carousel-btn-primary">
+            <i class="bi bi-info-circle"></i> Learn More
+          </a>
+          <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
+            <i class="bi bi-people-fill"></i> Join Us
+          </a>
+        </div>
       </div>
     </div>
     <div class="carousel-item" style="background-image: url('../images/slide3.jpg');">
       <div class="carousel-caption text-center">
         <h1>Empowering Leaders</h1>
         <p>Guiding the next generation of members.</p>
+        <div class="carousel-btn-group">
+          <a href="about_us.php" class="carousel-btn carousel-btn-primary">
+            <i class="bi bi-info-circle"></i> Learn More
+          </a>
+          <a href="contact_us.php" class="carousel-btn carousel-btn-secondary">
+            <i class="bi bi-people-fill"></i> Join Us
+          </a>
+        </div>
       </div>
     </div>
   </div>
@@ -903,6 +1252,50 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
     </a>
   </div>
 </section>
+
+<!-- Association Highlights (Gallery Teaser) -->
+<section class="gallery-section">
+  <div class="container">
+    <h2>📸 Association Highlights</h2>
+    <p class="text-center text-muted mb-4" style="font-size: 1.05rem;">Photos & Memories from Our Community</p>
+    
+    <?php if (!empty($galleryImages)): ?>
+    <div class="gallery-grid">
+      <?php foreach ($galleryImages as $index => $image): ?>
+      <div class="gallery-item" onclick="openLightbox('../../uploads/gallery/<?= htmlspecialchars($image['filename']) ?>')">
+        <img src="../../uploads/gallery/<?= htmlspecialchars($image['filename']) ?>" 
+             alt="<?= htmlspecialchars($image['title']) ?>" 
+             loading="lazy">
+        <div class="gallery-overlay">
+          <i class="bi bi-zoom-in"></i>
+        </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+    
+    <div class="text-center mt-4">
+      <a href="events-gallery.php" class="btn-view-gallery">
+        <i class="bi bi-grid-3x3-gap"></i> View Full Gallery
+      </a>
+    </div>
+    <?php else: ?>
+    <div class="text-center py-5">
+      <i class="bi bi-images" style="font-size: 4rem; color: #cbd5e1;"></i>
+      <p class="text-muted mt-3">No gallery images available yet.</p>
+    </div>
+    <?php endif; ?>
+  </div>
+</section>
+
+<!-- Lightbox Modal -->
+<div class="lightbox-modal" id="lightboxModal" onclick="closeLightbox()">
+  <div class="lightbox-content" onclick="event.stopPropagation()">
+    <button class="lightbox-close" onclick="closeLightbox()">
+      <i class="bi bi-x"></i>
+    </button>
+    <img id="lightboxImage" src="" alt="Gallery Image">
+  </div>
+</div>
 
 
 
@@ -1052,6 +1445,73 @@ $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_p
         </div>
     </div>
 </section>
+
+<!-- Featured Programs Section -->
+<section class="programs-section">
+  <div class="container">
+    <h2>🌟 FEATURED PROGRAMS</h2>
+    <p class="subtitle">Our Key Initiatives for Community Development</p>
+    
+    <div class="row g-4">
+      <!-- Program 1: Coastal Clean-up Drives -->
+      <div class="col-md-6 col-lg-3">
+        <div class="program-card">
+          <div class="program-icon">
+            <i class="bi bi-water"></i>
+          </div>
+          <h4>Coastal Clean-up Drives</h4>
+          <p>Regular community-led initiatives to protect our marine environment, preserve coastal ecosystems, and maintain clean beaches for future generations.</p>
+          <a href="events.php?category=cleanup" class="btn-program">
+            View Events <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Program 2: Fishermen Livelihood Support -->
+      <div class="col-md-6 col-lg-3">
+        <div class="program-card">
+          <div class="program-icon">
+            <i class="bi bi-briefcase"></i>
+          </div>
+          <h4>Fishermen Livelihood Support</h4>
+          <p>Providing financial assistance, equipment support, and sustainable fishing resources to help local fishermen improve their income and quality of life.</p>
+          <a href="events.php?category=livelihood" class="btn-program">
+            View Events <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Program 3: Safety & Maritime Training -->
+      <div class="col-md-6 col-lg-3">
+        <div class="program-card">
+          <div class="program-icon">
+            <i class="bi bi-shield-check"></i>
+          </div>
+          <h4>Safety & Maritime Training</h4>
+          <p>Comprehensive training programs covering sea safety, first aid, navigation, and emergency protocols to ensure the well-being of all fishermen.</p>
+          <a href="events.php?category=training" class="btn-program">
+            View Events <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+      
+      <!-- Program 4: Environmental Protection -->
+      <div class="col-md-6 col-lg-3">
+        <div class="program-card">
+          <div class="program-icon">
+            <i class="bi bi-tree"></i>
+          </div>
+          <h4>Environmental Protection</h4>
+          <p>Advocacy and action programs focused on marine conservation, sustainable fishing practices, and educating the community about environmental responsibility.</p>
+          <a href="events.php?category=environment" class="btn-program">
+            View Events <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="container my-5">
    <section class="announcements-section">
     <div class="container">
@@ -1358,6 +1818,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Lightbox Functionality -->
+<script>
+function openLightbox(imageSrc) {
+  const modal = document.getElementById('lightboxModal');
+  const img = document.getElementById('lightboxImage');
+  img.src = imageSrc;
+  modal.classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeLightbox() {
+  const modal = document.getElementById('lightboxModal');
+  modal.classList.remove('active');
+  document.body.style.overflow = '';
+}
+
+// Close lightbox with Escape key
+document.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    closeLightbox();
+  }
+});
+</script>
+
+<!-- Navbar Shrink Effect -->
 <script>
   // Navbar shrink effect
   window.addEventListener('scroll', function() {
