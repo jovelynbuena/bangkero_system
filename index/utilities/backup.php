@@ -1,7 +1,46 @@
 <?php 
 session_start();
-include('../navbar.php');
+
+// Huwag mag-render ng full navbar/HTML kapag AJAX request (para malinis ang JSON response)
+$isAjaxRequest = isset($_GET['ajax']) && $_GET['ajax'] === '1';
+
+if (!$isAjaxRequest) {
+    include('../navbar.php');
+}
+
 require_once('../../config/db_connect.php');
+
+// CSRF token (shared with other admin pages)
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(16));
+}
+$csrf = $_SESSION['csrf_token'];
+
+function backup_check_csrf() {
+    if (empty($_POST['csrf_token']) || $_POST['csrf_token'] !== ($_SESSION['csrf_token'] ?? '')) {
+        return false;
+    }
+    return true;
+}
+
+// Read flash messages from restore_action.php (if any)
+$success_message = $success_message ?? null;
+$error_message = $error_message ?? null;
+$warning_message = $warning_message ?? null;
+
+
+if (isset($_SESSION['success']) && !$success_message) {
+    $success_message = $_SESSION['success'];
+    unset($_SESSION['success']);
+}
+if (isset($_SESSION['error']) && !$error_message) {
+    $error_message = $_SESSION['error'];
+    unset($_SESSION['error']);
+}
+if (isset($_SESSION['warning']) && !$warning_message) {
+    $warning_message = $_SESSION['warning'];
+    unset($_SESSION['warning']);
+}
 
 // Create tables if they don't exist
 $conn->query("CREATE TABLE IF NOT EXISTS `backups` (
@@ -22,6 +61,7 @@ $conn->query("CREATE TABLE IF NOT EXISTS `activity_logs` (
     `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8");
+
 
 // Get existing backups from file system
 $backupDir = __DIR__ . '/backups/';
@@ -68,7 +108,11 @@ function formatFileSize($bytes) {
 
 // Handle backup creation
 if (isset($_POST['create_backup'])) {
+    if (!backup_check_csrf()) {
+        $error_message = 'Invalid session token. Please reload the page and try again.';
+    } else {
     try {
+
         // Ensure backup directory exists
         if (!file_exists($backupDir)) {
             mkdir($backupDir, 0777, true);
@@ -182,118 +226,115 @@ if (isset($_POST['create_backup'])) {
     } catch (Exception $e) {
         $error_message = "Backup failed: " . $e->getMessage();
     }
+  }
 }
 
-// Handle restore
-if (isset($_POST['restore']) && isset($_FILES['sql_file'])) {
-    try {
-        $file = $_FILES['sql_file'];
-        
-        if ($file['error'] !== UPLOAD_ERR_OK) {
-            throw new Exception("File upload failed");
-        }
+// Handle restore from existing backup file in /backups/ folder
+if (isset($_POST['restore_file'])) {
+    if (!backup_check_csrf()) {
+        $error_message = 'Invalid session token. Please reload the page and try again.';
+    } else {
+        try {
+            $filename = basename($_POST['restore_file']);
+            $filepath = $backupDir . $filename;
 
-        // Read SQL file
-        $sql = file_get_contents($file['tmp_name']);
-        
-        if (empty($sql)) {
-            throw new Exception("SQL file is empty or unreadable");
-        }
-        
-        // Disable foreign key checks and autocommit
-        if (!$conn->query("SET FOREIGN_KEY_CHECKS=0")) {
-            throw new Exception("Failed to disable foreign key checks: " . $conn->error);
-        }
-        
-        if (!$conn->query("SET autocommit=0")) {
-            throw new Exception("Failed to disable autocommit: " . $conn->error);
-        }
-        
-        // Execute multi-query with proper error checking
-        if (!$conn->multi_query($sql)) {
-            throw new Exception("Failed to execute SQL: " . $conn->error);
-        }
-        
-        // Process all results and check for errors
-        $queryCount = 0;
-        $errors = array();
-        
-        do {
-            // Store result if there is one
-            if ($result = $conn->store_result()) {
-                $result->free();
+            if (!file_exists($filepath) || pathinfo($filepath, PATHINFO_EXTENSION) !== 'sql') {
+                throw new Exception('Selected backup file does not exist or is invalid.');
             }
-            
-            // Check for errors after each query
-            if ($conn->error) {
-                $errors[] = $conn->error;
-            } else {
-                $queryCount++;
+
+            // Read SQL file
+            $sql = file_get_contents($filepath);
+            if ($sql === false || $sql === '') {
+                throw new Exception('Backup SQL file is empty or unreadable.');
             }
-            
-            // Move to next result
-            $hasMoreResults = $conn->more_results();
-            if ($hasMoreResults) {
-                if (!$conn->next_result()) {
-                    // Error moving to next result
+
+            // Disable foreign key checks and autocommit
+            if (!$conn->query('SET FOREIGN_KEY_CHECKS=0')) {
+                throw new Exception('Failed to disable foreign key checks: ' . $conn->error);
+            }
+            if (!$conn->query('SET autocommit=0')) {
+                throw new Exception('Failed to disable autocommit: ' . $conn->error);
+            }
+
+            // Execute multi-query with proper error checking
+            if (!$conn->multi_query($sql)) {
+                throw new Exception('Failed to execute SQL: ' . $conn->error);
+            }
+
+            // Process all results and check for errors
+            $queryCount = 0;
+            $errors = [];
+            do {
+                if ($result = $conn->store_result()) {
+                    $result->free();
+                }
+                if ($conn->error) {
+                    $errors[] = $conn->error;
+                } else {
+                    $queryCount++;
+                }
+                $hasMoreResults = $conn->more_results();
+                if ($hasMoreResults && !$conn->next_result()) {
                     if ($conn->error) {
-                        $errors[] = "Failed to move to next query: " . $conn->error;
+                        $errors[] = 'Failed to move to next query: ' . $conn->error;
                     }
                     break;
                 }
+            } while ($hasMoreResults);
+
+            // Commit changes
+            if (!$conn->query('COMMIT')) {
+                throw new Exception('Failed to commit changes: ' . $conn->error);
             }
-        } while ($hasMoreResults);
-        
-        // Commit changes
-        if (!$conn->query("COMMIT")) {
-            throw new Exception("Failed to commit changes: " . $conn->error);
-        }
-        
-        // Re-enable foreign key checks and autocommit
-        $conn->query("SET FOREIGN_KEY_CHECKS=1");
-        $conn->query("SET autocommit=1");
-        
-        // Check if there were any errors
-        if (count($errors) > 0) {
-            $errorSummary = "Restore completed with " . count($errors) . " error(s):\n" . implode("\n", array_slice($errors, 0, 3));
-            if (count($errors) > 3) {
-                $errorSummary .= "\n... and " . (count($errors) - 3) . " more errors";
+
+            // Re-enable foreign key checks and autocommit
+            $conn->query('SET FOREIGN_KEY_CHECKS=1');
+            $conn->query('SET autocommit=1');
+
+            // If there were any errors during execution, surface them as warning/error
+            if (count($errors) > 0) {
+                $errorSummary = 'Restore completed with ' . count($errors) . ' error(s):\n' . implode("\n", array_slice($errors, 0, 3));
+                if (count($errors) > 3) {
+                    $errorSummary .= "\n... and " . (count($errors) - 3) . ' more errors';
+                }
+                $warning_message = $errorSummary;
             }
-            throw new Exception($errorSummary);
+
+            // Log activity
+            $user_id = $_SESSION['user_id'];
+            $action = 'Database Restore';
+            $description = "Restored database from backup file: {$filename} ({$queryCount} queries executed)";
+            $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+            $log_stmt = $conn->prepare('INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)');
+            $log_stmt->bind_param('isss', $user_id, $action, $description, $ip_address);
+            $log_stmt->execute();
+
+            $success_message = "Database restored successfully from {$filename} ({$queryCount} queries executed).";
+
+        } catch (Exception $e) {
+            $conn->query('ROLLBACK');
+            $conn->query('SET FOREIGN_KEY_CHECKS=1');
+            $conn->query('SET autocommit=1');
+            $error_message = 'Restore failed: ' . $e->getMessage();
         }
-
-        // Log activity
-        $user_id = $_SESSION['user_id'];
-        $action = 'Database Restore';
-        $description = "Restored database from: {$file['name']} ({$queryCount} queries executed successfully)";
-        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
-        
-        $log_stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)");
-        $log_stmt->bind_param("isss", $user_id, $action, $description, $ip_address);
-        $log_stmt->execute();
-
-        // Set success flag and filename for SweetAlert
-        $restore_success = true;
-        $restore_filename = $file['name'];
-        $restore_query_count = $queryCount;
-
-    } catch (Exception $e) {
-        // Rollback on error
-        $conn->query("ROLLBACK");
-        $conn->query("SET FOREIGN_KEY_CHECKS=1");
-        $conn->query("SET autocommit=1");
-        
-        $restore_error = true;
-        $restore_error_msg = $e->getMessage();
     }
 }
 
+
+
+
+
+
 // Handle delete
 if (isset($_POST['delete_file'])) {
+    if (!backup_check_csrf()) {
+        $error_message = 'Invalid session token. Please reload the page and try again.';
+    } else {
     $filename = $_POST['delete_file'];
     $filepath = $backupDir . $filename;
     
     if (file_exists($filepath) && pathinfo($filepath, PATHINFO_EXTENSION) === 'sql') {
+
         unlink($filepath);
         
         // Log deletion
@@ -336,8 +377,115 @@ if (isset($_POST['delete_file'])) {
             return $b['date'] - $a['date'];
         });
     }
+  }
+}
+
+// ========= Filtering, sorting, pagination =========
+$totalBackups = count($backups);
+
+$search = trim($_GET['search'] ?? '');
+$sort = $_GET['sort'] ?? 'newest';
+$dateFrom = $_GET['date_from'] ?? '';
+$dateTo = $_GET['date_to'] ?? '';
+$minSize = $_GET['min_size'] ?? '';
+$maxSize = $_GET['max_size'] ?? '';
+
+$fromTs = $dateFrom ? strtotime($dateFrom . ' 00:00:00') : null;
+$toTs = $dateTo ? strtotime($dateTo . ' 23:59:59') : null;
+$minSizeBytes = is_numeric($minSize) ? (float)$minSize * 1024 * 1024 : null;
+$maxSizeBytes = is_numeric($maxSize) ? (float)$maxSize * 1024 * 1024 : null;
+
+$filteredBackups = array_filter($backups, function($b) use ($search, $fromTs, $toTs, $minSizeBytes, $maxSizeBytes) {
+    if ($search !== '' && stripos($b['name'], $search) === false) {
+        return false;
+    }
+    if ($fromTs && $b['date'] < $fromTs) return false;
+    if ($toTs && $b['date'] > $toTs) return false;
+    if ($minSizeBytes !== null && $b['size'] < $minSizeBytes) return false;
+    if ($maxSizeBytes !== null && $b['size'] > $maxSizeBytes) return false;
+    return true;
+});
+
+usort($filteredBackups, function($a, $b) use ($sort) {
+    switch ($sort) {
+        case 'oldest':
+            return $a['date'] <=> $b['date'];
+        case 'largest':
+            return $b['size'] <=> $a['size'];
+        case 'smallest':
+            return $a['size'] <=> $b['size'];
+        default:
+            return $b['date'] <=> $a['date']; // newest
+    }
+});
+
+$perPage = 10;
+$page = max(1, (int)($_GET['page'] ?? 1));
+$totalFiltered = count($filteredBackups);
+$totalPages = max(1, (int)ceil($totalFiltered / $perPage));
+if ($page > $totalPages) { $page = $totalPages; }
+$offset = ($page - 1) * $perPage;
+$pagedBackups = array_slice($filteredBackups, $offset, $perPage);
+$showingFrom = $totalFiltered ? $offset + 1 : 0;
+$showingTo = $offset + count($pagedBackups);
+
+// Storage limit + auto backup status from system_config
+$maxStorageMb = 100;
+$autoBackupStatus = 0;
+$autoBackupNextRun = null;
+
+// Try to read extended columns if they exist
+$configCols = $conn->query("SHOW COLUMNS FROM system_config LIKE 'auto_backup_status'");
+$hasAutoBackup = $configCols && $configCols->num_rows > 0;
+$configColsLimit = $conn->query("SHOW COLUMNS FROM system_config LIKE 'backup_storage_limit_mb'");
+$hasLimit = $configColsLimit && $configColsLimit->num_rows > 0;
+$configColsNext = $conn->query("SHOW COLUMNS FROM system_config LIKE 'auto_backup_next_run'");
+$hasNext = $configColsNext && $configColsNext->num_rows > 0;
+
+if ($hasAutoBackup || $hasLimit || $hasNext) {
+    $cfgRes = $conn->query("SELECT * FROM system_config WHERE id=1 LIMIT 1");
+    if ($cfgRes && $cfgRes->num_rows > 0) {
+        $cfg = $cfgRes->fetch_assoc();
+        if ($hasAutoBackup) {
+            $autoBackupStatus = (int)($cfg['auto_backup_status'] ?? 0);
+        }
+        if ($hasLimit && !empty($cfg['backup_storage_limit_mb'])) {
+            $maxStorageMb = (int)$cfg['backup_storage_limit_mb'];
+            if ($maxStorageMb <= 0) { $maxStorageMb = 100; }
+        }
+        if ($hasNext && !empty($cfg['auto_backup_next_run'])) {
+            $autoBackupNextRun = $cfg['auto_backup_next_run'];
+        }
+    }
+}
+
+$maxStorageBytes = $maxStorageMb * 1024 * 1024;
+$storagePercent = $maxStorageBytes > 0 ? min(100, round(($totalStorage / $maxStorageBytes) * 100, 1)) : 0;
+$storageLimitReached = $maxStorageBytes > 0 && $totalStorage >= $maxStorageBytes;
+
+if ($storageLimitReached) {
+    $warning_message = ($warning_message ? $warning_message . "\n" : '') . 'Storage limit reached. Delete old backups before creating new ones.';
+}
+
+// AJAX: return only backup list + filters
+
+if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
+    ob_start();
+    include __DIR__ . '/backup_list_partial.php';
+    $html = ob_get_clean();
+    header('Content-Type: application/json');
+    echo json_encode([
+        'html' => $html,
+        'page' => $page,
+        'totalPages' => $totalPages,
+        'total' => $totalFiltered,
+        'showingFrom' => $showingFrom,
+        'showingTo' => $showingTo,
+    ]);
+    exit;
 }
 ?>
+
 
 <!DOCTYPE html>
 <html lang="en">
@@ -982,6 +1130,17 @@ if (isset($_POST['delete_file'])) {
             </div>
         <?php endif; ?>
 
+        <?php if (isset($warning_message)): ?>
+            <div class="alert-custom alert-error-custom" id="warningAlert" style="background: linear-gradient(135deg,#fff3cd 0%,#ffeeba 100%); color:#856404;">
+                <div class="alert-icon" style="background:#ffc107;">
+                    <i class="bi bi-exclamation-circle-fill"></i>
+                </div>
+                <div>
+                    <strong>Warning!</strong> <?= htmlspecialchars($warning_message) ?>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <?php if (isset($error_message)): ?>
             <div class="alert-custom alert-error-custom" id="errorAlert">
                 <div class="alert-icon">
@@ -992,6 +1151,7 @@ if (isset($_POST['delete_file'])) {
                 </div>
             </div>
         <?php endif; ?>
+
 
         <!-- Summary Dashboard -->
         <div class="summary-dashboard">
@@ -1010,10 +1170,22 @@ if (isset($_POST['delete_file'])) {
                     <i class="bi bi-hdd-fill"></i>
                 </div>
                 <div class="summary-content">
-                    <div class="summary-value"><?= formatFileSize($totalStorage) ?></div>
-                    <div class="summary-label">Storage Used</div>
+                    <div class="summary-value"><?= formatFileSize($totalStorage) ?> / <?= formatFileSize($maxStorageBytes) ?></div>
+                    <div class="summary-label">Storage Used (<?= $storagePercent ?>%)</div>
+                    <div class="progress mt-2" style="height: 8px;">
+                        <?php
+                        $barClass = 'bg-success';
+                        if ($storagePercent > 90) {
+                            $barClass = 'bg-danger';
+                        } elseif ($storagePercent > 70) {
+                            $barClass = 'bg-warning';
+                        }
+                        ?>
+                        <div class="progress-bar <?= $barClass ?>" role="progressbar" style="width: <?= $storagePercent ?>%;" aria-valuenow="<?= $storagePercent ?>" aria-valuemin="0" aria-valuemax="100"></div>
+                    </div>
                 </div>
             </div>
+
 
             <div class="summary-card">
                 <div class="summary-icon green">
@@ -1024,6 +1196,34 @@ if (isset($_POST['delete_file'])) {
                     <div class="summary-label">Last Backup<?= $lastBackupDate ? ' - ' . date('g:i A', $lastBackupDate) : '' ?></div>
                 </div>
             </div>
+
+            <div class="summary-card">
+                <div class="summary-icon <?= $autoBackupStatus ? 'green' : 'purple' ?>">
+                    <i class="<?= $autoBackupStatus ? 'bi bi-cloud-check' : 'bi bi-cloud-slash' ?>"></i>
+                </div>
+                <div class="summary-content">
+                    <div class="summary-value">
+                        <?php if ($autoBackupStatus): ?>
+                            <span class="badge bg-success" data-bs-toggle="tooltip" title="Runs automatically based on system schedule.">Auto Backup Enabled</span>
+                        <?php else: ?>
+                            <span class="badge bg-danger" data-bs-toggle="tooltip" title="Automatic backups are currently disabled.">Auto Backup Disabled</span>
+                        <?php endif; ?>
+                    </div>
+                    <div class="summary-label">
+                        <?php if ($autoBackupStatus && $autoBackupNextRun): ?>
+                            Next run: <?= date('M j, g:i A', strtotime($autoBackupNextRun)) ?>
+                        <?php elseif ($autoBackupStatus): ?>
+                            Next run: Scheduled
+                        <?php else: ?>
+                            <a href="../settings/config.php" class="link-primary" style="text-decoration: none; font-weight: 500;">
+                                Configure in System Settings
+                                <i class="bi bi-box-arrow-up-right ms-1"></i>
+                            </a>
+                        <?php endif; ?>
+                    </div>
+                </div>
+            </div>
+
         </div>
 
         <!-- Action Cards -->
@@ -1040,11 +1240,13 @@ if (isset($_POST['delete_file'])) {
                     <p>Generate a complete snapshot of your database. The backup file includes all tables, data, and structures.</p>
                     
                     <form method="post">
-                        <button type="submit" name="create_backup" class="btn-custom btn-primary-custom">
+                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                        <button type="submit" name="create_backup" class="btn-custom btn-primary-custom" <?= $storageLimitReached ? 'disabled' : '' ?> data-bs-toggle="tooltip" title="<?= $storageLimitReached ? 'Storage limit reached. Delete old backups to create new ones.' : 'Create a new full database backup.' ?>">
                             <i class="bi bi-plus-circle"></i>
                             Create Backup Now
                         </button>
                     </form>
+
                 </div>
             </div>
 
@@ -1057,28 +1259,30 @@ if (isset($_POST['delete_file'])) {
                         </div>
                         <h3>Restore Database</h3>
                     </div>
-                    <p>Upload a backup SQL file to restore your database to a previous state. This will replace current data.</p>
-                    
-                    <form method="post" enctype="multipart/form-data" onsubmit="return confirmRestore(event);">
-                        <div class="file-upload-wrapper">
-                            <label for="sqlFileInput" class="file-upload-label" id="fileLabel">
-                                <div class="file-upload-icon">
-                                    <i class="bi bi-cloud-upload"></i>
+                    <p class="mb-2">To restore, choose one of the backups below and click <strong>Restore</strong> on that row.</p>
+                    <?php if (!empty($backups)): ?>
+                        <?php $latest = $backups[0]; ?>
+                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
+                            <div>
+                                <div style="font-size:13px; color:#6c757d;">Latest backup:</div>
+                                <div style="font-size:13px; font-weight:600;">
+                                    <?= htmlspecialchars($latest['name']) ?>
                                 </div>
-                                <div class="file-upload-text" id="fileName">
-                                    <strong>Choose SQL backup file</strong><br>
-                                    <small>or drag and drop here</small>
+                                <div style="font-size:12px; color:#6c757d;">
+                                    <?= date('M j, Y - g:i A', $latest['date']) ?> · <?= formatFileSize($latest['size']) ?>
                                 </div>
-                            </label>
-                            <input type="file" id="sqlFileInput" name="sql_file" accept=".sql" required onchange="updateFileName(this)">
+                            </div>
+                            <button type="button" class="btn-custom btn-success-custom" onclick="confirmRestoreFromBackup('<?= htmlspecialchars($latest['name'], ENT_QUOTES) ?>')">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                                Restore Latest Backup
+                            </button>
                         </div>
-                        <button type="submit" name="restore" class="btn-custom btn-success-custom">
-                            <i class="bi bi-upload"></i>
-                            Restore Database
-                        </button>
-                    </form>
+                    <?php else: ?>
+                        <p class="text-muted" style="font-size:13px;">No backups yet. Create one on the left before restoring.</p>
+                    <?php endif; ?>
                 </div>
             </div>
+
         </div>
 
         <!-- Backup History -->
@@ -1086,68 +1290,28 @@ if (isset($_POST['delete_file'])) {
             <div class="history-header">
                 <i class="bi bi-clock-history" style="font-size: 20px; color: #667eea;"></i>
                 <h3>Backup History</h3>
-                <span class="backup-count"><?= count($backups) ?> Backups</span>
+                <span class="backup-count"><?= $totalFiltered ?> Backups</span>
             </div>
-            
-            <?php if (count($backups) > 0): ?>
-                <div class="backup-list">
-                    <?php foreach ($backups as $backup): ?>
-                        <div class="backup-item">
-                            <div class="backup-icon-wrapper">
-                                <i class="bi bi-database"></i>
-                            </div>
-                            <div class="backup-details">
-                                <div class="backup-filename">
-                                    <i class="bi bi-file-earmark-zip"></i>
-                                    <?= htmlspecialchars($backup['name']) ?>
-                                </div>
-                                <div class="backup-meta">
-                                    <div class="backup-meta-item">
-                                        <i class="bi bi-calendar3"></i>
-                                        <?= date('M j, Y - g:i A', $backup['date']) ?>
-                                    </div>
-                                    <div class="backup-meta-item">
-                                        <i class="bi bi-hdd"></i>
-                                        <?= formatFileSize($backup['size']) ?>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="backup-actions">
-                                <a href="download_backup.php?file=<?= urlencode($backup['name']) ?>" 
-                                   class="btn-action-small btn-download-small">
-                                    <i class="bi bi-download"></i>
-                                    Download
-                                </a>
-                                <button type="button" 
-                                        class="btn-action-small btn-delete-small" 
-                                        onclick="confirmDelete('<?= htmlspecialchars($backup['name'], ENT_QUOTES) ?>')">
-                                    <i class="bi bi-trash"></i>
-                                    Delete
-                                </button>
-                            </div>
-                        </div>
-                    <?php endforeach; ?>
-                </div>
-            <?php else: ?>
-                <div class="empty-state">
-                    <div class="empty-state-icon">
-                        <i class="bi bi-inbox"></i>
-                    </div>
-                    <h4 class="empty-state-title">No Backups Found</h4>
-                    <p class="empty-state-text">
-                        Your backup history is empty.<br>
-                        Click "Create Backup Now" above to create your first backup!
-                    </p>
-                </div>
-            <?php endif; ?>
+            <div id="backupFiltersAndList">
+                <?php include __DIR__ . '/backup_list_partial.php'; ?>
+            </div>
         </div>
+
     </div>
 </div>
 
-<!-- Hidden form for delete action -->
+<!-- Hidden form for restore & delete actions -->
+<form id="restoreForm" method="post" style="display: none;">
+    <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+    <input type="hidden" name="restore_file" id="restoreFileName">
+</form>
+
 <form id="deleteForm" method="post" style="display: none;">
+    <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
     <input type="hidden" name="delete_file" id="deleteFileName">
 </form>
+
+
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11.10.5/dist/sweetalert2.all.min.js"></script>
@@ -1202,45 +1366,121 @@ window.addEventListener('DOMContentLoaded', function() {
             }, 500);
         }, 4000);
     }
+
+    // Enable Bootstrap tooltips
+    const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+    tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+        new bootstrap.Tooltip(tooltipTriggerEl);
+    });
+
+    attachBackupFilterListeners();
 });
 
-// File upload UI update
-function updateFileName(input) {
-    const fileLabel = document.getElementById('fileLabel');
-    const fileName = document.getElementById('fileName');
-    
-    if (input.files && input.files[0]) {
-        const file = input.files[0];
-        const fileSizeMB = (file.size / 1024 / 1024).toFixed(2);
-        fileName.innerHTML = `<strong>${file.name}</strong><br><small>Size: ${fileSizeMB} MB</small>`;
-        fileLabel.classList.add('has-file');
-    } else {
-        fileName.innerHTML = '<strong>Choose SQL backup file</strong><br><small>or drag and drop here</small>';
-        fileLabel.classList.remove('has-file');
-    }
+let backupSearchTimer = null;
+
+function getBackupFilters() {
+    const wrapper = document.getElementById('backupFiltersAndList');
+    if (!wrapper) return {};
+    return {
+        search: wrapper.querySelector('#backupSearch')?.value || '',
+        date_from: wrapper.querySelector('#backupDateFrom')?.value || '',
+        date_to: wrapper.querySelector('#backupDateTo')?.value || '',
+        min_size: wrapper.querySelector('#backupMinSize')?.value || '',
+        max_size: wrapper.querySelector('#backupMaxSize')?.value || '',
+        sort: wrapper.querySelector('#backupSort')?.value || 'newest',
+    };
 }
 
-// Simple confirmation for restore
-function confirmRestore(event) {
-    event.preventDefault();
-    const form = event.target;
-    
-    // Check if file is selected
-    const fileInput = form.querySelector('input[type="file"]');
-    if (!fileInput.files || !fileInput.files[0]) {
-        Swal.fire({
-            title: 'No File Selected',
-            text: 'Please select a backup file to restore.',
-            icon: 'warning',
-            confirmButtonColor: '#667eea',
-            confirmButtonText: 'OK'
+function attachBackupFilterListeners() {
+    const wrapper = document.getElementById('backupFiltersAndList');
+    if (!wrapper) return;
+
+    const searchInput = wrapper.querySelector('#backupSearch');
+    if (searchInput && !searchInput.dataset.bound) {
+        searchInput.dataset.bound = '1';
+
+        // Live search habang nagta-type
+        searchInput.addEventListener('input', function() {
+            if (backupSearchTimer) clearTimeout(backupSearchTimer);
+            backupSearchTimer = setTimeout(function() {
+                fetchBackupList(1);
+            }, 400);
         });
-        return false;
+
+        // Search kapag pinindot Enter sa keyboard
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (backupSearchTimer) clearTimeout(backupSearchTimer);
+                fetchBackupList(1);
+            }
+        });
     }
-    
+
+    // Search kapag pinindot yung Search button
+    const searchBtn = wrapper.querySelector('#backupSearchBtn');
+    if (searchBtn && !searchBtn.dataset.bound) {
+        searchBtn.dataset.bound = '1';
+        searchBtn.addEventListener('click', function() {
+            if (backupSearchTimer) clearTimeout(backupSearchTimer);
+            fetchBackupList(1);
+        });
+    }
+
+    const filterInputs = wrapper.querySelectorAll('.backup-filter-input');
+    filterInputs.forEach(function(input) {
+        if (!input.dataset.bound) {
+            input.dataset.bound = '1';
+            input.addEventListener('change', function() {
+                fetchBackupList(1);
+            });
+        }
+    });
+
+    // Pagination buttons
+    wrapper.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-page]');
+        if (btn) {
+            e.preventDefault();
+            const page = parseInt(btn.getAttribute('data-page'), 10);
+            if (!isNaN(page) && page > 0) {
+                fetchBackupList(page);
+            }
+        }
+    });
+}
+
+function fetchBackupList(page) {
+    const filters = getBackupFilters();
+    const params = new URLSearchParams({ ajax: '1', page: String(page) });
+    Object.keys(filters).forEach(function(key) {
+        if (filters[key] !== '') {
+            params.append(key, filters[key]);
+        }
+    });
+
+    fetch('backup.php?' + params.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            const wrapper = document.getElementById('backupFiltersAndList');
+            if (wrapper && data.html) {
+                wrapper.innerHTML = data.html;
+                attachBackupFilterListeners();
+            }
+        })
+        .catch(function(err) {
+            console.error('Failed to fetch backups list', err);
+        });
+}
+
+// Restore from backup history
+function confirmRestoreFromBackup(filename) {
+
     Swal.fire({
         title: 'Restore Database?',
-        html: '<strong style="color: #dc3545;">⚠️ WARNING</strong><br><br>This will completely replace your current database with the backup file.<br><br>Make sure you have a recent backup before proceeding!',
+        html: `<strong style="color: #dc3545;">⚠️ WARNING</strong><br><br>This will completely replace your current database with the backup:<br><br><code>${filename}</code>`,
         icon: 'warning',
         showCancelButton: true,
         confirmButtonColor: '#28a745',
@@ -1255,7 +1495,6 @@ function confirmRestore(event) {
         buttonsStyling: false
     }).then((result) => {
         if (result.isConfirmed) {
-            // Show loading with timer
             let timerInterval;
             Swal.fire({
                 title: 'Restoring Database...',
@@ -1275,19 +1514,18 @@ function confirmRestore(event) {
                     clearInterval(timerInterval);
                 }
             });
-            
-            // Submit the form after a tiny delay to ensure SweetAlert shows
+
+            document.getElementById('restoreFileName').value = filename;
             setTimeout(() => {
-                form.submit();
+                document.getElementById('restoreForm').submit();
             }, 100);
         }
     });
-    
-    return false;
 }
 
 // SweetAlert confirmation for delete
 function confirmDelete(filename) {
+
     Swal.fire({
         title: 'Delete Backup?',
         html: `Are you sure you want to delete this backup?<br><br><strong>${filename}</strong><br><br>This action cannot be undone.`,

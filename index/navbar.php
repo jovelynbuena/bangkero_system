@@ -32,7 +32,7 @@ $assocPhone = htmlspecialchars($config['assoc_phone'] ?? '+63 912 345 6789');
 $assocAddress = htmlspecialchars($config['assoc_address'] ?? '123 Association Street, City, Philippines');
 
 // Pages for dropdowns
-$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php'];
+$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php','transparency_campaigns.php','transparency_donations.php','transparency_programs.php'];
 $archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php'];
 $utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php'];
 
@@ -578,6 +578,21 @@ body.sidebar-open {
         <a href="<?= BASE_URL; ?>management/contact_messages.php"
            class="<?= ($current_page == 'contact_messages.php') ? 'active' : ''; ?>">
            <i class="bi bi-envelope"></i> Contact Messages
+        </a>
+
+        <a href="<?= BASE_URL; ?>management/transparency_campaigns.php"
+           class="<?= ($current_page == 'transparency_campaigns.php') ? 'active' : ''; ?>">
+           <i class="bi bi-bullseye"></i> Transparency Campaigns
+        </a>
+
+        <a href="<?= BASE_URL; ?>management/transparency_donations.php"
+           class="<?= ($current_page == 'transparency_donations.php') ? 'active' : ''; ?>">
+           <i class="bi bi-cash-coin"></i> Transparency Donations
+        </a>
+
+        <a href="<?= BASE_URL; ?>management/transparency_programs.php"
+           class="<?= ($current_page == 'transparency_programs.php') ? 'active' : ''; ?>">
+           <i class="bi bi-diagram-3"></i> Transparency Programs
         </a>
 
     </div>
