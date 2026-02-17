@@ -2,31 +2,26 @@
 <a class="visually-hidden-focusable skip-link" href="#main">Skip to content</a>
 
 <nav class="navbar navbar-expand-lg fixed-top pro-navbar" role="navigation" aria-label="Main navigation">
-  <div class="container">
-    <!-- Mobile logo -->
-    <a class="navbar-brand d-lg-none" href="user_home.php" aria-label="Home">
-      <img src="../images/logo1.png" alt="Association logo" class="brand-img" />
+  <div class="container-fluid px-4">
+    
+    <!-- LEFT SIDE: Logo + Association Name -->
+    <a class="navbar-brand d-flex align-items-center" href="user_home.php" aria-label="Bangkero and Fisherman Association - Home">
+      <img src="../images/logo1.png" alt="Association logo" class="brand-img me-3" />
+      <span class="brand-text">Bankero and Fisherman Association</span>
     </a>
 
-    <!-- Toggler -->
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
+    <!-- Hamburger Toggler (Right side on mobile) -->
+    <button class="navbar-toggler ms-auto" type="button" data-bs-toggle="collapse" data-bs-target="#mainNav"
             aria-controls="mainNav" aria-expanded="false" aria-label="Toggle navigation">
       <span class="navbar-toggler-icon"></span>
     </button>
 
-    <div class="collapse navbar-collapse justify-content-center" id="mainNav">
-      <ul class="navbar-nav align-items-center mx-auto">
+    <!-- RIGHT SIDE: Navigation Menu -->
+    <div class="collapse navbar-collapse" id="mainNav">
+      <ul class="navbar-nav ms-auto align-items-center">
         <li class="nav-item"><a class="nav-link" href="user_home.php">Home</a></li>
         <li class="nav-item"><a class="nav-link" href="about_us.php">About</a></li>
         <li class="nav-item"><a class="nav-link" href="events.php">Events</a></li>
-
-        <!-- Center logo for larger screens -->
-        <li class="nav-item d-none d-lg-flex px-3">
-          <a class="navbar-brand d-flex align-items-center" href="user_home.php" aria-label="Home">
-            <img src="../images/logo1.png" alt="Association logo" class="brand-img desktop" />
-          </a>
-        </li>
-
         <li class="nav-item"><a class="nav-link" href="announcement.php">Announcements</a></li>
         <li class="nav-item"><a class="nav-link" href="resources.php">Resources</a></li>
         <li class="nav-item"><a class="nav-link" href="contact_us.php">Contact</a></li>
@@ -37,14 +32,17 @@
 
 <style>
   :root {
-    --nav-height: 72px;
-    --nav-shrink-height: 52px;
-    --primary: #0b5ed7;
-    --accent: #ff7043;
-    --muted: #6b7280;
-    --glass: rgba(255,255,255,0.92);
+    --nav-height: 80px;
+    --nav-shrink-height: 60px;
+    --primary: #2c3e50;
+    --secondary: #34495e;
+    --accent: #5a6c7d;
+    --light: #ecf0f1;
+    --dark: #1a252f;
+    --glass: rgba(255,255,255,0.98);
     --radius: 10px;
-    --shadow-sm: 0 6px 18px rgba(8,24,48,0.06);
+    --shadow-sm: 0 2px 20px rgba(0,0,0,0.06);
+    --shadow-md: 0 4px 24px rgba(0,0,0,0.1);
   }
 
   /* Skip link */
@@ -64,75 +62,243 @@
     width: auto;
     height: auto;
     padding: 10px 14px;
-    background: #0b5ed7;
+    background: var(--primary);
     color: #fff;
     border-radius: 8px;
     z-index: 11000;
     text-decoration: none;
   }
 
-  /* Navbar */
+  /* ==================== NAVBAR STRUCTURE ==================== */
   .pro-navbar {
     background: var(--glass);
-    backdrop-filter: blur(6px);
-    padding: 0.9rem 0;
-    transition: padding .2s ease, box-shadow .2s ease;
-    border-bottom: 1px solid rgba(15,23,42,0.04);
+    backdrop-filter: blur(10px);
+    padding: 1rem 0;
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+    border-bottom: 1px solid rgba(0,0,0,0.08);
     box-shadow: var(--shadow-sm);
     z-index: 1030;
   }
-  .pro-navbar .brand-img { height: 48px; transition: height .18s ease; display:block; }
-  .pro-navbar .brand-img.desktop { height: 64px; }
 
-  /* Links */
-  .pro-navbar .nav-link {
-    color: var(--primary) !important;
-    font-weight: 600;
-    padding: 8px 12px;
-    border-radius: 8px;
-    transition: transform .12s ease, background .12s ease, color .12s ease;
+  /* ==================== LEFT SIDE: LOGO + TEXT ==================== */
+  .pro-navbar .navbar-brand {
+    display: flex;
+    align-items: center;
+    padding: 0;
+    margin-right: auto;
+    text-decoration: none;
+    transition: all 0.3s ease;
   }
+
+  .pro-navbar .brand-img {
+    height: 50px;
+    width: auto;
+    transition: all 0.4s ease;
+    filter: drop-shadow(0 2px 4px rgba(0,0,0,0.1));
+    flex-shrink: 0;
+  }
+
+  .pro-navbar .brand-text {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--dark);
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    letter-spacing: -0.3px;
+    line-height: 1.3;
+    transition: all 0.3s ease;
+    white-space: nowrap;
+  }
+
+  .pro-navbar .navbar-brand:hover .brand-text {
+    color: var(--primary);
+  }
+
+  /* ==================== RIGHT SIDE: NAVIGATION MENU ==================== */
+  .pro-navbar .navbar-nav {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .pro-navbar .nav-link {
+    color: var(--dark) !important;
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 10px 16px;
+    border-radius: 10px;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    white-space: nowrap;
+  }
+
+  /* Hover Effect with Underline */
+  .pro-navbar .nav-link::after {
+    content: '';
+    position: absolute;
+    bottom: 6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 3px;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+    border-radius: 2px;
+    transition: width 0.3s ease;
+  }
+
   .pro-navbar .nav-link:hover,
   .pro-navbar .nav-link:focus {
     color: var(--primary) !important;
-    background: rgba(11,94,215,0.06);
+    background: var(--light);
     transform: translateY(-2px);
     outline: none;
   }
+
+  .pro-navbar .nav-link:hover::after {
+    width: 70%;
+  }
+
   .pro-navbar .nav-link.active {
-    color: var(--accent) !important;
-    box-shadow: inset 0 -3px 0 var(--accent);
+    color: var(--primary) !important;
+    background: var(--light);
+  }
+
+  .pro-navbar .nav-link.active::after {
+    width: 70%;
+  }
+
+  /* ==================== SHRINK STATE (ON SCROLL) ==================== */
+  .pro-navbar.shrink {
+    padding: 0.5rem 0;
+    box-shadow: var(--shadow-md);
+  }
+
+  .pro-navbar.shrink .brand-img {
+    height: 40px;
+  }
+
+  .pro-navbar.shrink .brand-text {
+    font-size: 1rem;
+  }
+
+  /* ==================== HAMBURGER TOGGLER ==================== */
+  .navbar-toggler {
+    border: 2px solid var(--primary);
+    border-radius: 8px;
+    width: 44px;
+    height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    padding: 0;
     background: transparent;
   }
 
-  /* Shrink */
-  .pro-navbar.shrink {
-    padding: 0.35rem 0;
-    box-shadow: 0 8px 28px rgba(8,24,48,0.08);
+  .navbar-toggler:hover {
+    background: var(--light);
+    border-color: var(--secondary);
   }
-  .pro-navbar.shrink .brand-img { height: 40px; }
-  .pro-navbar.shrink .brand-img.desktop { height: 44px; }
 
-  /* Toggler */
-  .navbar-toggler {
-    border: 1px solid rgba(2,6,23,0.06);
-    border-radius: 8px;
-    width: 44px; height: 44px;
-    display: inline-grid; place-items: center;
-    transition: box-shadow .15s ease;
+  .navbar-toggler:focus {
+    box-shadow: 0 0 0 3px rgba(44, 62, 80, 0.15);
+    outline: none;
   }
-  .navbar-toggler:focus { box-shadow: 0 6px 18px rgba(11,94,215,0.12); outline: none; }
 
-  /* Accessibility focus-visible */
+  .navbar-toggler-icon {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 30 30'%3e%3cpath stroke='rgba(44, 62, 80, 1)' stroke-linecap='round' stroke-miterlimit='10' stroke-width='2' d='M4 7h22M4 15h22M4 23h22'/%3e%3c/svg%3e");
+    width: 24px;
+    height: 24px;
+  }
+
+  /* ==================== ACCESSIBILITY ==================== */
   .pro-navbar .nav-link:focus-visible {
-    outline: 3px solid rgba(13,110,253,0.18);
-    border-radius: 8px;
+    outline: 3px solid rgba(44, 62, 80, 0.3);
+    outline-offset: 2px;
+    border-radius: 10px;
   }
 
-  /* Responsive */
+  /* ==================== RESPONSIVE DESIGN ==================== */
+  
+  /* Desktop (>= 992px) */
+  @media (min-width: 992px) {
+    .pro-navbar .navbar-nav {
+      gap: 0.3rem;
+    }
+  }
+
+  /* Tablet and below (<= 991.98px) */
   @media (max-width: 991.98px) {
-    .pro-navbar { padding: 0.55rem 0; }
-    .pro-navbar .brand-img.desktop { display: none; }
+    .pro-navbar {
+      padding: 0.75rem 0;
+    }
+
+    .pro-navbar .brand-text {
+      font-size: 0.95rem;
+      max-width: 200px;
+      line-height: 1.2;
+    }
+
+    .pro-navbar .brand-img {
+      height: 42px;
+    }
+
+    /* Mobile menu styling */
+    .pro-navbar .navbar-collapse {
+      margin-top: 1rem;
+    }
+
+    .pro-navbar .navbar-nav {
+      flex-direction: column;
+      align-items: stretch;
+      gap: 0.5rem;
+      padding: 0.5rem 0;
+    }
+
+    .pro-navbar .nav-link {
+      padding: 12px 16px;
+      border-left: 3px solid transparent;
+      border-radius: 8px;
+    }
+
+    .pro-navbar .nav-link:hover,
+    .pro-navbar .nav-link.active {
+      border-left-color: var(--primary);
+      background: var(--light);
+    }
+
+    .pro-navbar .nav-link::after {
+      display: none;
+    }
+  }
+
+  /* Mobile (<= 576px) */
+  @media (max-width: 576px) {
+    .pro-navbar .brand-text {
+      font-size: 0.85rem;
+      max-width: 160px;
+    }
+
+    .pro-navbar .brand-img {
+      height: 38px;
+    }
+
+    .navbar-toggler {
+      width: 40px;
+      height: 40px;
+    }
+  }
+
+  /* Extra small screens (<= 400px) */
+  @media (max-width: 400px) {
+    .pro-navbar .brand-text {
+      font-size: 0.75rem;
+      max-width: 140px;
+    }
+
+    .pro-navbar .brand-img {
+      height: 35px;
+      margin-right: 8px;
+    }
   }
 </style>
 
@@ -140,47 +306,101 @@
 (function () {
   'use strict';
 
-  // helpers
-  const debounce = (fn, ms = 50) => { let t; return (...args) => { clearTimeout(t); t = setTimeout(() => fn(...args), ms); }; };
+  // Debounce helper
+  const debounce = (fn, ms = 50) => { 
+    let t; 
+    return (...args) => { 
+      clearTimeout(t); 
+      t = setTimeout(() => fn(...args), ms); 
+    }; 
+  };
 
   document.addEventListener('DOMContentLoaded', function () {
     const navbar = document.querySelector('.pro-navbar');
     if (!navbar) return;
 
-    // Shrink on scroll
+    // ==================== SHRINK ON SCROLL ====================
     const onScroll = () => {
-      if (window.scrollY > 48) navbar.classList.add('shrink'); else navbar.classList.remove('shrink');
+      if (window.scrollY > 50) {
+        navbar.classList.add('shrink');
+      } else {
+        navbar.classList.remove('shrink');
+      }
     };
     window.addEventListener('scroll', debounce(onScroll, 60), { passive: true });
-    onScroll();
+    onScroll(); // Initial check
 
-    // Mark active link (by filename)
+    // ==================== MARK ACTIVE LINK ====================
     const links = Array.from(navbar.querySelectorAll('.nav-link'));
     const current = (location.pathname || '').split('/').pop().toLowerCase() || 'user_home.php';
-    links.forEach(a => {
-      const href = (a.getAttribute('href') || '').split('/').pop().toLowerCase();
+    
+    links.forEach(link => {
+      const href = (link.getAttribute('href') || '').split('/').pop().toLowerCase();
       if (!href) return;
+      
       if (href === current || (current === '' && (href === 'index.php' || href === 'user_home.php'))) {
-        a.classList.add('active');
-        a.setAttribute('aria-current', 'page');
+        link.classList.add('active');
+        link.setAttribute('aria-current', 'page');
       } else {
-        a.classList.remove('active');
-        a.removeAttribute('aria-current');
+        link.classList.remove('active');
+        link.removeAttribute('aria-current');
       }
     });
 
-    // Close mobile menu on link click
+    // ==================== CLOSE MOBILE MENU ON LINK CLICK ====================
     const toggler = document.querySelector('.navbar-toggler');
     const collapseEl = document.getElementById('mainNav');
-    links.forEach(link => {
-      link.addEventListener('click', () => {
-        if (!toggler) return;
-        const isVisible = window.getComputedStyle(toggler).display !== 'none';
-        if (isVisible && collapseEl && collapseEl.classList.contains('show')) {
-          toggler.click();
-        }
+    
+    if (toggler && collapseEl) {
+      links.forEach(link => {
+        link.addEventListener('click', () => {
+          // Check if menu is visible (mobile)
+          const isVisible = window.getComputedStyle(toggler).display !== 'none';
+          if (isVisible && collapseEl.classList.contains('show')) {
+            // Close the menu
+            const bsCollapse = bootstrap.Collapse.getInstance(collapseEl);
+            if (bsCollapse) {
+              bsCollapse.hide();
+            } else {
+              toggler.click();
+            }
+          }
+        });
       });
+    }
+
+    // ==================== SMOOTH SCROLL ====================
+    links.forEach(link => {
+      if (link.getAttribute('href').startsWith('#')) {
+        link.addEventListener('click', (e) => {
+          const targetId = link.getAttribute('href');
+          const targetElement = document.querySelector(targetId);
+          
+          if (targetElement) {
+            e.preventDefault();
+            const offset = 80; // Account for fixed navbar
+            const elementPosition = targetElement.getBoundingClientRect().top + window.pageYOffset;
+            const offsetPosition = elementPosition - offset;
+
+            window.scrollTo({
+              top: offsetPosition,
+              behavior: 'smooth'
+            });
+          }
+        });
+      }
     });
+
+    // ==================== PREVENT BODY SCROLL WHEN MOBILE MENU OPEN ====================
+    if (collapseEl) {
+      collapseEl.addEventListener('show.bs.collapse', function () {
+        document.body.style.overflow = 'hidden';
+      });
+
+      collapseEl.addEventListener('hidden.bs.collapse', function () {
+        document.body.style.overflow = '';
+      });
+    }
   });
 })();
 </script>
