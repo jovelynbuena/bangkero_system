@@ -33,8 +33,9 @@ $assocAddress = htmlspecialchars($config['assoc_address'] ?? '123 Association St
 
 // Pages for dropdowns
 $managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php'];
-$archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php'];
-$utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php'];
+$archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php'];
+$utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php'];
+
 $settingsPages = ['system_config.php','profile_settings.php','about_association_content.php'];
 
 // Determine if dropdowns should be open
@@ -654,7 +655,13 @@ body.sidebar-open {
                class="<?= ($current_page == 'archived_announcement.php') ? 'active' : ''; ?>">
                <i class="bi bi-megaphone-off"></i> Archived Announcement
             </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_website_content.php"
+               class="<?= ($current_page == 'archives_website_content.php') ? 'active' : ''; ?>">
+               <i class="bi bi-file-text" style="opacity: 0.7;"></i> Archived Website Content
+            </a>
         </div>
+
 
     </div>
     <?php endif; ?>
