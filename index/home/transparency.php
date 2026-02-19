@@ -14,11 +14,11 @@ $stats = [
 
 // Get total donations and total donors
 $donationQuery = "SELECT 
-    COALESCE(SUM(amount), 0) as total_donations,
-    COUNT(DISTINCT donor_name) as total_donors,
-    MAX(donation_date) as last_update
-    FROM donations 
-    WHERE status = 'Completed'";
+    COALESCE(SUM(amount), 0) AS total_donations,
+    COUNT(DISTINCT donor_name) AS total_donors,
+    MAX(date_received) AS last_update
+    FROM transparency_donations
+    WHERE status = 'confirmed'";
 $result = $conn->query($donationQuery);
 if ($result && $row = $result->fetch_assoc()) {
     $stats['total_donations'] = $row['total_donations'];
@@ -29,14 +29,16 @@ if ($result && $row = $result->fetch_assoc()) {
 }
 
 // Get active campaigns count
-$campaignQuery = "SELECT COUNT(*) as active_count FROM campaigns WHERE status = 'Active'";
+$campaignQuery = "SELECT COUNT(*) AS active_count FROM transparency_campaigns WHERE status = 'active'";
 $result = $conn->query($campaignQuery);
 if ($result && $row = $result->fetch_assoc()) {
     $stats['active_campaigns'] = $row['active_count'];
 }
 
 // Get funds allocated (sum of campaign targets for active campaigns)
-$allocatedQuery = "SELECT COALESCE(SUM(current_amount), 0) as allocated FROM campaigns WHERE status = 'Active'";
+$allocatedQuery = "SELECT COALESCE(SUM(allocated_budget), 0) AS allocated
+    FROM transparency_programs
+    WHERE status IN ('ongoing','completed')";
 $result = $conn->query($allocatedQuery);
 if ($result && $row = $result->fetch_assoc()) {
     $stats['funds_allocated'] = $row['allocated'];
@@ -47,18 +49,33 @@ $stats['remaining_funds'] = $stats['total_donations'] - $stats['funds_allocated'
 
 // Fetch active campaigns
 $campaignsQuery = "SELECT 
-    id, campaign_name, description, goal_amount, current_amount, status, created_at
-    FROM campaigns 
-    WHERE status IN ('Active', 'Completed')
-    ORDER BY status ASC, created_at DESC 
+    c.id,
+    c.name AS campaign_name,
+    c.description,
+    c.goal_amount,
+    COALESCE(SUM(d.amount), 0) AS current_amount,
+    c.status,
+    c.created_at
+    FROM transparency_campaigns c
+    LEFT JOIN transparency_donations d
+        ON d.campaign_id = c.id
+        AND d.status = 'confirmed'
+    WHERE c.status IN ('active', 'completed')
+    GROUP BY c.id, c.name, c.description, c.goal_amount, c.status, c.created_at
+    ORDER BY c.status ASC, c.created_at DESC 
     LIMIT 6";
 $campaignsResult = $conn->query($campaignsQuery);
 
 // Fetch recent donations (limit 10)
 $donationsQuery = "SELECT 
-    donor_name, campaign, amount, donation_date, status
-    FROM donations 
-    ORDER BY donation_date DESC 
+    d.donor_name,
+    COALESCE(c.name, 'General Fund') AS campaign_name,
+    d.amount,
+    d.date_received,
+    d.status
+    FROM transparency_donations d
+    LEFT JOIN transparency_campaigns c ON d.campaign_id = c.id
+    ORDER BY d.date_received DESC 
     LIMIT 10";
 $donationsResult = $conn->query($donationsQuery);
 
@@ -549,7 +566,8 @@ function calculatePercentage($current, $goal) {
       letter-spacing: 0.3px;
     }
 
-    .status-badge.completed {
+    .status-badge.completed,
+    .status-badge.confirmed {
       background: var(--pale-green);
       color: var(--dark-green);
     }
@@ -928,11 +946,11 @@ function calculatePercentage($current, $goal) {
             <td>
               <span class="donor-name"><?= htmlspecialchars($donation['donor_name']) ?></span>
             </td>
-            <td><?= htmlspecialchars($donation['campaign']) ?></td>
+            <td><?= htmlspecialchars($donation['campaign_name']) ?></td>
             <td>
               <span class="amount-cell"><?= formatCurrency($donation['amount']) ?></span>
             </td>
-            <td><?= date('M d, Y', strtotime($donation['donation_date'])) ?></td>
+            <td><?= date('M d, Y', strtotime($donation['date_received'])) ?></td>
             <td>
               <span class="status-badge <?= strtolower($donation['status']) ?>">
                 <?= htmlspecialchars($donation['status']) ?>
