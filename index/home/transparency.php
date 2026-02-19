@@ -106,24 +106,24 @@ function calculatePercentage($current, $goal) {
   
   <style>
     :root {
-      /* Green Theme Colors */
-      --primary-green: #27ae60;
-      --secondary-green: #2ecc71;
-      --dark-green: #1e8449;
-      --light-green: #a9dfbf;
-      --pale-green: #eafaf1;
+      /* Primary Theme Colors - Navy Blue */
+      --primary-color: #2c3e50;
+      --secondary-color: #34495e;
+      --accent-color: #3498db;
+      --light-blue: #5dade2;
+      --pale-blue: #ebf5fb;
       
       /* Supporting Colors */
       --dark: #1a252f;
       --gray: #6c757d;
-      --light-gray: #f8f9fa;
+      --light-gray: #ecf0f1;
       --white: #ffffff;
-      --border: #e2e8f0;
+      --border: #d5dbdb;
       
       /* Shadows */
-      --shadow-sm: 0 2px 8px rgba(39, 174, 96, 0.08);
-      --shadow-md: 0 4px 16px rgba(39, 174, 96, 0.12);
-      --shadow-lg: 0 8px 32px rgba(39, 174, 96, 0.16);
+      --shadow-sm: 0 2px 8px rgba(44, 62, 80, 0.08);
+      --shadow-md: 0 4px 16px rgba(44, 62, 80, 0.12);
+      --shadow-lg: 0 8px 32px rgba(44, 62, 80, 0.16);
     }
 
     * {
@@ -133,14 +133,14 @@ function calculatePercentage($current, $goal) {
     body {
       font-family: 'Inter', sans-serif;
       background-color: var(--light-gray);
-      color: var(--dark);
+      color: var(--primary-color);
       overflow-x: hidden;
       padding-top: 80px;
     }
 
     /* ==================== HERO SECTION ==================== */
     .hero-section {
-      background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       color: white;
       padding: 80px 0 60px;
       position: relative;
@@ -225,8 +225,8 @@ function calculatePercentage($current, $goal) {
 
     .stat-card {
       background: white;
-      border-radius: 20px;
-      padding: 30px;
+      border-radius: 16px;
+      padding: 24px 20px;
       box-shadow: var(--shadow-md);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       border: 2px solid transparent;
@@ -242,47 +242,48 @@ function calculatePercentage($current, $goal) {
       left: 0;
       width: 4px;
       height: 100%;
-      background: linear-gradient(180deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+      background: linear-gradient(180deg, var(--primary-color) 0%, var(--accent-color) 100%);
     }
 
     .stat-card:hover {
-      transform: translateY(-8px);
+      transform: translateY(-6px);
       box-shadow: var(--shadow-lg);
-      border-color: var(--light-green);
+      border-color: var(--accent-color);
     }
 
     .stat-icon {
-      width: 60px;
-      height: 60px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+      width: 55px;
+      height: 55px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 20px;
-      box-shadow: 0 4px 12px rgba(39, 174, 96, 0.3);
+      margin-bottom: 16px;
+      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
     }
 
     .stat-icon i {
-      font-size: 1.8rem;
+      font-size: 1.6rem;
       color: white;
     }
 
     .stat-value {
-      font-size: 2.5rem;
+      font-size: 2.2rem;
       font-weight: 800;
-      color: var(--primary-green);
+      color: var(--primary-color);
       font-family: 'Poppins', sans-serif;
       margin-bottom: 8px;
       line-height: 1;
     }
 
     .stat-label {
-      font-size: 0.95rem;
+      font-size: 0.88rem;
       color: var(--gray);
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      line-height: 1.3;
     }
 
     /* ==================== SECTION HEADERS ==================== */
@@ -309,7 +310,7 @@ function calculatePercentage($current, $goal) {
       transform: translateX(-50%);
       width: 80px;
       height: 4px;
-      background: linear-gradient(90deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+      background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
       border-radius: 2px;
     }
 
@@ -329,8 +330,8 @@ function calculatePercentage($current, $goal) {
     .campaign-card {
       background: white;
       border: 2px solid var(--border);
-      border-radius: 20px;
-      padding: 30px;
+      border-radius: 16px;
+      padding: 24px;
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
       height: 100%;
       position: relative;
@@ -343,8 +344,8 @@ function calculatePercentage($current, $goal) {
       top: 0;
       left: 0;
       width: 100%;
-      height: 4px;
-      background: linear-gradient(90deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+      height: 3px;
+      background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
       transform: scaleX(0);
       transition: transform 0.3s ease;
     }
@@ -354,53 +355,53 @@ function calculatePercentage($current, $goal) {
     }
 
     .campaign-card:hover {
-      transform: translateY(-8px);
+      transform: translateY(-6px);
       box-shadow: var(--shadow-lg);
-      border-color: var(--primary-green);
+      border-color: var(--accent-color);
     }
 
     .campaign-status {
       position: absolute;
       top: 20px;
       right: 20px;
-      padding: 6px 16px;
+      padding: 6px 14px;
       border-radius: 50px;
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       font-weight: 600;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .campaign-status.active {
-      background: var(--pale-green);
-      color: var(--dark-green);
+      background: var(--pale-blue);
+      color: var(--primary-color);
     }
 
     .campaign-status.completed {
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: #d5f4e6;
+      color: #27ae60;
     }
 
     .campaign-card h4 {
       font-family: 'Poppins', sans-serif;
       font-weight: 700;
       color: var(--dark);
-      font-size: 1.4rem;
-      margin-bottom: 15px;
-      padding-right: 100px;
+      font-size: 1.2rem;
+      margin-bottom: 12px;
+      padding-right: 90px;
     }
 
     .campaign-card p {
       color: var(--gray);
-      line-height: 1.7;
-      margin-bottom: 25px;
-      font-size: 0.95rem;
+      line-height: 1.6;
+      margin-bottom: 18px;
+      font-size: 0.9rem;
     }
 
     .campaign-stats {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 15px;
+      margin-bottom: 12px;
     }
 
     .campaign-stat {
@@ -408,28 +409,28 @@ function calculatePercentage($current, $goal) {
     }
 
     .campaign-stat-value {
-      font-size: 1.5rem;
+      font-size: 1.3rem;
       font-weight: 700;
-      color: var(--primary-green);
+      color: var(--primary-color);
       font-family: 'Poppins', sans-serif;
     }
 
     .campaign-stat-label {
-      font-size: 0.8rem;
+      font-size: 0.75rem;
       color: var(--gray);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .progress-container {
-      margin-top: 20px;
+      margin-top: 16px;
     }
 
     .progress-header {
       display: flex;
       justify-content: space-between;
-      margin-bottom: 10px;
-      font-size: 0.9rem;
+      margin-bottom: 8px;
+      font-size: 0.85rem;
     }
 
     .progress-label {
@@ -438,12 +439,12 @@ function calculatePercentage($current, $goal) {
     }
 
     .progress-percentage {
-      color: var(--primary-green);
+      color: var(--accent-color);
       font-weight: 700;
     }
 
     .progress {
-      height: 12px;
+      height: 10px;
       border-radius: 50px;
       background-color: #e9ecef;
       overflow: hidden;
@@ -451,10 +452,10 @@ function calculatePercentage($current, $goal) {
     }
 
     .progress-bar {
-      background: linear-gradient(90deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+      background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
       border-radius: 50px;
       transition: width 1s ease-in-out;
-      box-shadow: 0 2px 8px rgba(39, 174, 96, 0.4);
+      box-shadow: 0 2px 6px rgba(44, 62, 80, 0.3);
     }
 
     /* ==================== DONATIONS TABLE ==================== */
@@ -489,8 +490,8 @@ function calculatePercentage($current, $goal) {
 
     .search-box input:focus {
       outline: none;
-      border-color: var(--primary-green);
-      box-shadow: 0 0 0 3px rgba(39, 174, 96, 0.1);
+      border-color: var(--accent-color);
+      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
     }
 
     .search-box i {
@@ -504,7 +505,7 @@ function calculatePercentage($current, $goal) {
 
     .table-container {
       background: white;
-      border-radius: 20px;
+      border-radius: 16px;
       box-shadow: var(--shadow-md);
       overflow: hidden;
       border: 2px solid var(--border);
@@ -516,15 +517,15 @@ function calculatePercentage($current, $goal) {
     }
 
     .data-table thead {
-      background: linear-gradient(135deg, var(--primary-green) 0%, var(--dark-green) 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       color: white;
     }
 
     .data-table thead th {
-      padding: 18px 20px;
+      padding: 14px 16px;
       font-weight: 600;
       text-transform: uppercase;
-      font-size: 0.85rem;
+      font-size: 0.8rem;
       letter-spacing: 0.5px;
       border: none;
     }
@@ -535,25 +536,25 @@ function calculatePercentage($current, $goal) {
     }
 
     .data-table tbody tr:hover {
-      background-color: var(--pale-green);
+      background-color: var(--pale-blue);
     }
 
     .data-table tbody td {
-      padding: 18px 20px;
+      padding: 14px 16px;
       vertical-align: middle;
-      font-size: 0.95rem;
+      font-size: 0.9rem;
     }
 
     .donor-name {
       font-weight: 600;
-      color: var(--dark);
+      color: var(--primary-color);
     }
 
     .amount-cell {
       font-weight: 700;
-      color: var(--primary-green);
+      color: var(--accent-color);
       font-family: 'Poppins', sans-serif;
-      font-size: 1.1rem;
+      font-size: 1rem;
     }
 
     .status-badge {
@@ -568,8 +569,8 @@ function calculatePercentage($current, $goal) {
 
     .status-badge.completed,
     .status-badge.confirmed {
-      background: var(--pale-green);
-      color: var(--dark-green);
+      background: var(--pale-blue);
+      color: var(--primary-color);
     }
 
     .status-badge.pending {
@@ -603,20 +604,20 @@ function calculatePercentage($current, $goal) {
     }
 
     .page-btn:hover {
-      background: var(--primary-green);
+      background: var(--accent-color);
       color: white;
-      border-color: var(--primary-green);
+      border-color: var(--accent-color);
       transform: translateY(-2px);
     }
 
     .page-btn.active {
-      background: var(--primary-green);
+      background: var(--accent-color);
       color: white;
-      border-color: var(--primary-green);
+      border-color: var(--accent-color);
     }
 
     .btn-view-full {
-      background: linear-gradient(135deg, var(--primary-green) 0%, var(--secondary-green) 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
       color: white;
       padding: 14px 32px;
       border-radius: 50px;
@@ -626,14 +627,14 @@ function calculatePercentage($current, $goal) {
       align-items: center;
       gap: 10px;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+      box-shadow: 0 4px 15px rgba(44, 62, 80, 0.3);
       border: none;
       cursor: pointer;
     }
 
     .btn-view-full:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(39, 174, 96, 0.4);
+      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.4);
       color: white;
     }
 
@@ -700,11 +701,11 @@ function calculatePercentage($current, $goal) {
       }
 
       .stat-card {
-        padding: 20px;
+        padding: 18px 16px;
       }
 
       .stat-value {
-        font-size: 1.8rem;
+        font-size: 1.7rem;
       }
 
       .campaign-card h4 {
@@ -722,27 +723,29 @@ function calculatePercentage($current, $goal) {
     /* Empty State */
     .empty-state {
       text-align: center;
-      padding: 60px 20px;
+      padding: 40px 20px;
       background: white;
-      border-radius: 20px;
+      border-radius: 16px;
       border: 2px dashed var(--border);
     }
 
     .empty-state i {
-      font-size: 4rem;
+      font-size: 3rem;
       color: var(--gray);
-      margin-bottom: 20px;
+      margin-bottom: 16px;
       opacity: 0.5;
     }
 
     .empty-state h4 {
       color: var(--dark);
       font-weight: 600;
-      margin-bottom: 10px;
+      margin-bottom: 8px;
+      font-size: 1.1rem;
     }
 
     .empty-state p {
       color: var(--gray);
+      font-size: 0.9rem;
     }
   </style>
 </head>

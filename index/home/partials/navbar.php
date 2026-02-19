@@ -23,6 +23,7 @@
         <li class="nav-item"><a class="nav-link" href="about_us.php">About</a></li>
         <li class="nav-item"><a class="nav-link" href="events.php">Events</a></li>
         <li class="nav-item"><a class="nav-link" href="announcement.php">Announcements</a></li>
+        <li class="nav-item"><a class="nav-link" href="transparency.php">Transparency & Impact</a></li>
         <li class="nav-item"><a class="nav-link" href="resources.php">Resources</a></li>
         <li class="nav-item"><a class="nav-link" href="contact_us.php">Contact</a></li>
       </ul>
