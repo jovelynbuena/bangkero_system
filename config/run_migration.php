@@ -160,6 +160,54 @@ if ($result && $result->num_rows > 0) {
 }
 echo "</div>";
 
+// ==================== MEMBER ATTENDANCE TABLE MIGRATION ====================
+echo "<div class='section'>";
+echo "<h2>📝 Member Attendance Table Migration</h2>";
+
+$checkAttendance = $conn->query("SHOW TABLES LIKE 'member_attendance'");
+if ($checkAttendance && $checkAttendance->num_rows > 0) {
+    echo "<div class='info'>✓ member_attendance table already exists.</div>";
+
+    // Ensure time_out column exists for older installations
+    $timeOutCol = $conn->query("SHOW COLUMNS FROM member_attendance LIKE 'time_out'");
+    if ($timeOutCol && $timeOutCol->num_rows == 0) {
+        echo "<div class='info'>Adding time_out column to member_attendance...</div>";
+        $alterAttendance = "ALTER TABLE member_attendance ADD COLUMN time_out TIME NULL AFTER time_in";
+        if ($conn->query($alterAttendance) === TRUE) {
+            echo "<div class='success'>✓ Added time_out column to member_attendance.</div>";
+        } else {
+            echo "<div class='error'>✗ Failed to add time_out column: " . $conn->error . "</div>";
+            $allSuccess = false;
+        }
+    }
+} else {
+    echo "<div class='info'>Creating member_attendance table...</div>";
+    $attendanceSql = "CREATE TABLE IF NOT EXISTS member_attendance (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        member_id INT NOT NULL,
+        event_id INT NOT NULL,
+        attendance_date DATE NOT NULL,
+        time_in TIME NULL,
+        time_out TIME NULL,
+        status ENUM('present','absent','excused') NOT NULL DEFAULT 'present',
+        remarks TEXT NULL,
+        encoded_by INT NULL,
+        encoded_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_member_event (member_id, event_id),
+        INDEX idx_attendance_date (attendance_date),
+        CONSTRAINT fk_att_member FOREIGN KEY (member_id) REFERENCES members(id) ON DELETE CASCADE,
+        CONSTRAINT fk_att_event FOREIGN KEY (event_id) REFERENCES events(id) ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+    if ($conn->query($attendanceSql) === TRUE) {
+        echo "<div class='success'>✓ Created member_attendance table.</div>";
+    } else {
+        echo "<div class='error'>✗ Failed to create member_attendance table: " . $conn->error . "</div>";
+        $allSuccess = false;
+    }
+}
+echo "</div>";
+
 // ==================== FINAL STATUS ====================
 echo "<hr style='margin: 30px 0;'>";
 if ($allSuccess) {
@@ -184,3 +232,4 @@ echo "
 
 $conn->close();
 ?>
+

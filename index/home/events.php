@@ -21,11 +21,19 @@ if ($tblRes && $tblRes->num_rows > 0) $hasArchivedEventsTable = true;
 $archivedCondition = $hasIsArchived ? "events.is_archived = 0" : "1";
 $excludeArchivedTable = $hasArchivedEventsTable ? "events.id NOT IN (SELECT original_id FROM archived_events)" : "1";
 
+// hide officers-only meetings from public view if category column exists
+$hideOfficersCategoryCondition = "1";
+$catColRes = $conn->query("SHOW COLUMNS FROM `events` LIKE 'category'");
+if ($catColRes && $catColRes->num_rows > 0) {
+    $hideOfficersCategoryCondition = "(`category` IS NULL OR `category` <> 'Officers Meeting')";
+}
+
 // Fetch Events for Carousel (Upcoming Events Only - No Past Events)
 $carousel_sql = "
   SELECT events.* FROM events
   WHERE {$archivedCondition}
     AND ({$excludeArchivedTable})
+    AND {$hideOfficersCategoryCondition}
     AND `date` >= CURDATE()
   ORDER BY `date` ASC
 ";
@@ -37,6 +45,7 @@ $upcoming_sql = "
   SELECT events.* FROM events
   WHERE {$archivedCondition}
     AND ({$excludeArchivedTable})
+    AND {$hideOfficersCategoryCondition}
     AND `date` >= CURDATE()
   ORDER BY `date` ASC
 ";
@@ -48,6 +57,7 @@ $past_sql = "
   SELECT events.* FROM events
   WHERE {$archivedCondition}
     AND ({$excludeArchivedTable})
+    AND {$hideOfficersCategoryCondition}
     AND `date` < CURDATE()
   ORDER BY `date` DESC
 ";
@@ -73,7 +83,7 @@ $gallery_result = $conn->query($gallery_sql);
 $categories = [];
 $catCheck = $conn->query("SHOW COLUMNS FROM `events` LIKE 'category'");
 if ($catCheck && $catCheck->num_rows > 0) {
-  $categories_sql = "SELECT DISTINCT `category` FROM events WHERE category IS NOT NULL AND category != ''";
+  $categories_sql = "SELECT DISTINCT `category` FROM events WHERE category IS NOT NULL AND category != '' AND category <> 'Officers Meeting'";
   $categories_result = $conn->query($categories_sql);
   if ($categories_result) {
     while ($row = $categories_result->fetch_assoc()) $categories[] = $row['category'];
@@ -85,6 +95,7 @@ $sql = "
   SELECT * FROM events
   WHERE {$archivedCondition}
     AND ({$excludeArchivedTable})
+    AND {$hideOfficersCategoryCondition}
     AND `date` >= CURDATE()
   ORDER BY `date` ASC
   LIMIT 1
