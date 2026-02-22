@@ -2,7 +2,7 @@
 session_start();
 require_once('../../config/db_connect.php');
 
-$nextEventResult = $conn->query("SELECT * FROM events WHERE date >= CURDATE() ORDER BY date ASC LIMIT 1");
+$nextEventResult = $conn->query("SELECT * FROM events WHERE date >= CURDATE() AND (category IS NULL OR category <> 'Officers Meeting') ORDER BY date ASC LIMIT 1");
 $nextEvent = $nextEventResult ? $nextEventResult->fetch_assoc() : null;
 
 $latestAnnouncements = $conn->query("SELECT * FROM announcements ORDER BY date_posted DESC LIMIT 3");

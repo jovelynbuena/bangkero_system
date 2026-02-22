@@ -105,6 +105,15 @@ if ($completedRes === false) die("DB query failed (completed): ".$conn->error);
 $catRes = $conn->query("SELECT DISTINCT IFNULL(category,'General') AS category FROM events");
 $categories = [];
 while($c=$catRes->fetch_assoc()) $categories[]=$c['category'];
+
+// Attendance counts per event (for summaries in the Events table)
+$attendanceCounts = [];
+$attCountRes = $conn->query("SELECT event_id, COUNT(*) AS total_present FROM member_attendance WHERE status = 'present' GROUP BY event_id");
+if ($attCountRes) {
+    while ($r = $attCountRes->fetch_assoc()) {
+        $attendanceCounts[(int)$r['event_id']] = (int)$r['total_present'];
+    }
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -405,7 +414,7 @@ table.dataTable tbody td img:hover {
     box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
 }
 
-/* Add Event Button */
+/* Add Event Button + Attendance Primary Button */
 .btn-primary, .btn-light {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
@@ -415,6 +424,11 @@ table.dataTable tbody td img:hover {
     color: white;
     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-primary.btn-sm {
+    padding: 8px 14px;
+    border-radius: 0;
 }
 
 .btn-primary:hover, .btn-light:hover {
@@ -664,8 +678,11 @@ table.dataTable tbody td img:hover {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+    background: #e5e7eb; /* default light gray background */
+    color: #111827;      /* default dark text */
 }
 
+/* Old specific category colors (still used for some categories) */
 .badge-festival {
     background: linear-gradient(135deg, #10b981 0%, #059669 100%);
     color: white;
@@ -690,6 +707,7 @@ table.dataTable tbody td img:hover {
     background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
     color: white;
 }
+
 
 /* Event Details in Table */
 .event-date {
@@ -725,22 +743,6 @@ table.dataTable tbody td img:hover {
     box-shadow: 0 2px 8px rgba(0,0,0,0.08);
     border-radius: 8px;
     overflow: hidden;
-}
-
-.btn-outline-primary {
-    background: white;
-    border: 1.5px solid #667eea;
-    color: #667eea;
-    font-weight: 600;
-    transition: all 0.3s ease;
-}
-
-.btn-outline-primary:hover {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: transparent;
-    color: white;
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
 .btn-outline-warning {
@@ -947,7 +949,7 @@ table.dataTable tbody td img:hover {
               <div class="fw-semibold text-dark"><?=htmlspecialchars($row['event_name'])?></div>
             </td>
             <td class="text-center">
-              <span class="badge badge-category badge-<?=strtolower($row['category']?:'general')?>">
+              <span class="badge-category badge-<?=strtolower($row['category']?:'general')?>">
                 <?=htmlspecialchars($row['category']?:'General')?>
               </span>
             </td>
@@ -973,6 +975,11 @@ table.dataTable tbody td img:hover {
             </td>
             <td class="text-center">
               <div class="btn-group" role="group">
+                <a href="event_attendance.php?event_id=<?=$row['id']?>" 
+                   class="btn btn-sm btn-primary" 
+                   title="Record Attendance">
+                  <i class="bi bi-person-check-fill"></i>
+                </a>
                 <button class="btn btn-sm btn-info view-btn" 
                         data-name="<?=htmlspecialchars($row['event_name'])?>" 
                         data-category="<?=htmlspecialchars($row['category'])?>" 
@@ -1043,7 +1050,7 @@ table.dataTable tbody td img:hover {
               <div class="fw-semibold text-dark"><?=htmlspecialchars($row['event_name'])?></div>
             </td>
             <td class="text-center">
-              <span class="badge badge-category badge-<?=strtolower($row['category']?:'general')?>">
+              <span class="badge-category badge-<?=strtolower($row['category']?:'general')?>">
                 <?=htmlspecialchars($row['category']?:'General')?>
               </span>
             </td>
@@ -1069,6 +1076,11 @@ table.dataTable tbody td img:hover {
             </td>
             <td class="text-center">
               <div class="btn-group" role="group">
+                <a href="event_attendance.php?event_id=<?=$row['id']?>" 
+                   class="btn btn-sm btn-primary" 
+                   title="Record Attendance">
+                  <i class="bi bi-person-check-fill"></i>
+                </a>
                 <button class="btn btn-sm btn-info view-btn" 
                         data-name="<?=htmlspecialchars($row['event_name'])?>" 
                         data-category="<?=htmlspecialchars($row['category'])?>" 
@@ -1125,7 +1137,11 @@ table.dataTable tbody td img:hover {
                 <label class="form-label">Category</label>
                 <select name="event_category" id="event_category" class="form-select" required>
                   <option value="">-- Select --</option>
-                  <option>Training</option><option>Cleanup</option><option>Festival</option><option>Livelihood</option><option>General</option>
+                  <option value="General Meeting">General Meeting</option>
+                  <option value="Officers Meeting">Officers Meeting (Internal)</option>
+                  <option value="Activity">Activity / Program</option>
+                  <option value="Training">Training / Seminar</option>
+                  <option value="Other">Other</option>
                 </select>
               </div>
               <div class="col-md-6">

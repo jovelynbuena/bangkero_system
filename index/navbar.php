@@ -53,7 +53,7 @@ $isSettingsOpen = in_array($current_page, $settingsPages) || in_array($role, ['o
 <title>Panel</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-<link href="<?= BASE_URL; ?>css/dashboard-layout.css" rel="stylesheet">
+<link href="<?= BASE_URL; ?>../css/dashboard-layout.css" rel="stylesheet">
 <style>
 /* Google Font */
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
@@ -532,21 +532,26 @@ body.sidebar-open {
     <a href="<?= BASE_URL; ?>event.php" class="<?= ($current_page == 'event.php') ? 'active' : ''; ?>">
         <i class="bi bi-calendar4-week"></i> All Events
     </a>
+    <a href="<?= BASE_URL; ?>attendance_reports.php" class="<?= ($current_page == 'attendance_reports.php') ? 'active' : ''; ?>">
+        <i class="bi bi-clipboard-data"></i> Attendance Reports
+    </a>
     <a href="<?= BASE_URL; ?>management/galleries.php" class="<?= ($current_page == 'galleries.php') ? 'active' : ''; ?>">
         <i class="bi bi-images"></i> Galleries
     </a>
+
 
     <?php if (in_array(strtolower($role), ['admin','officer'])): ?>
 
     
     <!-- ================= MANAGEMENT SECTION ================= -->
-    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#managementMenu"
-       aria-expanded="<?= $isManagementOpen ? 'true' : 'false'; ?>">
-        <i class="bi bi-folder"></i> Management
-        <i class="bi bi-caret-down-fill float-end"></i>
-    </a>
+   <a class="sidebar-dropdown-toggle"
+   href="#managementMenu"
+   aria-expanded="<?= $isManagementOpen ? 'true' : 'false'; ?>">
+    <i class="bi bi-folder"></i> Management
+    <i class="bi bi-caret-down-fill float-end"></i>
+</a>
 
-    <div class="collapse ps-3 <?= $isManagementOpen ? 'show' : ''; ?>" id="managementMenu">
+<div class="collapse ps-3 <?= $isManagementOpen ? 'show' : ''; ?>" id="managementMenu">
 
         <a href="<?= BASE_URL; ?>management/officerslist.php"
            class="<?= ($current_page == 'officerslist.php') ? 'active' : ''; ?>">
@@ -600,13 +605,14 @@ body.sidebar-open {
 
     <!-- ================= ADMIN UTILITIES ================= -->
     <?php if (strtolower($role) === 'admin'): ?>
-    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#utilitiesMenu"
-       aria-expanded="<?= $isUtilitiesOpen ? 'true' : 'false'; ?>">
-        <i class="bi bi-hammer"></i> Utilities
-        <i class="bi bi-caret-down-fill float-end"></i>
-    </a>
+   <a class="sidebar-dropdown-toggle"
+   href="#utilitiesMenu"
+   aria-expanded="<?= $isUtilitiesOpen ? 'true' : 'false'; ?>">
+    <i class="bi bi-hammer"></i> Utilities
+    <i class="bi bi-caret-down-fill float-end"></i>
+</a>
 
-    <div class="collapse ps-3 <?= $isUtilitiesOpen ? 'show' : ''; ?>" id="utilitiesMenu">
+<div class="collapse ps-3 <?= $isUtilitiesOpen ? 'show' : ''; ?>" id="utilitiesMenu">
 
         <a href="<?= BASE_URL; ?>utilities/backup.php"
            class="<?= ($current_page == 'backup.php') ? 'active' : ''; ?>">
@@ -619,13 +625,14 @@ body.sidebar-open {
         </a>
 
         <!-- ARCHIVE INSIDE UTILITIES -->
-        <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#archiveSubMenu"
-           aria-expanded="<?= $isArchiveOpen ? 'true' : 'false'; ?>">
-           <i class="bi bi-archive"></i> Archive
-           <i class="bi bi-caret-down-fill float-end"></i>
-        </a>
+        <a class="sidebar-dropdown-toggle"
+   href="#archiveSubMenu"
+   aria-expanded="<?= $isArchiveOpen ? 'true' : 'false'; ?>">
+    <i class="bi bi-archive"></i> Archive
+    <i class="bi bi-caret-down-fill float-end"></i>
+</a>
 
-        <div class="collapse ps-3 <?= $isArchiveOpen ? 'show' : ''; ?>" id="archiveSubMenu">
+<div class="collapse ps-3 <?= $isArchiveOpen ? 'show' : ''; ?>" id="archiveSubMenu">
             <a href="<?= BASE_URL; ?>management/archives_members.php"
                class="<?= ($current_page == 'archives_members.php') ? 'active' : ''; ?>">
                <i class="bi bi-person-x"></i> Archived Members
@@ -682,14 +689,14 @@ body.sidebar-open {
     <?php endif; ?>
 
     <!-- SETTINGS -->
-    <a class="sidebar-dropdown-toggle" data-bs-toggle="collapse" href="#settingsMenu"
-       aria-expanded="<?= $isSettingsOpen ? 'true' : 'false'; ?>">
-        <i class="bi bi-gear"></i> Settings
-        <i class="bi bi-caret-down-fill float-end"></i>
-    </a>
+  <a class="sidebar-dropdown-toggle"
+   href="#settingsMenu"
+   aria-expanded="<?= $isSettingsOpen ? 'true' : 'false'; ?>">
+    <i class="bi bi-gear"></i> Settings
+    <i class="bi bi-caret-down-fill float-end"></i>
+</a>
 
-    <div class="collapse ps-3 <?= $isSettingsOpen ? 'show' : ''; ?>" id="settingsMenu">
-
+<div class="collapse ps-3 <?= $isSettingsOpen ? 'show' : ''; ?>" id="settingsMenu">
         <a href="<?= BASE_URL; ?>settings/profile_settings.php"
            class="<?= ($current_page == 'profile_settings.php') ? 'active' : ''; ?>">
            <i class="bi bi-person-circle"></i> Profile Settings
@@ -736,170 +743,111 @@ body.sidebar-open {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// ==================== GLOBAL SIDEBAR TOGGLE FUNCTIONALITY ====================
+// ==================== RESPONSIVE SIDEBAR + COLLAPSE CONTROL ====================
 
 (function() {
     'use strict';
-    
-    // DOM Elements
+
+    // ==================== SIDEBAR MOBILE TOGGLE ====================
     const sidebar = document.getElementById('mainSidebar');
     const overlay = document.getElementById('sidebarOverlay');
-    const toggle = document.getElementById('sidebarToggle');
-    const navbar = document.getElementById('topNavbar');
-    
-    if (!sidebar || !overlay || !toggle) {
-        console.warn('Sidebar elements not found');
-        return;
+    const toggleBtn = document.getElementById('sidebarToggle');
+
+    if (sidebar && overlay && toggleBtn) {
+    function openSidebar() {
+        sidebar.classList.add('active');
+        overlay.classList.add('show');
+        document.body.classList.add('sidebar-open');
+        toggleBtn.classList.add('active');
+        sessionStorage.setItem('sidebarOpen', 'true');
     }
-    
-    // Toggle sidebar function
-    function toggleSidebar() {
-        const isActive = sidebar.classList.toggle('active');
-        overlay.classList.toggle('show', isActive);
-        toggle.classList.toggle('active', isActive);
-        document.body.classList.toggle('sidebar-open', isActive);
-        
-        // Store state in sessionStorage
-        sessionStorage.setItem('sidebarOpen', isActive ? 'true' : 'false');
-    }
-    
-    // Close sidebar function
+
     function closeSidebar() {
         sidebar.classList.remove('active');
         overlay.classList.remove('show');
-        toggle.classList.remove('active');
         document.body.classList.remove('sidebar-open');
+        toggleBtn.classList.remove('active');
         sessionStorage.setItem('sidebarOpen', 'false');
     }
-    
-    // Event Listeners
-    toggle.addEventListener('click', function(e) {
-        e.stopPropagation();
-        toggleSidebar();
-    });
-    
-    overlay.addEventListener('click', closeSidebar);
-    
-    // Close sidebar when clicking outside on mobile
-    document.addEventListener('click', function(e) {
-        if (window.innerWidth <= 991.98) {
-            if (!sidebar.contains(e.target) && !toggle.contains(e.target) && sidebar.classList.contains('active')) {
+
+        function toggleSidebar() {
+            sidebar.classList.contains('active') ? closeSidebar() : openSidebar();
+        }
+
+        // Hamburger toggle button
+        toggleBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleSidebar();
+        });
+
+        // Close sidebar when clicking overlay
+        overlay.addEventListener('click', closeSidebar);
+
+        // Close sidebar when clicking outside on mobile
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 991.98 &&
+                sidebar.classList.contains('active') &&
+                !sidebar.contains(e.target) &&
+                !toggleBtn.contains(e.target)) {
                 closeSidebar();
             }
-        }
-    });
-    
-    // Handle window resize
-    let resizeTimer;
-    window.addEventListener('resize', function() {
-        clearTimeout(resizeTimer);
-        resizeTimer = setTimeout(function() {
-            // On desktop, ensure sidebar is visible
+        });
+
+        // Close sidebar on window resize (desktop)
+        window.addEventListener('resize', function() {
             if (window.innerWidth > 991.98) {
-                sidebar.classList.remove('active');
-                overlay.classList.remove('show');
-                toggle.classList.remove('active');
-                document.body.classList.remove('sidebar-open');
-            }
-        }, 250);
-    });
-    
-    // Restore sidebar state on page load (mobile only)
-    window.addEventListener('DOMContentLoaded', function() {
-        if (window.innerWidth <= 991.98) {
-            const savedState = sessionStorage.getItem('sidebarOpen');
-            if (savedState === 'true') {
-                sidebar.classList.add('active');
-                overlay.classList.add('show');
-                toggle.classList.add('active');
-                document.body.classList.add('sidebar-open');
-            }
-        }
-    });
-    
-    // Close sidebar when navigating to a new page on mobile
-    const sidebarLinks = sidebar.querySelectorAll('a:not(.sidebar-dropdown-toggle)');
-    sidebarLinks.forEach(function(link) {
-        link.addEventListener('click', function() {
-            if (window.innerWidth <= 991.98) {
                 closeSidebar();
             }
         });
-    });
-    
-    // Function to sync all dropdown arrow states
-    function syncDropdownArrows() {
-        document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function(toggle){
-            const targetId = toggle.getAttribute('href');
-            const targetMenu = document.querySelector(targetId);
-            
-            if (targetMenu) {
-                const isOpen = targetMenu.classList.contains('show');
-                toggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+        // Restore sidebar state on page load (mobile)
+        window.addEventListener('DOMContentLoaded', function() {
+            if (window.innerWidth <= 991.98 &&
+                sessionStorage.getItem('sidebarOpen') === 'true') {
+                openSidebar();
             }
         });
     }
-    
-    // Smooth scroll for dropdown menus
-    document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function(toggle){
-        toggle.addEventListener('click', function(e){
-            // Prevent default anchor behavior
+
+    // ==================== DROPDOWN COLLAPSE MANAGEMENT ====================
+    // Single-source control via JS: no data-bs-toggle on the HTML
+    // We create a Collapse instance per menu and toggle it manually.
+
+    document.querySelectorAll('.sidebar-dropdown-toggle').forEach(function(toggle) {
+        const targetSelector = toggle.getAttribute('href');
+        const target = document.querySelector(targetSelector);
+        if (!target) return;
+
+        // Create a Collapse instance but don't auto-toggle on init
+        const bsCollapse = new bootstrap.Collapse(target, { toggle: false });
+
+        // Handle click: prevent default anchor jump and toggle collapse manually
+        toggle.addEventListener('click', function(e) {
             e.preventDefault();
-            
-            // Let Bootstrap handle the toggle, then sync
-            setTimeout(syncDropdownArrows, 50);
-            
-            // Scroll into view after animation
-            setTimeout(function(){
-                const menu = toggle.nextElementSibling;
-                if(menu && menu.classList.contains('show')) {
-                    // Scroll the dropdown into view within the sidebar
-                    menu.scrollIntoView({behavior: 'smooth', block: 'nearest', inline: 'nearest'});
-                }
-            }, 350);
+            bsCollapse.toggle();
         });
-        
-        // Listen to Bootstrap collapse events to sync arrow state
-        const targetId = toggle.getAttribute('href');
-        const targetMenu = document.querySelector(targetId);
-        
-        if (targetMenu) {
-            targetMenu.addEventListener('shown.bs.collapse', function() {
-                toggle.setAttribute('aria-expanded', 'true');
-            });
-            
-            targetMenu.addEventListener('hidden.bs.collapse', function() {
-                toggle.setAttribute('aria-expanded', 'false');
-            });
-        }
-    });
-    
-    // Sync arrow states on scroll (debounced)
-    let scrollTimer;
-    sidebar.addEventListener('scroll', function() {
-        clearTimeout(scrollTimer);
-        scrollTimer = setTimeout(syncDropdownArrows, 100);
-    });
-    
-    // Initial sync on page load
-    syncDropdownArrows();
-    
-    // Prevent body scroll when sidebar is open on mobile
-    function updateBodyScroll() {
-        if (window.innerWidth <= 991.98 && sidebar.classList.contains('active')) {
-            document.body.style.overflow = 'hidden';
+
+        // Sync aria-expanded and arrow + scroll into view on open/close
+        target.addEventListener('shown.bs.collapse', function() {
+            toggle.setAttribute('aria-expanded', 'true');
+            target.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        });
+
+        target.addEventListener('hidden.bs.collapse', function() {
+            toggle.setAttribute('aria-expanded', 'false');
+        });
+
+        // Initial sync on page load
+        if (target.classList.contains('show')) {
+            toggle.setAttribute('aria-expanded', 'true');
         } else {
-            document.body.style.overflow = '';
+            toggle.setAttribute('aria-expanded', 'false');
         }
-    }
-    
-    // Update on sidebar toggle
-    const observer = new MutationObserver(updateBodyScroll);
-    observer.observe(sidebar, { attributes: true, attributeFilter: ['class'] });
-    
+    });
+
 })();
 
-console.log('✅ Responsive Sidebar System Loaded');
+console.log('✅ Sidebar & Collapse System Ready');
 </script>
 </body>
 </html>

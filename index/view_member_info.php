@@ -12,6 +12,62 @@ $stmt->execute();
 $result = $stmt->get_result();
 $member = $result->fetch_assoc();
 
+// Attendance summary and recent records
+$attendanceSummary = null;
+$recentAttendance = [];
+$totalPresent = 0;
+$lastAttendanceDate = null;
+$attendanceStatusLabel = 'No attendance yet';
+$attendanceStatusClass = 'badge bg-secondary';
+
+if ($member) {
+    // Total attendances and last attendance date
+    $sumStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendance_date) AS last_attendance FROM member_attendance WHERE member_id = ? AND status = 'present'");
+    $sumStmt->bind_param("i", $member_id);
+    $sumStmt->execute();
+    $attendanceSummary = $sumStmt->get_result()->fetch_assoc();
+    $sumStmt->close();
+
+    if ($attendanceSummary) {
+        $totalPresent = (int)($attendanceSummary['total_present'] ?? 0);
+        $lastAttendanceDate = $attendanceSummary['last_attendance'] ?? null;
+    }
+
+    // 🧮 Compute attendance status (same rule as member list)
+    // Rule:
+    //   - Inactive        = 0 events attended in the last 6 months (or never attended)
+    //   - Occasional      = 1–2 events attended, and last attendance is within 6 months
+    //   - Active          = 3 or more events attended, and last attendance is within 6 months
+    //   - Inactive (old)  = has attended before, but last attendance is more than 6 months ago
+    if ($totalPresent > 0 && $lastAttendanceDate) {
+        $lastTs = strtotime($lastAttendanceDate);
+        $sixMonthsAgo = strtotime('-6 months');
+
+        if ($lastTs >= $sixMonthsAgo) {
+            if ($totalPresent >= 3) {
+                $attendanceStatusLabel = 'Active';
+                $attendanceStatusClass = 'badge bg-success';
+            } else {
+                $attendanceStatusLabel = 'Occasional';
+                $attendanceStatusClass = 'badge bg-warning text-dark';
+            }
+        } else {
+            $attendanceStatusLabel = 'Inactive (no recent attendance)';
+            $attendanceStatusClass = 'badge bg-secondary';
+        }
+    }
+
+    // Recent events attended (limit 3)
+    $recentStmt = $conn->prepare("SELECT ma.attendance_date, ma.time_in, ma.time_out, ma.remarks, e.event_name, e.location FROM member_attendance ma JOIN events e ON e.id = ma.event_id WHERE ma.member_id = ? AND ma.status = 'present' ORDER BY ma.attendance_date DESC LIMIT 3");
+    $recentStmt->bind_param("i", $member_id);
+    $recentStmt->execute();
+    $res = $recentStmt->get_result();
+    while ($rowAtt = $res->fetch_assoc()) {
+        $recentAttendance[] = $rowAtt;
+    }
+    $recentStmt->close();
+}
+
 // Image handling
 $serverPath = __DIR__ . '/uploads/members/'; // Server path for file_exists
 $defaultImage = '../uploads/members/default_member.png'; // Browser path for default image
@@ -84,7 +140,7 @@ if ($member && !empty($member['image']) && file_exists($serverPath . $member['im
 
     <div class="section">
         <div class="photo-box">
-<img src="../uploads/members/<?= htmlspecialchars($member['image']) ?>" width="120" class="rounded shadow">
+            <img src="<?= htmlspecialchars($imgFile) ?>" width="120" class="rounded shadow">
         </div>
 
         <div class="section-title">Personal Information</div>
@@ -100,8 +156,63 @@ if ($member && !empty($member['image']) && file_exists($serverPath . $member['im
         <div class="section-title">Work & License Information</div>
         <div class="info-row"><span class="label">Work Type:</span><span class="value"><?php echo htmlspecialchars($member['work_type']); ?></span></div>
         <div class="info-row"><span class="label">License Number:</span><span class="value"><?php echo htmlspecialchars($member['license_number']); ?></span></div>
+        <div class="info-row"><span class="label">License Status:</span><span class="value">
+            <?php if (!empty($member['license_number'])): ?>
+                <span class="badge bg-success">With license on record</span>
+            <?php else: ?>
+                <span class="badge bg-secondary">No license information</span>
+            <?php endif; ?>
+        </span></div>
         <div class="info-row"><span class="label">Boat Name:</span><span class="value"><?php echo htmlspecialchars($member['boat_name']); ?></span></div>
         <div class="info-row"><span class="label">Fishing Area:</span><span class="value"><?php echo htmlspecialchars($member['fishing_area']); ?></span></div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Attendance Summary</div>
+        <div class="info-row">
+            <span class="label">Total Events Attended:</span>
+            <span class="value"><?php echo (int)$totalPresent; ?></span>
+        </div>
+        <div class="info-row">
+            <span class="label">Last Attendance:</span>
+            <span class="value">
+                <?php echo $lastAttendanceDate ? date('F j, Y', strtotime($lastAttendanceDate)) : 'No attendance recorded yet'; ?>
+            </span>
+        </div>
+        <div class="info-row">
+            <span class="label">Status:</span>
+            <span class="value"><span class="<?php echo $attendanceStatusClass; ?>"><?php echo htmlspecialchars($attendanceStatusLabel); ?></span></span>
+        </div>
+        <div class="info-row">
+            <span class="label">Recent Events:</span>
+            <span class="value">
+                <?php if (!empty($recentAttendance)): ?>
+                    <ul class="mb-0" style="padding-left: 18px;">
+                        <?php foreach ($recentAttendance as $att): ?>
+                            <li>
+                                <strong><?php echo htmlspecialchars($att['event_name']); ?></strong>
+                                (<?php echo date('M d, Y', strtotime($att['attendance_date'])); ?>)
+                                <?php if (!empty($att['time_in']) || !empty($att['time_out'])): ?>
+                                    &mdash;
+                                    <?php if (!empty($att['time_in'])): ?>
+                                        In: <?php echo date('h:i A', strtotime($att['time_in'])); ?>
+                                    <?php endif; ?>
+                                    <?php if (!empty($att['time_out'])): ?>
+                                        <?php if (!empty($att['time_in'])): ?> | <?php endif; ?>
+                                        Out: <?php echo date('h:i A', strtotime($att['time_out'])); ?>
+                                    <?php endif; ?>
+                                <?php endif; ?>
+                                <?php if (!empty($att['remarks'])): ?>
+                                    &mdash; <em><?php echo htmlspecialchars($att['remarks']); ?></em>
+                                <?php endif; ?>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                <?php else: ?>
+                    <span class="text-muted">No recent attendance records.</span>
+                <?php endif; ?>
+            </span>
+        </div>
     </div>
 
     <div class="section">

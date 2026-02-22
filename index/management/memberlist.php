@@ -414,6 +414,9 @@ if (!empty($params)) {
 }
 
 $members_count = $total_records;
+
+// 🔄 Prepare attendance summary statement (counts and last attendance for each member)
+$attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendance_date) AS last_attendance FROM member_attendance WHERE member_id = ? AND status = 'present'");
 ?>
 
 
@@ -1060,6 +1063,28 @@ $members_count = $total_records;
                     <option value="date_old" <?php echo $sort === 'date_old' ? 'selected' : ''; ?>>Oldest</option>
                 </select>
             </div>
+
+            <!-- Attendance Status Filter (client-side) -->
+            <div class="col-md-3">
+                <label class="form-label-sm">Attendance Status</label>
+                <select id="attendanceStatusFilter" class="form-select filter-select">
+                    <option value="">All</option>
+                    <option value="active">Active</option>
+                    <option value="occasional">Occasional</option>
+                    <option value="inactive">Inactive</option>
+                    <option value="inactive_old">Inactive (no recent attendance)</option>
+                </select>
+            </div>
+
+            <!-- License Filter (client-side) -->
+            <div class="col-md-3">
+                <label class="form-label-sm">License</label>
+                <select id="licenseFilter" class="form-select filter-select">
+                    <option value="">All</option>
+                    <option value="with">With license</option>
+                    <option value="none">No license</option>
+                </select>
+            </div>
             
             <!-- Action Buttons -->
             <div class="col-md-12 d-flex gap-2">
@@ -1142,6 +1167,7 @@ $members_count = $total_records;
                         <th>Member Info</th>
                         <th>Contact</th>
                         <th>Role</th>
+                        <th>Attendance</th>
                         <th>Joined</th>
                         <th class="text-center" style="width: 180px;">Actions</th>
                     </tr>
@@ -1153,8 +1179,48 @@ $members_count = $total_records;
                         $first_name = $nameParts[0] ?? '';
                         $middle_initial = $nameParts[1] ?? '';
                         $last_name = $nameParts[2] ?? '';
+
+                        // 🔢 Fetch attendance summary for this member
+                        $attendanceStmt->bind_param("i", $row['id']);
+                        $attendanceStmt->execute();
+                        $attSummary = $attendanceStmt->get_result()->fetch_assoc();
+                        $totalPresent = (int)($attSummary['total_present'] ?? 0);
+                        $lastAttendance = $attSummary['last_attendance'] ?? null;
+
+                        // 🧮 Compute attendance status (rule for defense explanation)
+                        // Rule:
+                        //   - Inactive        = 0 events attended in the last 6 months (or never attended)
+                        //   - Occasional      = 1–2 events attended, and last attendance is within 6 months
+                        //   - Active          = 3 or more events attended, and last attendance is within 6 months
+                        //   - Inactive (old)  = has attended before, but last attendance is more than 6 months ago
+                        $statusLabel = 'Inactive';
+                        $statusClass = 'bg-secondary';
+                        $statusKey   = 'inactive';
+
+                        if ($totalPresent > 0 && $lastAttendance) {
+                            $lastTs = strtotime($lastAttendance);
+                            $sixMonthsAgo = strtotime('-6 months');
+
+                            if ($lastTs >= $sixMonthsAgo) {
+                                if ($totalPresent >= 3) {
+                                    $statusLabel = 'Active';
+                                    $statusClass = 'bg-success';
+                                    $statusKey   = 'active';
+                                } else {
+                                    $statusLabel = 'Occasional';
+                                    $statusClass = 'bg-warning text-dark';
+                                    $statusKey   = 'occasional';
+                                }
+                            } else {
+                                $statusLabel = 'Inactive (no recent attendance)';
+                                $statusClass = 'bg-secondary';
+                                $statusKey   = 'inactive_old';
+                            }
+                        }
                     ?>
-                        <tr class="member-row">
+                        <tr class="member-row" 
+                            data-att-status="<?= htmlspecialchars($statusKey) ?>" 
+                            data-license="<?= !empty($row['license_number']) ? 'with' : 'none' ?>">
                             <td class="text-center">
                                 <input type="checkbox" class="form-check-input member-checkbox" value="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['name']) ?>">
                             </td>
@@ -1188,6 +1254,24 @@ $members_count = $total_records;
                                 }
                                 $check_officer->close();
                                 ?>
+                                <div class="mt-1 small">
+                                    <?php if (!empty($row['license_number'])): ?>
+                                        <span class="badge bg-success-subtle text-success">With license</span>
+                                    <?php else: ?>
+                                        <span class="badge bg-light text-muted">No license</span>
+                                    <?php endif; ?>
+                                </div>
+                            </td>
+                            <td>
+                                <div class="small fw-semibold"><?= $totalPresent ?> event<?= $totalPresent === 1 ? '' : 's' ?></div>
+                                <?php if ($lastAttendance): ?>
+                                    <div class="text-muted small">Last: <?= date('M d, Y', strtotime($lastAttendance)) ?></div>
+                                <?php else: ?>
+                                    <div class="text-muted small">No attendance yet</div>
+                                <?php endif; ?>
+                                <div class="mt-1">
+                                    <span class="badge <?= $statusClass ?>"><?= $statusLabel ?></span>
+                                </div>
                             </td>
                             <td class="text-muted small">
                                 <?= isset($row['created_at']) ? date('M d, Y', strtotime($row['created_at'])) : 'N/A' ?>
@@ -1224,7 +1308,7 @@ $members_count = $total_records;
                     <?php endwhile; ?>
                 <?php else: ?>
                     <tr>
-                        <td colspan="7">
+                        <td colspan="8">
                             <div class="empty-state">
                                 <i class="bi bi-inbox"></i>
                                 <h5>No Members Found</h5>
@@ -1641,6 +1725,35 @@ function updateBulkActions() {
         selectedMembers = [];
     }
 }
+
+// Client-side filters for attendance status & license
+(function() {
+    const statusFilter = document.getElementById('attendanceStatusFilter');
+    const licenseFilter = document.getElementById('licenseFilter');
+
+    function applyMemberRowFilters() {
+        const statusVal = statusFilter ? statusFilter.value : '';
+        const licenseVal = licenseFilter ? licenseFilter.value : '';
+
+        document.querySelectorAll('#membersTableBody tr.member-row').forEach(row => {
+            const rowStatus = row.getAttribute('data-att-status') || '';
+            const rowLicense = row.getAttribute('data-license') || '';
+
+            let visible = true;
+            if (statusVal && rowStatus !== statusVal) visible = false;
+            if (licenseVal && rowLicense !== licenseVal) visible = false;
+
+            row.style.display = visible ? '' : 'none';
+        });
+    }
+
+    if (statusFilter) {
+        statusFilter.addEventListener('change', applyMemberRowFilters);
+    }
+    if (licenseFilter) {
+        licenseFilter.addEventListener('change', applyMemberRowFilters);
+    }
+})();
 
 // Bulk Archive
 document.addEventListener('click', function(e) {
