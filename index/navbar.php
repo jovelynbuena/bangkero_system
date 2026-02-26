@@ -21,8 +21,46 @@ $roleDisplay = match(strtolower($role)) {
 $current_page = basename($_SERVER['PHP_SELF']);
 
 // Fetch association settings from system_config table
-$configResult = $conn->query("SELECT * FROM system_config WHERE id=1");
-$config = $configResult && $configResult->num_rows > 0 ? $configResult->fetch_assoc() : [];
+// (Offline DB may not have this table yet; auto-create from backup schema if missing)
+$config = [];
+try {
+    $configResult = $conn->query("SELECT * FROM system_config WHERE id=1");
+    $config = $configResult && $configResult->num_rows > 0 ? $configResult->fetch_assoc() : [];
+} catch (mysqli_sql_exception $e) {
+    // Handle missing table gracefully (common after switching to a fresh local DB)
+    if (stripos($e->getMessage(), 'system_config') !== false) {
+        try {
+            $conn->query("CREATE TABLE IF NOT EXISTS `system_config` (
+              `id` int(11) NOT NULL,
+              `assoc_name` varchar(255) NOT NULL,
+              `assoc_email` varchar(255) NOT NULL,
+              `assoc_phone` varchar(50) NOT NULL,
+              `assoc_address` text NOT NULL,
+              `assoc_logo` varchar(255) DEFAULT NULL,
+              `auto_backup_status` tinyint(1) NOT NULL DEFAULT '0',
+              `backup_storage_limit_mb` int(11) NOT NULL DEFAULT '100',
+              `auto_backup_next_run` datetime DEFAULT NULL,
+              PRIMARY KEY (`id`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+            // Seed default row (id=1) if missing
+            $conn->query("INSERT INTO `system_config`
+                (`id`, `assoc_name`, `assoc_email`, `assoc_phone`, `assoc_address`, `assoc_logo`, `auto_backup_status`, `backup_storage_limit_mb`, `auto_backup_next_run`)
+                VALUES
+                (1, 'Bankero and Fishermen Association', 'info@association.org', '', '', NULL, 0, 100, NULL)
+                ON DUPLICATE KEY UPDATE `id` = `id`");
+
+            $configResult = $conn->query("SELECT * FROM system_config WHERE id=1");
+            $config = $configResult && $configResult->num_rows > 0 ? $configResult->fetch_assoc() : [];
+        } catch (Throwable $e2) {
+            // If creation still fails, fall back to defaults
+            $config = [];
+        }
+    } else {
+        $config = [];
+    }
+}
+
 
 // Set defaults
 $assocName = htmlspecialchars($config['assoc_name'] ?? 'Your Association');

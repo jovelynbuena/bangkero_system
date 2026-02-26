@@ -321,7 +321,10 @@ if (isset($_GET['archive'])) {
 $stats_members = $conn->query("SELECT COUNT(*) AS total FROM members");
 $total_members = $stats_members->fetch_assoc()['total'] ?? 0;
 
-$stats_officers = $conn->query("SELECT COUNT(*) AS total FROM officers");
+// Officers must always be members; count distinct officer members only
+$stats_officers = $conn->query("SELECT COUNT(DISTINCT o.member_id) AS total
+                                FROM officers o
+                                INNER JOIN members m ON m.id = o.member_id");
 $total_officers = $stats_officers->fetch_assoc()['total'] ?? 0;
 
 /* --------------------------
@@ -435,24 +438,29 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
         font-family: 'Inter', sans-serif; 
-        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
         min-height: 100vh;
     }
     .main-content { 
         margin-left: 250px; 
         padding: 32px; 
         min-height: 100vh; 
+        max-width: 1320px;
+        margin-right: auto;
     }
+
 
     /* Page Header */
     .page-header {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        padding: 32px;
-        border-radius: 20px;
+        padding: 28px 28px 24px;
+        border-radius: 18px;
         color: white;
-        margin-bottom: 32px;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        margin-bottom: 24px;
+        box-shadow: 0 14px 32px rgba(88, 101, 242, 0.32);
     }
+
+
     .page-header h2 {
         font-size: 32px;
         font-weight: 700;
@@ -472,33 +480,45 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
     /* Statistics Dashboard */
     .statistics-dashboard {
-        margin-bottom: 32px;
+        margin-bottom: 24px;
+    }
+
+    .statistics-dashboard .row {
+        justify-content: center;
+        gap: 20px;
+    }
+    .statistics-dashboard .stat-col {
+        flex: 0 0 auto;
+        max-width: 360px;
     }
     .stat-card {
         background: white;
-        border-radius: 16px;
-        padding: 24px;
-        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-        transition: all 0.3s ease;
+        border-radius: 14px;
+        padding: 18px 20px;
+        box-shadow: 0 8px 18px rgba(15, 23, 42, 0.08);
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
         display: flex;
         align-items: center;
-        gap: 20px;
+        gap: 16px;
         height: 100%;
     }
+
     .stat-card:hover {
-        transform: translateY(-5px);
-        box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        transform: translateY(-3px);
+        box-shadow: 0 14px 32px rgba(15, 23, 42, 0.16);
     }
+
     .stat-icon {
-        width: 64px;
-        height: 64px;
-        border-radius: 16px;
+        width: 56px;
+        height: 56px;
+        border-radius: 14px;
         display: flex;
         align-items: center;
         justify-content: center;
-        font-size: 28px;
+        font-size: 24px;
         flex-shrink: 0;
     }
+
     .stat-primary .stat-icon {
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
@@ -516,25 +536,39 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         color: white;
     }
     .stat-content h3 {
-        font-size: 32px;
+        font-size: 34px;
         font-weight: 800;
         margin: 0;
-        color: #1e293b;
+        color: #0f172a;
     }
     .stat-content p {
-        margin: 0;
+        margin: 4px 0 0;
         color: #64748b;
         font-size: 14px;
         font-weight: 500;
+        opacity: 0.9;
     }
+
 
     /* Filter Section */
     .filter-section {
-        background: white;
-        padding: 24px;
-        border-radius: 16px;
-        box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06);
+        background: rgba(255, 255, 255, 0.98);
+        padding: 16px 20px;
+        border-radius: 14px;
+        box-shadow: 0 8px 22px rgba(15, 23, 42, 0.06);
+        border: 1px solid #e2e8f0;
+        margin-bottom: 20px;
     }
+
+    .filter-section .row.g-3 > [class^="col-"],
+    .filter-section .row.g-3 > [class*=" col-"] {
+        margin-bottom: 8px;
+    }
+    .filter-section #filterForm {
+        row-gap: 10px;
+    }
+
+
     .form-label-sm {
         font-size: 12px;
         font-weight: 600;
@@ -542,18 +576,23 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         margin-bottom: 4px;
         display: block;
     }
-    .filter-select {
+    .filter-select,
+    .filter-section .search-box input {
         border: 2px solid #e0e0e0;
         border-radius: 10px;
-        padding: 10px 16px;
+        padding: 9px 14px 9px 42px; /* extra left space for icon */
         font-size: 14px;
         font-weight: 500;
-        transition: all 0.3s ease;
+        transition: all 0.2s ease;
         background-color: white;
     }
-    .filter-select:focus {
+
+
+    .filter-select:focus,
+    .filter-section .search-box input:focus {
         border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.18);
+        outline: none;
     }
     .filter-info {
         display: flex;
@@ -562,7 +601,9 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         color: #64748b;
         font-weight: 500;
         font-size: 14px;
+        opacity: 0.9;
     }
+
 
     /* Bulk Selection & Actions */
     .member-checkbox {
@@ -637,14 +678,30 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         width: 20px;
     }
 
-    /* Action Bar */
+    /* Action Bar / Table Toolbar */
     .action-bar {
         display: flex;
         justify-content: space-between;
         align-items: center;
-        margin-bottom: 24px;
+        margin-bottom: 0;
         flex-wrap: wrap;
         gap: 16px;
+    }
+    .table-toolbar {
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+
+
+
+    #bulkActionsContainer {
+        display: none !important;
+        opacity: 0;
+    }
+
+    #bulkActionsContainer.bulk-visible {
+        opacity: 1;
     }
 
     /* Add Member Button */
@@ -700,7 +757,8 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     /* Search Box */
     .search-box {
         position: relative;
-        width: 300px;
+        width: 100%;
+        max-width: 100%;
     }
     .search-box input {
         width: 100%;
@@ -726,12 +784,16 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
     /* Table Container */
     .table-container {
-        background: white;
-        border-radius: 20px;
-        padding: 24px;
-        box-shadow: 0 10px 40px rgba(0, 0, 0, 0.08);
-        overflow: hidden;
+        background: rgba(255, 255, 255, 0.99);
+        border-radius: 16px;
+        padding: 16px 20px;
+        box-shadow: 0 10px 36px rgba(15, 23, 42, 0.10);
+        border: 1px solid #e2e8f0;
+        overflow: auto;
     }
+
+
+
     .table {
         margin-bottom: 0;
     }
@@ -742,22 +804,31 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         text-transform: uppercase;
         font-size: 13px;
         letter-spacing: 0.5px;
-        padding: 16px;
+        padding: 14px 12px;
         border: none;
         vertical-align: middle;
+        position: sticky;
+        top: 0;
+        z-index: 2;
     }
+
+
     .table tbody td {
-        padding: 16px;
+        padding: 12px 12px;
         vertical-align: middle;
         border-bottom: 1px solid #f0f0f0;
     }
+
     .table tbody tr {
-        transition: all 0.3s ease;
+        transition: background-color 0.25s ease, transform 0.2s ease;
+        cursor: default;
     }
     .table tbody tr:hover {
-        background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
-        transform: translateX(4px);
+        background-color: #f3f4ff;
+        transform: translateX(2px);
+        cursor: pointer;
     }
+
 
     /* Action Buttons */
     .btn-sm {
@@ -765,10 +836,19 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         border-radius: 10px;
         font-weight: 600;
         font-size: 13px;
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
         border: none;
         margin-right: 6px;
     }
+    .btn-sm:focus-visible,
+    .btn-add-member:focus-visible,
+    .btn-export:focus-visible,
+    .btn-submit:focus-visible {
+        outline: 2px solid #1d4ed8;
+        outline-offset: 2px;
+        box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
+    }
+
     .btn-view {
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
         color: white;
@@ -944,6 +1024,7 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         .action-bar {
             flex-direction: column;
             align-items: stretch;
+            gap: 12px;
         }
         .search-box {
             width: 100%;
@@ -953,7 +1034,7 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
             text-align: center;
         }
         .filter-section {
-            padding: 15px;
+            padding: 16px 18px;
         }
         #bulkActionsContainer {
             width: 100%;
@@ -968,6 +1049,26 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
             margin-bottom: 10px;
         }
     }
+
+    @media (max-width: 575.98px) {
+        .filter-section .row.g-3 > [class^="col-"],
+        .filter-section .row.g-3 > [class*=" col-"] {
+            margin-bottom: 10px;
+        }
+        .btn-add-member {
+            width: 100%;
+            justify-content: center;
+        }
+        .action-bar > .d-flex {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 8px;
+        }
+        .table-container {
+            padding: 16px;
+        }
+    }
+
 </style>
 </head>
 <body>
@@ -982,7 +1083,9 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                     <i class="bi bi-people-fill"></i>
                     Members Management
                     <span class="badge"><?php echo $members_count; ?> Members</span>
+                    <span class="badge ms-2"><?php echo $total_officers; ?> Officers</span>
                 </h2>
+
                 <p class="mb-0 mt-2" style="opacity: 0.9;">Manage association members and their information</p>
             </div>
             <button class="btn-add-member" data-bs-toggle="modal" data-bs-target="#addMemberModal">
@@ -992,171 +1095,166 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         </div>
     </div>
 
-    <!-- Statistics Dashboard -->
-    <div class="statistics-dashboard">
-        <div class="row g-4 mb-4">
-            <div class="col-md-6">
-                <div class="stat-card stat-primary">
-                    <div class="stat-icon">
-                        <i class="bi bi-people-fill"></i>
+
+
+    <!-- Filter Section (manual toggle) -->
+    <div class="filter-section mb-2">
+        <div class="d-flex justify-content-between align-items-center mb-2">
+            <div class="d-flex align-items-center gap-2">
+                <i class="bi bi-funnel text-muted"></i>
+                <span class="fw-semibold small text-muted">Filters</span>
+            </div>
+            <button type="button" class="btn btn-link btn-sm text-muted p-0 d-inline-flex align-items-center" id="filterToggleBtn">
+                <span class="me-1" id="filterPanelLabel">Hide filters</span>
+                <i class="bi bi-chevron-up small" id="filterPanelIcon"></i>
+            </button>
+        </div>
+
+        <div id="filterPanelBody" class="filter-panel-body">
+
+            <form method="GET" id="filterForm">
+                <div class="row g-3 align-items-end">
+                    <!-- Search -->
+                    <div class="col-lg-4 col-md-6">
+                        <label class="form-label-sm">Search</label>
+                        <div class="search-box">
+                            <i class="bi bi-search"></i>
+                            <input type="text" name="search" id="searchInput" placeholder="Name, email, phone, ID..." autocomplete="off" value="<?php echo htmlspecialchars($search); ?>">
+                        </div>
                     </div>
-                    <div class="stat-content">
-                        <h3><?php echo $total_members; ?></h3>
-                        <p>Total Members</p>
+                    
+                    <!-- Role Filter -->
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label-sm">Role</label>
+                        <select name="role" id="roleFilter" class="form-select filter-select">
+                            <option value="">All Roles</option>
+                            <option value="officer" <?php echo $role === 'officer' ? 'selected' : ''; ?>>Officer</option>
+                            <option value="member" <?php echo $role === 'member' ? 'selected' : ''; ?>>Member</option>
+                        </select>
+                    </div>
+                    
+                    <!-- Date From -->
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label-sm">Date From</label>
+                        <input type="date" name="date_from" id="dateFrom" class="form-control filter-select" value="<?php echo isset($_GET['date_from']) ? htmlspecialchars($_GET['date_from']) : ''; ?>">
+                    </div>
+                    
+                    <!-- Date To -->
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label-sm">Date To</label>
+                        <input type="date" name="date_to" id="dateTo" class="form-control filter-select" value="<?php echo isset($_GET['date_to']) ? htmlspecialchars($_GET['date_to']) : ''; ?>">
+                    </div>
+                    
+                    <!-- Sort -->
+                    <div class="col-lg-2 col-md-6">
+                        <label class="form-label-sm">Sort</label>
+                        <select name="sort" id="sortFilter" class="form-select filter-select">
+                            <option value="name_asc" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>A-Z</option>
+                            <option value="name_desc" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Z-A</option>
+                            <option value="date_new" <?php echo $sort === 'date_new' ? 'selected' : ''; ?>>Newest</option>
+                            <option value="date_old" <?php echo $sort === 'date_old' ? 'selected' : ''; ?>>Oldest</option>
+                        </select>
                     </div>
                 </div>
-            </div>
-            <div class="col-md-6">
-                <div class="stat-card stat-success">
-                    <div class="stat-icon">
-                        <i class="bi bi-award-fill"></i>
+
+                <div class="row g-3 mt-2">
+                    <!-- Attendance Status Filter (client-side) -->
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label-sm">Attendance Status</label>
+                        <select id="attendanceStatusFilter" class="form-select filter-select">
+                            <option value="">All</option>
+                            <option value="active">Active</option>
+                            <option value="occasional">Occasional</option>
+                            <option value="inactive">Inactive</option>
+                            <option value="inactive_old">Inactive (no recent attendance)</option>
+                        </select>
                     </div>
-                    <div class="stat-content">
-                        <h3><?php echo $total_officers; ?></h3>
-                        <p>Total Officers</p>
+                    <!-- License Filter (client-side) -->
+                    <div class="col-md-3 col-sm-6">
+                        <label class="form-label-sm">License</label>
+                        <select id="licenseFilter" class="form-select filter-select">
+                            <option value="">All</option>
+                            <option value="with">With license</option>
+                            <option value="none">No license</option>
+                        </select>
+                    </div>
+                    <!-- Action Buttons -->
+                    <div class="col-md-6 d-flex gap-2 align-items-end justify-content-md-end">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-funnel"></i> Apply Filters
+                        </button>
+                        <a href="memberlist.php" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-clockwise"></i> Reset All
+                        </a>
                     </div>
                 </div>
-            </div>
+            </form>
         </div>
     </div>
 
-    <!-- Advanced Filter Section -->
-    <div class="filter-section mb-4">
-        <form method="GET" id="filterForm" class="row g-3">
-            <!-- Search -->
-            <div class="col-md-3">
-                <label class="form-label-sm">Search</label>
-                <div class="search-box">
-                    <i class="bi bi-search"></i>
-                    <input type="text" name="search" id="searchInput" placeholder="Name, email, phone, ID..." autocomplete="off" value="<?php echo htmlspecialchars($search); ?>">
-                </div>
-            </div>
-            
-            <!-- Role Filter -->
-            <div class="col-md-3">
-                <label class="form-label-sm">Role</label>
-                <select name="role" id="roleFilter" class="form-select filter-select">
-                    <option value="">All Roles</option>
-                    <option value="officer" <?php echo $role === 'officer' ? 'selected' : ''; ?>>Officer</option>
-                    <option value="member" <?php echo $role === 'member' ? 'selected' : ''; ?>>Member</option>
-                </select>
-            </div>
-            
-            <!-- Date Range -->
-            <div class="col-md-2">
-                <label class="form-label-sm">Date From</label>
-                <input type="date" name="date_from" id="dateFrom" class="form-control filter-select" value="<?php echo isset($_GET['date_from']) ? htmlspecialchars($_GET['date_from']) : ''; ?>">
-            </div>
-            
-            <div class="col-md-2">
-                <label class="form-label-sm">Date To</label>
-                <input type="date" name="date_to" id="dateTo" class="form-control filter-select" value="<?php echo isset($_GET['date_to']) ? htmlspecialchars($_GET['date_to']) : ''; ?>">
-            </div>
-            
-            <!-- Sort -->
-            <div class="col-md-2">
-                <label class="form-label-sm">Sort</label>
-                <select name="sort" id="sortFilter" class="form-select filter-select">
-                    <option value="name_asc" <?php echo $sort === 'name_asc' ? 'selected' : ''; ?>>A-Z</option>
-                    <option value="name_desc" <?php echo $sort === 'name_desc' ? 'selected' : ''; ?>>Z-A</option>
-                    <option value="date_new" <?php echo $sort === 'date_new' ? 'selected' : ''; ?>>Newest</option>
-                    <option value="date_old" <?php echo $sort === 'date_old' ? 'selected' : ''; ?>>Oldest</option>
-                </select>
-            </div>
 
-            <!-- Attendance Status Filter (client-side) -->
-            <div class="col-md-3">
-                <label class="form-label-sm">Attendance Status</label>
-                <select id="attendanceStatusFilter" class="form-select filter-select">
-                    <option value="">All</option>
-                    <option value="active">Active</option>
-                    <option value="occasional">Occasional</option>
-                    <option value="inactive">Inactive</option>
-                    <option value="inactive_old">Inactive (no recent attendance)</option>
-                </select>
-            </div>
 
-            <!-- License Filter (client-side) -->
-            <div class="col-md-3">
-                <label class="form-label-sm">License</label>
-                <select id="licenseFilter" class="form-select filter-select">
-                    <option value="">All</option>
-                    <option value="with">With license</option>
-                    <option value="none">No license</option>
-                </select>
-            </div>
-            
-            <!-- Action Buttons -->
-            <div class="col-md-12 d-flex gap-2">
-                <button type="submit" class="btn btn-primary">
-                    <i class="bi bi-funnel"></i> Apply Filters
-                </button>
-                <a href="memberlist.php" class="btn btn-outline-secondary">
-                    <i class="bi bi-arrow-clockwise"></i> Reset All
-                </a>
-            </div>
-        </form>
-    </div>
 
-    <!-- Bulk Actions & Export Bar -->
-    <div class="action-bar">
-        <div class="d-flex gap-2 align-items-center flex-wrap">
-            <!-- Bulk Actions (Hidden by default, shown when items selected) -->
-            <div id="bulkActionsContainer" style="display:none;" class="d-flex gap-2">
-                <span id="selectedCount" class="badge bg-primary" style="font-size: 14px; padding: 10px 16px;">0 selected</span>
-                <button id="btnBulkArchive" class="btn btn-warning btn-sm text-white">
-                    <i class="bi bi-archive"></i> Archive Selected
-                </button>
-                <button id="btnBulkExport" class="btn btn-success btn-sm">
-                    <i class="bi bi-download"></i> Export Selected
-                </button>
-                <button id="btnDeselectAll" class="btn btn-outline-secondary btn-sm">
-                    <i class="bi bi-x-circle"></i> Clear
-                </button>
-            </div>
-            
-            <!-- Export Dropdown -->
-            <div class="dropdown">
-                <button class="btn-export dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
-                    <i class="bi bi-download me-1"></i> Export
-                </button>
-                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown" style="z-index: 1050;">
-                    <li><a class="dropdown-item" href="#" onclick="exportData('csv'); return false;">
-                        <i class="bi bi-filetype-csv me-2"></i>CSV Format
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportData('pdf'); return false;">
-                        <i class="bi bi-file-earmark-pdf me-2"></i>PDF Document
-                    </a></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportData('excel'); return false;">
-                        <i class="bi bi-file-earmark-excel me-2"></i>Excel Spreadsheet
-                    </a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportData('print'); return false;">
-                        <i class="bi bi-printer me-2"></i>Print Preview
-                    </a></li>
-                </ul>
-            </div>
-        </div>
-        
-        <div class="filter-info">
-            <span id="filterInfoText">
-                <?php 
-                if (!empty($search) || !empty($role)) {
-                    $active_filters = [];
-                    if (!empty($search)) $active_filters[] = "Search: \"" . htmlspecialchars($search) . "\"";
-                    if (!empty($role)) $active_filters[] = "Role: " . ucfirst($role);
-                    echo "Filtered: " . implode(" | ", $active_filters) . " (" . $members_count . " results)";
-                } else {
-                    echo "Showing all " . $members_count . " members";
-                }
-                ?>
-            </span>
-        </div>
-    </div>
 
-    <!-- Members Table -->
+    <!-- Members Table & Toolbar -->
     <div class="table-container">
+        <div class="action-bar table-toolbar">
+            <div class="d-flex gap-2 align-items-center flex-wrap">
+                <!-- Bulk Actions (Hidden by default, shown when items selected) -->
+                <div id="bulkActionsContainer" style="display:none;" class="d-flex gap-2">
+                    <span id="selectedCount" class="badge bg-primary" style="font-size: 14px; padding: 10px 16px;"></span>
+                    <button id="btnBulkArchive" class="btn btn-warning btn-sm text-white">
+                        <i class="bi bi-archive"></i> Archive Selected
+                    </button>
+                    <button id="btnBulkExport" class="btn btn-success btn-sm">
+                        <i class="bi bi-download"></i> Export Selected
+                    </button>
+                    <button id="btnDeselectAll" class="btn btn-outline-secondary btn-sm">
+                        <i class="bi bi-x-circle"></i> Clear
+                    </button>
+                </div>
+                
+                <!-- Export Dropdown -->
+                <div class="dropdown">
+                    <button class="btn-export dropdown-toggle" type="button" id="exportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                        <i class="bi bi-download me-1"></i> Export
+                    </button>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="exportDropdown" style="z-index: 1050;">
+                        <li><a class="dropdown-item" href="#" onclick="exportData('csv'); return false;">
+                            <i class="bi bi-filetype-csv me-2"></i>CSV Format
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportData('pdf'); return false;">
+                            <i class="bi bi-file-earmark-pdf me-2"></i>PDF Document
+                        </a></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportData('excel'); return false;">
+                            <i class="bi bi-file-earmark-excel me-2"></i>Excel Spreadsheet
+                        </a></li>
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="#" onclick="exportData('print'); return false;">
+                            <i class="bi bi-printer me-2"></i>Print Preview
+                        </a></li>
+                    </ul>
+                </div>
+            </div>
+            
+            <div class="filter-info">
+                <span id="filterInfoText">
+                    <?php 
+                    if (!empty($search) || !empty($role)) {
+                        $active_filters = [];
+                        if (!empty($search)) $active_filters[] = "Search: \"" . htmlspecialchars($search) . "\"";
+                        if (!empty($role)) $active_filters[] = "Role: " . ucfirst($role);
+                        echo "Filtered: " . implode(" | ", $active_filters) . " (" . $members_count . " results)";
+                    } else {
+                        echo "Showing all " . $members_count . " members";
+                    }
+                    ?>
+                </span>
+            </div>
+        </div>
+
         <div class="table-responsive">
+
             <table class="table align-middle">
                 <thead>
                     <tr>
@@ -1277,11 +1375,13 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                                 <?= isset($row['created_at']) ? date('M d, Y', strtotime($row['created_at'])) : 'N/A' ?>
                             </td>
                             <td class="text-center">
-                                <a href="../view_member_info.php?id=<?= $row['id'] ?>" class="btn btn-view btn-sm">
+                                <a href="../view_member_info.php?id=<?= $row['id'] ?>" class="btn btn-view btn-sm" data-bs-toggle="tooltip" data-bs-placement="top" title="View member" aria-label="View member">
                                     <i class="bi bi-eye"></i>
                                 </a>
                                 <button 
                                     class="btn btn-edit btn-sm editBtn"
+                                    data-bs-toggle="tooltip" data-bs-placement="top" title="Edit member" aria-label="Edit member"
+
                                     data-id="<?= $row['id'] ?>"
                                     data-firstname="<?= htmlspecialchars($first_name) ?>"
                                     data-middleinitial="<?= htmlspecialchars($middle_initial) ?>"
@@ -1300,9 +1400,10 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                                     data-agreement="<?= $row['agreement'] ?>"
                                     data-image="<?= htmlspecialchars($row['image']) ?>"
                                 ><i class="bi bi-pencil-square"></i></button>
-                                <button class="btn btn-warning btn-sm archive-btn text-white" data-id="<?= $row['id'] ?>">
+                                <button class="btn btn-warning btn-sm archive-btn text-white" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" data-bs-placement="top" title="Archive member" aria-label="Archive member">
                                     <i class="bi bi-archive"></i>
                                 </button>
+
                             </td>
                         </tr>
                     <?php endwhile; ?>
@@ -1606,7 +1707,41 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Initialize custom-styled Bootstrap tooltips
+const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+    new bootstrap.Tooltip(tooltipTriggerEl, {
+        trigger: 'hover focus',
+        boundary: 'window'
+    });
+});
+
+// Filter panel manual toggle (no Bootstrap dependency)
+const filterToggleBtn = document.getElementById('filterToggleBtn');
+const filterPanelBody = document.getElementById('filterPanelBody');
+const filterPanelLabel = document.getElementById('filterPanelLabel');
+const filterPanelIcon = document.getElementById('filterPanelIcon');
+if (filterToggleBtn && filterPanelBody && filterPanelLabel && filterPanelIcon) {
+    filterToggleBtn.addEventListener('click', () => {
+        const isHidden = filterPanelBody.classList.contains('d-none');
+        if (isHidden) {
+            filterPanelBody.classList.remove('d-none');
+            filterPanelLabel.textContent = 'Hide filters';
+            filterPanelIcon.classList.remove('bi-chevron-down');
+            filterPanelIcon.classList.add('bi-chevron-up');
+        } else {
+            filterPanelBody.classList.add('d-none');
+            filterPanelLabel.textContent = 'Show filters';
+            filterPanelIcon.classList.remove('bi-chevron-up');
+            filterPanelIcon.classList.add('bi-chevron-down');
+        }
+    });
+}
+
+
+
 // Fill and open Edit modal
+
 document.querySelectorAll('.editBtn').forEach(btn => {
     btn.addEventListener('click', () => {
         document.getElementById('edit_member_id').value = btn.dataset.id;
@@ -1713,8 +1848,11 @@ function updateBulkActions() {
     const bulkContainer = document.getElementById('bulkActionsContainer');
     const selectedCountBadge = document.getElementById('selectedCount');
     
+    if (!bulkContainer || !selectedCountBadge) return;
+
     if (count > 0) {
         bulkContainer.style.setProperty('display', 'flex', 'important');
+        bulkContainer.classList.add('bulk-visible');
         selectedCountBadge.textContent = `${count} selected`;
         selectedMembers = Array.from(checkboxes).map(cb => ({
             id: cb.value,
@@ -1722,9 +1860,27 @@ function updateBulkActions() {
         }));
     } else {
         bulkContainer.style.setProperty('display', 'none', 'important');
+        bulkContainer.classList.remove('bulk-visible');
         selectedMembers = [];
+        selectedCountBadge.textContent = '';
     }
 }
+
+// Ensure a clean initial state on page load (no preselected rows)
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAllCheckbox = document.getElementById('selectAll');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+
+    document.querySelectorAll('.member-checkbox').forEach(cb => {
+        cb.checked = false;
+        updateRowSelection(cb);
+    });
+
+    updateBulkActions();
+});
 
 // Client-side filters for attendance status & license
 (function() {

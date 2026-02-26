@@ -151,17 +151,25 @@ $initialPresent = count($existing);
         </div>
       </div>
 
-      <div class="row mb-3">
+      <div class="row mb-3 filters-row">
         <div class="col-md-6 mt-2 mt-md-0">
           <label class="form-label">Search Members</label>
           <input type="text" id="memberSearch" class="form-control" placeholder="Search by name or remarks...">
         </div>
         <div class="col-md-3 mt-2 mt-md-0">
-          <label class="form-label">Filter</label>
+          <label class="form-label">Status Filter</label>
           <select id="presentFilter" class="form-select">
             <option value="">-- All --</option>
             <option value="present">Present only</option>
             <option value="absent">Not present</option>
+          </select>
+        </div>
+        <div class="col-md-3 mt-2 mt-md-0">
+          <label class="form-label">Remarks/Time Filter</label>
+          <select id="extraFilter" class="form-select">
+            <option value="">-- All --</option>
+            <option value="with_remarks">With remarks</option>
+            <option value="with_time">With time in/out</option>
           </select>
         </div>
       </div>
@@ -221,16 +229,21 @@ $initialPresent = count($existing);
   let rows = [];
   let searchInput = null;
   let filterSelect = null;
+  let extraFilter = null;
+
 
   function applyFilters() {
     const term = (searchInput && searchInput.value ? searchInput.value : '').toLowerCase();
     const filterVal = filterSelect ? filterSelect.value : '';
+    const extraVal = extraFilter ? extraFilter.value : '';
     let presentCount = 0;
 
     rows.forEach(row => {
       const cb = row.querySelector('.present-checkbox');
       const nameCell = row.querySelector('.member-name');
       const remarks = row.querySelector('.remarks');
+      const timeIn = row.querySelector('.time-in');
+      const timeOut = row.querySelector('.time-out');
       if (!cb || !nameCell) return;
 
       const text = (nameCell.textContent + ' ' + (remarks ? remarks.value : '')).toLowerCase();
@@ -240,9 +253,19 @@ $initialPresent = count($existing);
       if (filterVal === 'present' && !cb.checked) visible = false;
       if (filterVal === 'absent' && cb.checked) visible = false;
 
+      if (extraVal === 'with_remarks') {
+        const hasRemarks = remarks && remarks.value.trim() !== '';
+        if (!hasRemarks) visible = false;
+      }
+      if (extraVal === 'with_time') {
+        const hasTime = (timeIn && timeIn.value) || (timeOut && timeOut.value);
+        if (!hasTime) visible = false;
+      }
+
       row.style.display = visible ? '' : 'none';
       if (cb.checked) presentCount++;
     });
+
 
     const label = document.getElementById('presentCount');
     if (label) label.textContent = presentCount;
@@ -252,6 +275,7 @@ $initialPresent = count($existing);
     rows = Array.from(document.querySelectorAll('table tbody tr'));
     searchInput = document.getElementById('memberSearch');
     filterSelect = document.getElementById('presentFilter');
+    extraFilter = document.getElementById('extraFilter');
 
     if (searchInput) {
       searchInput.addEventListener('input', applyFilters);
@@ -259,6 +283,10 @@ $initialPresent = count($existing);
     if (filterSelect) {
       filterSelect.addEventListener('change', applyFilters);
     }
+    if (extraFilter) {
+      extraFilter.addEventListener('change', applyFilters);
+    }
+
 
     rows.forEach(row => {
       const cb = row.querySelector('.present-checkbox');

@@ -46,14 +46,27 @@ if ($selectedEventId > 0) {
     }
     $dateStmt->close();
 
+    // If there are no attendance records yet, still expose the event date as a selectable option
+    if (empty($dateOptions) && !empty($eventDetails['date'])) {
+        $dateOptions[] = $eventDetails['date'];
+    }
+
+    // Decide which attendance date to use for this event
     if (empty($selectedDate)) {
+        // No date requested in URL: use first attendance date if available (includes event date fallback)
         if (!empty($dateOptions)) {
             $selectedDate = $dateOptions[0];
-        } elseif (!empty($eventDetails['date'])) {
-            $selectedDate = $eventDetails['date'];
+        }
+    } elseif (!in_array($selectedDate, $dateOptions, true)) {
+        // A date was requested (from previous event), but it doesn't belong to this event
+        if (!empty($dateOptions)) {
+            $selectedDate = $dateOptions[0];
+        } else {
+            $selectedDate = '';
         }
     }
 }
+
 
 // If user requested CSV export, handle it before any HTML output
 if ($selectedEventId > 0 && !empty($selectedDate) && isset($_GET['export']) && $_GET['export'] === 'csv') {
@@ -183,7 +196,8 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
     <form method="GET" class="filter-row row g-3 align-items-end d-print-none">
       <div class="col-md-5">
         <label class="form-label">Event</label>
-        <select name="event_id" class="form-select" required>
+        <input type="text" id="eventSearch" class="form-control mb-2" placeholder="Search event by name or date...">
+        <select name="event_id" id="eventSelect" class="form-select" required>
           <option value="">-- Select Event --</option>
           <?php foreach ($events as $ev): ?>
             <option value="<?= (int)$ev['id'] ?>" <?= $selectedEventId === (int)$ev['id'] ? 'selected' : '' ?>>
@@ -195,9 +209,6 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
       <div class="col-md-3">
         <label class="form-label">Attendance Date</label>
         <select name="attendance_date" class="form-select" required>
-          <?php if (!empty($selectedDate) && !in_array($selectedDate, $dateOptions, true)): ?>
-            <option value="<?= htmlspecialchars($selectedDate) ?>" selected><?= date('M d, Y', strtotime($selectedDate)) ?> (Selected)</option>
-          <?php endif; ?>
           <?php foreach ($dateOptions as $d): ?>
             <option value="<?= htmlspecialchars($d) ?>" <?= $d === $selectedDate ? 'selected' : '' ?>>
               <?= date('M d, Y', strtotime($d)) ?>
@@ -212,6 +223,9 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
         <?php if ($selectedEventId > 0 && !empty($selectedDate)): ?>
         <a href="attendance_reports.php?event_id=<?= (int)$selectedEventId ?>&attendance_date=<?= urlencode($selectedDate) ?>&export=csv" class="btn btn-outline-success">
           <i class="bi bi-filetype-csv me-1"></i> Export CSV
+        </a>
+        <a href="export_attendance_pdf.php?event_id=<?= (int)$selectedEventId ?>&attendance_date=<?= urlencode($selectedDate) ?>" class="btn btn-outline-danger">
+          <i class="bi bi-file-earmark-pdf me-1"></i> Export PDF
         </a>
         <button type="button" class="btn btn-outline-secondary" onclick="window.print();">
           <i class="bi bi-printer me-1"></i> Print
@@ -246,26 +260,49 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
             <div class="col-4">
               <div class="summary-card text-center">
                 <div class="summary-label">Present</div>
-                <div class="summary-value"><?= (int)$presentCount ?></div>
+                <div class="summary-value" id="summaryPresent"><?= (int)$presentCount ?></div>
               </div>
             </div>
             <div class="col-4">
               <div class="summary-card text-center">
                 <div class="summary-label">Absent</div>
-                <div class="summary-value"><?= (int)$absentCount ?></div>
+                <div class="summary-value" id="summaryAbsent"><?= (int)$absentCount ?></div>
               </div>
             </div>
             <div class="col-4">
               <div class="summary-card text-center">
                 <div class="summary-label">Attendance</div>
-                <div class="summary-value"><?= $attendancePct ?>%</div>
+                <div class="summary-value" id="summaryAttendance"><?= $attendancePct ?>%</div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
+      <!-- Table-level filters -->
       <?php if (!empty($rows)): ?>
+      <div class="row g-2 align-items-end d-print-none mb-2">
+        <div class="col-md-6">
+          <label class="form-label">Search Member / Remarks</label>
+          <input type="text" id="reportSearch" class="form-control" placeholder="Search by member name or remarks...">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Status Filter</label>
+          <select id="reportStatusFilter" class="form-select">
+            <option value="">All statuses</option>
+            <option value="present">Present only</option>
+            <option value="absent">Absent only</option>
+          </select>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">Remarks Filter</label>
+          <select id="reportRemarksFilter" class="form-select">
+            <option value="">All</option>
+            <option value="with_remarks">With remarks only</option>
+          </select>
+        </div>
+      </div>
+
         <div class="table-responsive mt-3">
           <table class="table align-middle">
             <thead>
@@ -312,5 +349,123 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Event dropdown search filter + auto-load on change
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    const eventSelect = document.getElementById('eventSelect');
+    const eventSearch = document.getElementById('eventSearch');
+    const dateSelect  = document.querySelector('select[name="attendance_date"]');
+    const filterForm  = eventSelect ? eventSelect.closest('form') : null;
+
+    if (!eventSelect || !eventSearch) return;
+
+    const originalOptions = Array.from(eventSelect.options);
+
+    // Type to filter events in the dropdown
+    eventSearch.addEventListener('input', function() {
+      const term = this.value.toLowerCase();
+      eventSelect.innerHTML = '';
+      originalOptions.forEach(function(opt) {
+        if (!term || opt.text.toLowerCase().includes(term)) {
+          eventSelect.appendChild(opt);
+        }
+      });
+    });
+
+    // When changing event, reset date and auto-submit to load new attendance data
+    eventSelect.addEventListener('change', function() {
+      if (dateSelect) {
+        dateSelect.selectedIndex = 0; // let the server choose appropriate default date
+      }
+      if (filterForm) {
+        filterForm.submit();
+      }
+    });
+
+    // When changing attendance date, auto-submit as well
+    if (dateSelect && filterForm) {
+      dateSelect.addEventListener('change', function() {
+        filterForm.submit();
+      });
+    }
+  });
+})();
+
+// Report table filters + summary sync
+(function() {
+  document.addEventListener('DOMContentLoaded', function() {
+    const table = document.querySelector('.card-report table');
+    if (!table) return;
+
+
+    const rows = Array.from(table.querySelectorAll('tbody tr'));
+    const searchInput = document.getElementById('reportSearch');
+    const statusFilter = document.getElementById('reportStatusFilter');
+    const remarksFilter = document.getElementById('reportRemarksFilter');
+
+    const summaryPresentEl = document.getElementById('summaryPresent');
+    const summaryAbsentEl = document.getElementById('summaryAbsent');
+    const summaryAttendanceEl = document.getElementById('summaryAttendance');
+
+    function applyFilters() {
+      const term = (searchInput && searchInput.value ? searchInput.value : '').toLowerCase();
+      const statusVal = statusFilter ? statusFilter.value : '';
+      const remarksVal = remarksFilter ? remarksFilter.value : '';
+
+      let presentVisible = 0;
+      let absentVisible = 0;
+
+      rows.forEach(function(row) {
+        const nameCell = row.querySelector('td:nth-child(2)');
+        const statusPill = row.querySelector('.status-pill');
+        const remarksCell = row.querySelector('td:last-child');
+
+        if (!nameCell || !statusPill) return;
+
+        const nameText = nameCell.textContent.toLowerCase();
+        const remarksText = (remarksCell ? remarksCell.textContent : '').toLowerCase();
+        const statusText = statusPill.classList.contains('status-present') ? 'present' : 'absent';
+
+        let visible = true;
+
+        if (term && !(nameText.includes(term) || remarksText.includes(term))) {
+          visible = false;
+        }
+
+        if (statusVal && statusVal !== statusText) {
+          visible = false;
+        }
+
+        if (remarksVal === 'with_remarks') {
+          if (!remarksText.trim()) visible = false;
+        }
+
+        row.style.display = visible ? '' : 'none';
+
+        if (visible) {
+          if (statusText === 'present') presentVisible++;
+          else absentVisible++;
+        }
+      });
+
+      const totalVisible = presentVisible + absentVisible;
+      if (summaryPresentEl) summaryPresentEl.textContent = presentVisible;
+      if (summaryAbsentEl) summaryAbsentEl.textContent = absentVisible;
+      if (summaryAttendanceEl) {
+        summaryAttendanceEl.textContent = totalVisible > 0
+          ? ((presentVisible / totalVisible) * 100).toFixed(1) + '%'
+          : '0%';
+      }
+    }
+
+    if (searchInput) searchInput.addEventListener('input', applyFilters);
+    if (statusFilter) statusFilter.addEventListener('change', applyFilters);
+    if (remarksFilter) remarksFilter.addEventListener('change', applyFilters);
+
+    applyFilters();
+  });
+})();
+</script>
 </body>
 </html>
