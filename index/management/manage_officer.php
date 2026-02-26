@@ -16,7 +16,7 @@ if (isset($_POST['ajax_action'])) {
     $officer_id = isset($_POST['officer_id']) ? intval($_POST['officer_id']) : 0;
     
     // Validate officer_id only for actions that actually use it
-    if (in_array($action, ['approve', 'reject', 'archive', 'demote'], true) && $officer_id <= 0) {
+    if (in_array($action, ['approve', 'reject', 'archive', 'demote', 'set_transparency_role'], true) && $officer_id <= 0) {
         $response['message'] = 'Invalid officer ID.';
         echo json_encode($response);
         exit;
@@ -24,6 +24,79 @@ if (isset($_POST['ajax_action'])) {
     
     try {
         switch($action) {
+            case 'set_transparency_role':
+                $transRole = strtolower(trim((string)($_POST['transparency_role'] ?? '')));
+                $allowed = ['', 'treasurer', 'secretary', 'both'];
+                if (!in_array($transRole, $allowed, true)) {
+                    $response['message'] = 'Invalid transparency role.';
+                    break;
+                }
+
+                // Only allow assigning transparency access to APPROVED officer/admin accounts
+                $checkStmt = $conn->prepare("SELECT status, role FROM users WHERE id = ? AND role IN ('officer','admin') LIMIT 1");
+                $checkStmt->bind_param('i', $officer_id);
+                $checkStmt->execute();
+                $checkRes = $checkStmt->get_result();
+                $checkRow = $checkRes ? $checkRes->fetch_assoc() : null;
+                $checkStmt->close();
+
+                if (!$checkRow) {
+                    $response['message'] = 'Officer not found.';
+                    break;
+                }
+
+                $status = strtolower(trim((string)($checkRow['status'] ?? '')));
+                if ($status !== 'approved') {
+                    $response['message'] = 'Cannot set Transparency access while account is not approved.';
+                    break;
+                }
+
+                // Ensure column exists
+                $col = $conn->query("SHOW COLUMNS FROM users LIKE 'transparency_role'");
+                if (!$col || $col->num_rows === 0) {
+                    $response['message'] = 'Missing users.transparency_role column. Please run the migration tool first.';
+                    break;
+                }
+
+                // Enforce uniqueness: only 1 Treasurer and only 1 Secretary (approved accounts)
+                if ($transRole !== '') {
+                    $confStmt = null;
+                    if ($transRole === 'treasurer') {
+                        $confStmt = $conn->prepare("SELECT id, username, transparency_role FROM users WHERE id <> ? AND role IN ('officer','admin') AND status='approved' AND transparency_role IN ('treasurer','both') LIMIT 1");
+                    } elseif ($transRole === 'secretary') {
+                        $confStmt = $conn->prepare("SELECT id, username, transparency_role FROM users WHERE id <> ? AND role IN ('officer','admin') AND status='approved' AND transparency_role IN ('secretary','both') LIMIT 1");
+                    } elseif ($transRole === 'both') {
+                        $confStmt = $conn->prepare("SELECT id, username, transparency_role FROM users WHERE id <> ? AND role IN ('officer','admin') AND status='approved' AND transparency_role IN ('treasurer','secretary','both') LIMIT 1");
+                    }
+
+                    if ($confStmt) {
+                        $confStmt->bind_param('i', $officer_id);
+                        $confStmt->execute();
+                        $confRes = $confStmt->get_result();
+                        $confRow = $confRes ? $confRes->fetch_assoc() : null;
+                        $confStmt->close();
+
+                        if ($confRow) {
+                            $who = (string)($confRow['username'] ?? 'another account');
+                            $what = strtolower(trim((string)($confRow['transparency_role'] ?? '')));
+                            $response['message'] = "Cannot set this role. Already assigned to {$who} ({$what}). Set the other account to Not set first.";
+                            break;
+                        }
+                    }
+                }
+
+                $value = ($transRole === '') ? null : $transRole;
+                $stmt = $conn->prepare("UPDATE users SET transparency_role = ? WHERE id = ?");
+                $stmt->bind_param('si', $value, $officer_id);
+                if ($stmt->execute() && $stmt->affected_rows >= 0) {
+                    $response['success'] = true;
+                    $response['message'] = 'Transparency role updated.';
+                } else {
+                    $response['message'] = 'Failed to update transparency role.';
+                }
+                $stmt->close();
+                break;
+
             case 'approve':
                 // Check if officer exists
                 $stmt = $conn->prepare("SELECT status FROM users WHERE id=? AND role IN ('officer', 'admin')");
@@ -170,6 +243,43 @@ if (isset($_POST['ajax_action'])) {
 
 // Fetch all officers (including those promoted to admin)
 $result = $conn->query("SELECT * FROM users WHERE role IN ('officer', 'admin') ORDER BY created_at DESC");
+
+// Check if transparency_role column exists (for UI)
+$hasTransparencyRoleCol = false;
+try {
+    $colRes = $conn->query("SHOW COLUMNS FROM users LIKE 'transparency_role'");
+    $hasTransparencyRoleCol = ($colRes && $colRes->num_rows > 0);
+} catch (Throwable) {
+    $hasTransparencyRoleCol = false;
+}
+
+// Enforce single Treasurer / single Secretary assignments (approved accounts only)
+$currentTreasurerId = 0;
+$currentTreasurerName = '';
+$currentSecretaryId = 0;
+$currentSecretaryName = '';
+if ($hasTransparencyRoleCol) {
+    try {
+        $res = $conn->query("SELECT id, username, transparency_role FROM users WHERE role IN ('officer','admin') AND status='approved' AND transparency_role IN ('treasurer','secretary','both')");
+        while ($r = $res ? $res->fetch_assoc() : null) {
+            if (!$r) break;
+            $rid = (int)($r['id'] ?? 0);
+            $rname = (string)($r['username'] ?? '');
+            $rrole = strtolower(trim((string)($r['transparency_role'] ?? '')));
+
+            if (in_array($rrole, ['treasurer','both'], true) && $currentTreasurerId === 0) {
+                $currentTreasurerId = $rid;
+                $currentTreasurerName = $rname;
+            }
+            if (in_array($rrole, ['secretary','both'], true) && $currentSecretaryId === 0) {
+                $currentSecretaryId = $rid;
+                $currentSecretaryName = $rname;
+            }
+        }
+    } catch (Throwable) {
+        // Keep defaults
+    }
+}
 
 // Fetch approved officers for Add Admin dropdown (excluding already admins)
 $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='officer' AND status='approved' AND is_admin=0 ORDER BY username ASC");
@@ -684,6 +794,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                         <th>Status</th>
                         <th>Role</th>
                         <th>Created At</th>
+                        <th>Transparency</th>
                         <th>Action</th>
                     </tr>
                 </thead>
@@ -712,6 +823,38 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                                     <?php endif; ?>
                                 </td>
                                 <td style="color: #000;"><?= date('M d, Y g:i A', strtotime($row['created_at'])) ?></td>
+                                <td>
+                                    <?php if ($hasTransparencyRoleCol): ?>
+                                        <?php
+                                            $tr = strtolower(trim((string)($row['transparency_role'] ?? '')));
+                                            $isApproved = (strtolower(trim((string)($row['status'] ?? ''))) === 'approved');
+                                        ?>
+                                        <?php
+                                            $rowId = (int)($row['id'] ?? 0);
+                                            $treasurerTakenByOther = ($currentTreasurerId > 0 && $currentTreasurerId !== $rowId);
+                                            $secretaryTakenByOther = ($currentSecretaryId > 0 && $currentSecretaryId !== $rowId);
+                                            $isRowHoldingTreasurer = in_array($tr, ['treasurer','both'], true);
+                                            $isRowHoldingSecretary = in_array($tr, ['secretary','both'], true);
+
+                                            $disableTreasurerOpt = ($treasurerTakenByOther && !$isRowHoldingTreasurer);
+                                            $disableSecretaryOpt = ($secretaryTakenByOther && !$isRowHoldingSecretary);
+                                            $disableBothOpt = (($treasurerTakenByOther && !$isRowHoldingTreasurer) || ($secretaryTakenByOther && !$isRowHoldingSecretary));
+                                        ?>
+                                        <select class="form-select form-select-sm transRoleSelect" style="min-width: 140px;" data-id="<?= $row['id'] ?>" <?= $isApproved ? '' : 'disabled' ?>>
+                                            <option value="" <?= $tr === '' ? 'selected' : '' ?>>Not set</option>
+                                            <option value="treasurer" <?= $tr === 'treasurer' ? 'selected' : '' ?> <?= $disableTreasurerOpt ? 'disabled' : '' ?>>Treasurer</option>
+                                            <option value="secretary" <?= $tr === 'secretary' ? 'selected' : '' ?> <?= $disableSecretaryOpt ? 'disabled' : '' ?>>Secretary</option>
+                                            <option value="both" <?= $tr === 'both' ? 'selected' : '' ?> <?= $disableBothOpt ? 'disabled' : '' ?>>Both</option>
+                                        </select>
+                                        <?php if ($isApproved): ?>
+                                            <small class="text-muted d-block" style="font-size: 11px;">Controls Transparency access</small>
+                                        <?php else: ?>
+                                            <small class="text-danger d-block" style="font-size: 11px;">Approve account first</small>
+                                        <?php endif; ?>
+                                    <?php else: ?>
+                                        <span class="text-muted">Run migration</span>
+                                    <?php endif; ?>
+                                </td>
                                 <td>
                                     <div class="action-btn-group">
                                         <?php if ($row['status'] == 'pending'): ?>
@@ -745,7 +888,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
-                        <tr><td colspan="7" class="text-center text-muted py-4"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No officers found.</td></tr>
+                        <tr><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No officers found.</td></tr>
                     <?php endif; ?>
                 </tbody>
             </table>
@@ -963,6 +1106,99 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
     });
 });
 
+// Transparency role change handler (confirm + revert on cancel/fail)
+document.querySelectorAll('.transRoleSelect').forEach(sel => {
+    // Track current value so we can revert when user cancels
+    sel.dataset.prev = sel.value;
+
+    sel.addEventListener('change', function() {
+        const id = this.dataset.id;
+        const newValue = this.value;
+        const oldValue = this.dataset.prev ?? '';
+
+        const row = this.closest('tr');
+        const status = (row?.dataset?.status || '').toLowerCase();
+        const username = row ? (row.querySelector('td:nth-child(2)')?.textContent || 'this user') : 'this user';
+
+        // Extra client-side guard: don’t allow changes for non-approved
+        if (status && status !== 'approved') {
+            Swal.fire({
+                icon: 'info',
+                title: 'Not allowed yet',
+                text: 'Approve the account first before setting Transparency access.',
+                confirmButtonColor: '#667eea'
+            });
+            this.value = oldValue;
+            return;
+        }
+
+        const labelMap = {
+            '': 'Not set',
+            'treasurer': 'Treasurer',
+            'secretary': 'Secretary',
+            'both': 'Both'
+        };
+
+        Swal.fire({
+            title: 'Apply Transparency Access?',
+            html: `Set <strong>${username}</strong> to <strong>${labelMap[newValue] ?? newValue}</strong>?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#667eea',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Yes, apply',
+            cancelButtonText: 'Cancel'
+        }).then(result => {
+            if (!result.isConfirmed) {
+                this.value = oldValue;
+                return;
+            }
+
+            const formData = new FormData();
+            formData.append('ajax_action', 'set_transparency_role');
+            formData.append('officer_id', id);
+            formData.append('transparency_role', newValue);
+
+            fetch('manage_officer.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    this.dataset.prev = newValue;
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'success',
+                        title: data.message,
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true
+                    });
+                } else {
+                    this.value = oldValue;
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Failed',
+                        text: data.message,
+                        confirmButtonColor: '#667eea'
+                    });
+                }
+            })
+            .catch(() => {
+                this.value = oldValue;
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: 'An error occurred. Please try again.',
+                    confirmButtonColor: '#667eea'
+                });
+            });
+        });
+    });
+});
+
 // Live Search functionality
 document.getElementById('searchInput').addEventListener('keyup', function() {
     filterAndPaginate();
@@ -1000,7 +1236,7 @@ function filterAndPaginate() {
     let filteredRows = [];
     
     rows.forEach(row => {
-        if (row.cells.length < 7) return; // Skip empty state row
+        if (row.cells.length < 8) return; // Skip empty state row
         
         const text = row.textContent.toLowerCase();
         const status = row.dataset.status ? row.dataset.status.toLowerCase() : '';

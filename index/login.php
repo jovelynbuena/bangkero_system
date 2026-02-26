@@ -9,7 +9,20 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $remember = isset($_POST['remember']);
 
     // Fetch user including status and name
-    $stmt = $conn->prepare("SELECT id, username, password_hash, role, status, first_name, last_name FROM users WHERE username = ?");
+    $hasTransparencyRole = false;
+    try {
+        $colRes = $conn->query("SHOW COLUMNS FROM users LIKE 'transparency_role'");
+        $hasTransparencyRole = ($colRes && $colRes->num_rows > 0);
+    } catch (Throwable) {
+        $hasTransparencyRole = false;
+    }
+
+    $fields = "id, username, password_hash, role, status, first_name, last_name";
+    if ($hasTransparencyRole) {
+        $fields .= ", transparency_role";
+    }
+
+    $stmt = $conn->prepare("SELECT {$fields} FROM users WHERE username = ?");
     if (!$stmt) {
         die("Query preparation failed: " . $conn->error);
     }
@@ -43,6 +56,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $_SESSION["user_id"] = $row["id"];
             $_SESSION["username"] = $row["username"];
             $_SESSION["role"] = $row["role"];
+            $_SESSION["transparency_role"] = strtolower(trim((string)($row["transparency_role"] ?? '')));
             
             // ✅ Store first name and last name in session
             $_SESSION["first_name"] = $row["first_name"];
