@@ -1965,6 +1965,16 @@ setTimeout(() => {
     });
 }, 2000);
 <?php endif; ?>
+
+// Access message for Transparency permissions
+<?php if (($_GET['error'] ?? '') === 'transparency_access'): ?>
+Swal.fire({
+    icon: 'error',
+    title: 'Access denied',
+    text: 'Wala kang permission sa Transparency page na iyon. (Treasurer: Donations, Secretary: Programs)',
+    confirmButtonColor: '#667eea'
+});
+<?php endif; ?>
 </script>
 
 </body>

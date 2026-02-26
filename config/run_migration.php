@@ -103,6 +103,43 @@ if ($result && $result->num_rows > 0) {
 }
 echo "</div>";
 
+// ==================== USERS TRANSPARENCY ROLE MIGRATION ====================
+echo "<div class='section'>";
+echo "<h2>🔐 Transparency Permissions (Users)</h2>";
+
+try {
+    $checkCol = $conn->query("SHOW COLUMNS FROM users LIKE 'transparency_role'");
+    if ($checkCol && $checkCol->num_rows > 0) {
+        echo "<div class='info'>✓ users.transparency_role already exists.</div>";
+    } else {
+        echo "<div class='info'>Adding users.transparency_role...</div>";
+        if ($conn->query("ALTER TABLE `users` ADD COLUMN `transparency_role` VARCHAR(20) DEFAULT NULL AFTER `role`") === TRUE) {
+            echo "<div class='success'>✓ Added column <code>transparency_role</code> to users</div>";
+        } else {
+            echo "<div class='error'>✗ Failed to add users.transparency_role: " . $conn->error . "</div>";
+            $allSuccess = false;
+        }
+    }
+
+    // Optional: keep archive schema aligned
+    $checkArchive = $conn->query("SHOW TABLES LIKE 'users_archive'");
+    if ($checkArchive && $checkArchive->num_rows > 0) {
+        $checkCol2 = $conn->query("SHOW COLUMNS FROM users_archive LIKE 'transparency_role'");
+        if ($checkCol2 && $checkCol2->num_rows > 0) {
+            echo "<div class='info'>✓ users_archive.transparency_role already exists.</div>";
+        } else {
+            // Add only if table has a suitable layout (ignore failures)
+            $conn->query("ALTER TABLE `users_archive` ADD COLUMN `transparency_role` VARCHAR(20) DEFAULT NULL");
+            echo "<div class='info'>✓ Attempted to align users_archive schema (optional).</div>";
+        }
+    }
+} catch (Exception $e) {
+    echo "<div class='warning'>⚠ Could not apply transparency role migration: " . htmlspecialchars($e->getMessage()) . "</div>";
+    $allSuccess = false;
+}
+
+echo "</div>";
+
 // ==================== MEMBER ARCHIVE TABLE MIGRATION ====================
 echo "<div class='section'>";
 echo "<h2>🗄️ Member Archive Table Migration</h2>";

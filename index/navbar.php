@@ -10,6 +10,64 @@ include(__DIR__ . "/../config/db_connect.php"); // DB connection
 $firstName = $_SESSION['first_name'] ?? $_SESSION['fullname'] ?? $_SESSION['username'] ?? 'User';
 $role = $_SESSION['role'] ?? 'guest';
 
+// Simple per-user transparency flag (preferred)
+$transRole = strtolower(trim((string)($_SESSION['transparency_role'] ?? '')));
+
+// Detect if users.transparency_role exists; if it exists we should NOT fallback to officer position
+$hasTransparencyRoleCol = false;
+try {
+    $colRes = $conn->query("SHOW COLUMNS FROM users LIKE 'transparency_role'");
+    $hasTransparencyRoleCol = ($colRes && $colRes->num_rows > 0);
+} catch (Throwable) {
+    $hasTransparencyRoleCol = false;
+}
+
+// Officer position fallback (ONLY for older DBs where transparency_role column doesn't exist)
+$officerPosition = '';
+try {
+    if (!$hasTransparencyRoleCol && !$transRole && strtolower($role) === 'officer' && !empty($_SESSION['user_id'])) {
+        $uid = (int)$_SESSION['user_id'];
+        $stmt = $conn->prepare("SELECT member_id FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param('i', $uid);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        $stmt->close();
+
+        $memberId = (int)($row['member_id'] ?? 0);
+        if ($memberId > 0) {
+            $today = date('Y-m-d');
+            $stmt = $conn->prepare("SELECT COALESCE(r.role_name, NULLIF(o.position,'')) AS position
+                FROM officers o
+                LEFT JOIN officer_roles r ON r.id = o.role_id
+                WHERE o.member_id = ?
+                ORDER BY (? BETWEEN o.term_start AND o.term_end) DESC, o.term_end DESC, o.id DESC
+                LIMIT 1");
+            $stmt->bind_param('is', $memberId, $today);
+            $stmt->execute();
+            $res = $stmt->get_result();
+            $posRow = $res ? $res->fetch_assoc() : null;
+            $stmt->close();
+
+            $officerPosition = strtolower(trim((string)($posRow['position'] ?? '')));
+        }
+    }
+} catch (Throwable) {
+    $officerPosition = '';
+}
+
+$canTransCampaigns = in_array(strtolower($role), ['admin'], true)
+    || (strtolower($role) === 'officer' && in_array($transRole, ['treasurer','secretary','both'], true))
+    || (strtolower($role) === 'officer' && !$transRole && in_array($officerPosition, ['treasurer','secretary'], true));
+
+$canTransDonations = in_array(strtolower($role), ['admin'], true)
+    || (strtolower($role) === 'officer' && in_array($transRole, ['treasurer','both'], true))
+    || (strtolower($role) === 'officer' && !$transRole && $officerPosition === 'treasurer');
+
+$canTransPrograms  = in_array(strtolower($role), ['admin'], true)
+    || (strtolower($role) === 'officer' && in_array($transRole, ['secretary','both'], true))
+    || (strtolower($role) === 'officer' && !$transRole && $officerPosition === 'secretary');
+
 // Format role for display (capitalize first letter)
 $roleDisplay = match(strtolower($role)) {
     'admin' => 'Administrator',
@@ -623,20 +681,26 @@ body.sidebar-open {
            <i class="bi bi-envelope"></i> Contact Messages
         </a>
 
+        <?php if ($canTransCampaigns): ?>
         <a href="<?= BASE_URL; ?>management/transparency_campaigns.php"
            class="<?= ($current_page == 'transparency_campaigns.php') ? 'active' : ''; ?>">
            <i class="bi bi-bullseye"></i> Transparency Campaigns
         </a>
+        <?php endif; ?>
 
+        <?php if ($canTransDonations): ?>
         <a href="<?= BASE_URL; ?>management/transparency_donations.php"
            class="<?= ($current_page == 'transparency_donations.php') ? 'active' : ''; ?>">
            <i class="bi bi-cash-coin"></i> Transparency Donations
         </a>
+        <?php endif; ?>
 
+        <?php if ($canTransPrograms): ?>
         <a href="<?= BASE_URL; ?>management/transparency_programs.php"
            class="<?= ($current_page == 'transparency_programs.php') ? 'active' : ''; ?>">
            <i class="bi bi-diagram-3"></i> Transparency Programs
         </a>
+        <?php endif; ?>
 
     </div>
     <?php endif; ?>

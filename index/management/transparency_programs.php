@@ -10,8 +10,61 @@ if (empty($_SESSION['username'])) {
 }
 
 $role = strtolower($_SESSION['role'] ?? 'guest');
-if (!in_array($role, ['admin', 'officer'])) {
-    header('Location: ../login.php');
+$isAdmin = ($role === 'admin');
+
+function currentOfficerPosition(mysqli $conn): string {
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    if ($userId <= 0) return '';
+
+    try {
+        $stmt = $conn->prepare("SELECT member_id FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $row = $res ? $res->fetch_assoc() : null;
+        $stmt->close();
+
+        $memberId = (int)($row['member_id'] ?? 0);
+        if ($memberId <= 0) return '';
+
+        $today = date('Y-m-d');
+        $stmt = $conn->prepare("SELECT COALESCE(r.role_name, NULLIF(o.position,'')) AS position
+            FROM officers o
+            LEFT JOIN officer_roles r ON r.id = o.role_id
+            WHERE o.member_id = ?
+            ORDER BY (? BETWEEN o.term_start AND o.term_end) DESC, o.term_end DESC, o.id DESC
+            LIMIT 1");
+        $stmt->bind_param('is', $memberId, $today);
+        $stmt->execute();
+        $res = $stmt->get_result();
+        $posRow = $res ? $res->fetch_assoc() : null;
+        $stmt->close();
+
+        return strtolower(trim((string)($posRow['position'] ?? '')));
+    } catch (Throwable) {
+        return '';
+    }
+}
+
+$transRole = strtolower(trim((string)($_SESSION['transparency_role'] ?? '')));
+
+// If users.transparency_role exists, we require it (no fallback). If it doesn't exist, fallback to officer position.
+$hasTransparencyRoleCol = false;
+try {
+    $colRes = $conn->query("SHOW COLUMNS FROM users LIKE 'transparency_role'");
+    $hasTransparencyRoleCol = ($colRes && $colRes->num_rows > 0);
+} catch (Throwable) {
+    $hasTransparencyRoleCol = false;
+}
+
+$officerPosition = $hasTransparencyRoleCol ? '' : currentOfficerPosition($conn);
+
+$canAccess = $isAdmin
+    || ($role === 'officer' && in_array($transRole, ['secretary','both'], true))
+    || ($role === 'officer' && !$hasTransparencyRoleCol && $transRole === '' && $officerPosition === 'secretary');
+
+if (!$canAccess) {
+    header('Location: ../admin.php?error=transparency_access');
     exit;
 }
 

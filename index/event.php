@@ -9,6 +9,25 @@ include('../config/db_connect.php');
 
 $flash = ['type'=>'','message'=>''];
 
+function event_poster_basename($value): string {
+    $v = trim((string)$value);
+    if ($v === '') return '';
+    $v = str_replace('\\', '/', $v);
+    return basename($v);
+}
+
+function upload_error_message(int $code): string {
+    // https://www.php.net/manual/en/features.file-upload.errors.php
+    return match ($code) {
+        UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Poster upload failed: file is too large.',
+        UPLOAD_ERR_PARTIAL => 'Poster upload failed: file was only partially uploaded.',
+        UPLOAD_ERR_NO_TMP_DIR => 'Poster upload failed: missing temporary folder.',
+        UPLOAD_ERR_CANT_WRITE => 'Poster upload failed: failed to write file to disk.',
+        UPLOAD_ERR_EXTENSION => 'Poster upload failed: upload stopped by a PHP extension.',
+        default => 'Poster upload failed. Please try again.'
+    };
+}
+
 // Handle Add/Edit POST
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
   $event_id = isset($_POST['event_id']) && $_POST['event_id'] !== '' ? intval($_POST['event_id']) : null;
@@ -19,21 +38,42 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $location = trim($_POST['event_location'] ?? '');
     $description = trim($_POST['event_description'] ?? '');
     $uploadedPoster = '';
+    $oldPosterToDelete = '';
 
     // Upload Poster
     if (isset($_FILES['event_poster']) && $_FILES['event_poster']['error'] !== UPLOAD_ERR_NO_FILE) {
         $file = $_FILES['event_poster'];
-        if ($file['error'] === UPLOAD_ERR_OK) {
+
+        if ($file['error'] !== UPLOAD_ERR_OK) {
+            $flash = ['type'=>'error','message'=>upload_error_message((int)$file['error'])];
+        } else {
             $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
             $allowed = ['jpg','jpeg','png','gif','webp'];
             if (!in_array(strtolower($ext), $allowed)) {
-                $flash = ['type'=>'error','message'=>'Invalid poster file type.'];
+                $flash = ['type'=>'error','message'=>'Invalid poster file type. Please upload JPG/PNG/GIF/WebP.'];
             } else {
                 $targetDir = __DIR__ . '/../uploads/';
-                if (!is_dir($targetDir)) mkdir($targetDir,0777,true);
-                $uploadedPoster = time().'_'.preg_replace('/[^A-Za-z0-9_\-\.]/','_',$file['name']);
-                if (!move_uploaded_file($file['tmp_name'],$targetDir.$uploadedPoster)) {
-                    $flash = ['type'=>'error','message'=>'Failed to upload poster.'];
+                if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+
+                $safeName = preg_replace('/[^A-Za-z0-9_\-\.]/','_',$file['name']);
+                try {
+                    $rand = bin2hex(random_bytes(4));
+                } catch (Throwable $e) {
+                    $rand = (string)mt_rand(1000, 9999);
+                }
+                $uploadedPoster = time().'_'.$rand.'_'.$safeName;
+
+                if (!move_uploaded_file($file['tmp_name'], $targetDir.$uploadedPoster)) {
+                    $flash = ['type'=>'error','message'=>'Failed to upload poster. Please check the uploads folder permissions.'];
+                } else if ($event_id) {
+                    // Queue old poster cleanup (delete after successful DB update)
+                    $res = $conn->query("SELECT event_poster FROM events WHERE id=".(int)$event_id." LIMIT 1");
+                    if ($res && ($r = $res->fetch_assoc())) {
+                        $old = event_poster_basename($r['event_poster'] ?? '');
+                        if ($old && $old !== $uploadedPoster && $old !== 'default.jpg') {
+                            $oldPosterToDelete = $targetDir.$old;
+                        }
+                    }
                 }
             }
         }
@@ -42,7 +82,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     // Validate required fields
     if (!$event_name || !$date || !$time || !$location || !$description) {
         if ($flash['type'] !== 'error') $flash = ['type'=>'error','message'=>'Fill all required fields.'];
-    } else {
+    } else if ($flash['type'] !== 'error') {
         if ($event_id) {
             // ✅ Update existing event
             if ($uploadedPoster) {
@@ -54,6 +94,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
             if ($stmt->execute()) {
                 $stmt->close();
+
+                if ($oldPosterToDelete && is_file($oldPosterToDelete)) {
+                    @unlink($oldPosterToDelete);
+                }
+
                 header("Location: event.php?updated=1");
                 exit;
             } else {
