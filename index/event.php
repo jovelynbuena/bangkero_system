@@ -904,16 +904,55 @@ table.dataTable tbody td img:hover {
           <input id="tableSearch" type="search" class="form-control" placeholder="Search events by name, location, description...">
         </div>
       </div>
-      <div class="col-md-5">
+      <div class="col-md-5 d-flex gap-2">
         <select id="categoryFilter" class="form-select">
           <option value="">-- All Categories --</option>
           <?php foreach($categories as $cat): ?>
             <option value="<?=htmlspecialchars($cat)?>"><?=htmlspecialchars($cat)?></option>
           <?php endforeach; ?>
         </select>
+        <button type="button" id="toggleAdvancedFilters" class="btn btn-outline-secondary" style="border-radius: 12px; white-space: nowrap;">
+          <i class="bi bi-sliders me-2"></i>Advanced
+        </button>
+      </div>
+    </div>
+
+    <!-- Advanced Filters (optional, keeps list as the priority view) -->
+    <div id="advancedFilters" class="mt-3 pt-3 border-top d-none">
+      <div class="d-flex justify-content-between align-items-center mb-2 flex-wrap gap-2">
+        <div class="text-muted small">
+          <i class="bi bi-funnel"></i> Advanced Filters
+        </div>
+        <button type="button" id="clearAdvancedFilters" class="btn btn-outline-secondary btn-sm" style="border-radius: 12px;">
+          <i class="bi bi-arrow-counterclockwise me-2"></i>Clear
+        </button>
+      </div>
+
+      <div class="row g-3 align-items-end">
+        <div class="col-md-3">
+          <label class="form-label mb-1">Date From</label>
+          <input type="date" id="filterDateFrom" class="form-control" style="border-radius: 12px;">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Date To</label>
+          <input type="date" id="filterDateTo" class="form-control" style="border-radius: 12px;">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Location contains</label>
+          <input type="text" id="filterLocation" class="form-control" placeholder="e.g. Barangay Hall" style="border-radius: 12px;">
+        </div>
+        <div class="col-md-3">
+          <label class="form-label mb-1">Poster</label>
+          <select id="filterPoster" class="form-select" style="border-radius: 12px;">
+            <option value="">All</option>
+            <option value="with">With poster</option>
+            <option value="without">Without poster</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
+
 
   <!-- Upcoming Table -->
   <div id="upcomingSection">
@@ -938,8 +977,13 @@ table.dataTable tbody td img:hover {
         </thead>
         <tbody>
         <?php if($upcomingRes->num_rows>0): $count=1; while($row=$upcomingRes->fetch_assoc()): ?>
-          <tr>
+          <tr
+            data-event-date="<?= htmlspecialchars($row['date']) ?>"
+            data-event-location="<?= htmlspecialchars($row['location']) ?>"
+            data-has-poster="<?= !empty($row['event_poster']) ? '1' : '0' ?>"
+          >
             <td class="text-center fw-bold text-muted"><?=$count++?></td>
+
             <td class="text-center">
               <img src="../uploads/<?=htmlspecialchars($row['event_poster']?:'default.jpg')?>" 
                    class="event-poster-thumb" 
@@ -1039,8 +1083,13 @@ table.dataTable tbody td img:hover {
         </thead>
         <tbody>
         <?php if($completedRes->num_rows>0): $count=1; while($row=$completedRes->fetch_assoc()): ?>
-          <tr>
+          <tr
+            data-event-date="<?= htmlspecialchars($row['date']) ?>"
+            data-event-location="<?= htmlspecialchars($row['location']) ?>"
+            data-has-poster="<?= !empty($row['event_poster']) ? '1' : '0' ?>"
+          >
             <td class="text-center fw-bold text-muted"><?=$count++?></td>
+
             <td class="text-center">
               <img src="../uploads/<?=htmlspecialchars($row['event_poster']?:'default.jpg')?>" 
                    class="event-poster-thumb" 
@@ -1233,6 +1282,7 @@ $(document).ready(function() {
   const tableUpcoming = $('#eventsTableUpcoming').DataTable({
     dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
     pageLength: 10,
+    ordering: false,
     buttons: [
       {
         extend: 'csv',
@@ -1266,6 +1316,7 @@ $(document).ready(function() {
   const tableCompleted = $('#eventsTableCompleted').DataTable({
     dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
     pageLength: 10,
+    ordering: false,
     buttons: [
       {
         extend: 'csv',
@@ -1308,6 +1359,85 @@ $(document).ready(function() {
     tableUpcoming.column(3).search(val ? '^' + val + '$' : '', val ? true : false, false).draw();
     tableCompleted.column(3).search(val ? '^' + val + '$' : '', val ? true : false, false).draw();
   });
+
+  // --- Advanced Filters toggle (keeps list as priority) ---
+  const $advancedPanel = $('#advancedFilters');
+  const $toggleAdvanced = $('#toggleAdvancedFilters');
+
+  if ($toggleAdvanced.length && $advancedPanel.length) {
+    $toggleAdvanced.on('click', function() {
+      $advancedPanel.toggleClass('d-none');
+      const isOpen = !$advancedPanel.hasClass('d-none');
+
+      $(this)
+        .toggleClass('btn-outline-secondary', !isOpen)
+        .toggleClass('btn-secondary', isOpen)
+        .html(isOpen
+          ? '<i class="bi bi-x-lg me-2"></i>Close'
+          : '<i class="bi bi-sliders me-2"></i>Advanced'
+        );
+    });
+  }
+
+  function getAdvFilters() {
+    return {
+      from: ($('#filterDateFrom').val() || '').trim(),
+      to: ($('#filterDateTo').val() || '').trim(),
+      location: ($('#filterLocation').val() || '').trim().toLowerCase(),
+      poster: ($('#filterPoster').val() || '').trim()
+    };
+  }
+
+  // DataTables custom filter using <tr> data-* attributes
+  $.fn.dataTable.ext.search.push(function(settings, data, dataIndex) {
+    const tableId = settings.nTable && settings.nTable.getAttribute('id');
+    if (tableId !== 'eventsTableUpcoming' && tableId !== 'eventsTableCompleted') return true;
+
+    // If panel doesn't exist (failsafe), don't filter
+    if (!$advancedPanel.length) return true;
+
+    const filters = getAdvFilters();
+    const row = settings.aoData && settings.aoData[dataIndex] ? settings.aoData[dataIndex].nTr : null;
+    if (!row) return true;
+
+    const rowDate = (row.getAttribute('data-event-date') || '').trim();
+    const rowLocation = (row.getAttribute('data-event-location') || '').toLowerCase();
+    const hasPoster = (row.getAttribute('data-has-poster') || '0').trim();
+
+    // Only apply if any advanced filter has a value (keeps default behavior clean)
+    const advActive = !!(filters.from || filters.to || filters.location || filters.poster);
+    if (!advActive) return true;
+
+    // Date range (ISO compare works for YYYY-MM-DD)
+    if (filters.from && rowDate && rowDate < filters.from) return false;
+    if (filters.to && rowDate && rowDate > filters.to) return false;
+
+    // Location substring
+    if (filters.location && !rowLocation.includes(filters.location)) return false;
+
+    // Poster filter
+    if (filters.poster === 'with' && hasPoster !== '1') return false;
+    if (filters.poster === 'without' && hasPoster !== '0') return false;
+
+    return true;
+  });
+
+  // Redraw on advanced filter changes
+  $('#filterDateFrom, #filterDateTo, #filterLocation, #filterPoster').on('input change', function() {
+    tableUpcoming.draw();
+    tableCompleted.draw();
+  });
+
+  // Clear button (now on the side/top-right)
+  $('#clearAdvancedFilters').on('click', function() {
+    $('#filterDateFrom').val('');
+    $('#filterDateTo').val('');
+    $('#filterLocation').val('');
+    $('#filterPoster').val('');
+    tableUpcoming.draw();
+    tableCompleted.draw();
+  });
+
 
   // --- Tab switching ---
   function showUpcoming() {

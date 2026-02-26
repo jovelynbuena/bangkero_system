@@ -399,14 +399,32 @@ if ($categories_result && $categories_result->num_rows > 0) {
     border: 1px solid #E8E8E8;
   }
 
-  .gallery-header {
+.gallery-header {
     display: flex;
     justify-content: space-between;
-    align-items: center;
+    align-items: flex-start;
+    flex-wrap: wrap;
+    gap: 12px;
     margin-bottom: 24px;
     padding-bottom: 16px;
     border-bottom: 2px solid #f0f0f0;
-  }
+}
+
+/* Keep header actions consistent even when title is long */
+.gallery-meta {
+    flex: 1 1 520px;
+    min-width: 280px;
+}
+.gallery-actions {
+    flex: 0 0 auto;
+    margin-left: auto;
+    display: flex;
+    gap: 8px;
+}
+.gallery-actions .btn {
+    white-space: nowrap;
+}
+
 
   .gallery-title {
     display: flex;
@@ -907,7 +925,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
     ?>
     <div class="gallery-section">
       <div class="gallery-header">
-        <div class="d-flex align-items-center gap-3 flex-wrap">
+        <div class="d-flex align-items-center gap-3 flex-wrap gallery-meta">
           <input type="checkbox" class="form-check-input gallery-checkbox-item" value="<?= $g['id'] ?>" onchange="updateBulkBar()">
           <h5 class="gallery-title mb-0">
             <i class="bi bi-folder-fill"></i> 
@@ -924,7 +942,8 @@ if ($categories_result && $categories_result->num_rows > 0) {
             <?= date("M d, Y", strtotime($g['created_at'])) ?>
           </span>
         </div>
-        <div class="d-flex gap-2">
+        <div class="gallery-actions">
+
           <button class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#modalEdit<?= $g['id'] ?>">
             <i class="bi bi-pencil me-1"></i> Edit
           </button>

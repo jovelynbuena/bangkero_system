@@ -317,6 +317,45 @@ $totalRoles = $rolesResult->num_rows;
         box-shadow: 0 4px 12px rgba(107, 114, 128, 0.3);
     }
 
+    /* Small action buttons (match memberlist style) */
+    .btn-sm {
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-weight: 600;
+        font-size: 13px;
+        transition: background-color 0.2s ease, box-shadow 0.2s ease, transform 0.15s ease;
+        border: none;
+        margin-right: 6px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .btn-edit {
+        background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+        color: white;
+    }
+
+    .btn-edit:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(245, 158, 11, 0.4);
+        color: white;
+    }
+
+    .btn-archive {
+        background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+        color: white;
+    }
+
+    .btn-archive:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(239, 68, 68, 0.4);
+        color: white;
+    }
+
+
+
     /* Table Styles */
     .table { 
         font-size: 15px;
@@ -390,39 +429,40 @@ $totalRoles = $rolesResult->num_rows;
         background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
     }
 
-    /* Statistics Cards */
+    /* Statistics Cards (more compact) */
     .stats-card {
         background: white;
-        border-radius: 16px;
-        padding: 24px;
+        border-radius: 14px;
+        padding: 18px 20px;
         text-align: center;
-        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
-        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
+        transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
     }
     
     .stats-card:hover {
-        transform: translateY(-6px);
-        box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+        transform: translateY(-4px);
+        box-shadow: 0 10px 26px rgba(0, 0, 0, 0.14);
     }
     
     .stats-card .icon {
-        font-size: 48px;
-        margin-bottom: 12px;
+        font-size: 36px;
+        margin-bottom: 8px;
     }
     
     .stats-card h3 {
-        font-size: 36px;
+        font-size: 30px;
         font-weight: 700;
-        margin: 12px 0 8px 0;
+        margin: 8px 0 4px 0;
         color: #2d3748;
     }
     
     .stats-card p {
         color: #718096;
         margin: 0;
-        font-size: 14px;
+        font-size: 13px;
         font-weight: 500;
     }
+
 
     /* Input Group for Search */
     .input-group .input-group-text {
@@ -478,7 +518,8 @@ $totalRoles = $rolesResult->num_rows;
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-4">
+    <div class="row mb-3">
+
         <div class="col-md-6 mb-3">
             <div class="stats-card" style="border-left: 4px solid #667eea;">
                 <div class="icon" style="color: #667eea;">
@@ -595,22 +636,25 @@ $totalRoles = $rolesResult->num_rows;
                                         <td style="font-weight: 600;"><?= htmlspecialchars($row['role_name'] ?? '') ?></td>
                                         <td><?= htmlspecialchars($row['description'] ?? 'No description') ?></td>
                                         <td>
-                                            <button class="btn btn-warning btn-sm me-1" 
+                                            <button class="btn btn-edit btn-sm me-1"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#editModal"
                                                 data-id="<?= htmlspecialchars($row['id'] ?? '') ?>"
                                                 data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>"
-                                                data-description="<?= htmlspecialchars($row['description'] ?? '') ?>">
-                                                <i class="bi bi-pencil-square"></i> Edit
+                                                data-description="<?= htmlspecialchars($row['description'] ?? '') ?>"
+                                                data-bs-toggle="tooltip" data-bs-placement="top" title="Edit role" aria-label="Edit role">
+                                                <i class="bi bi-pencil-square"></i>
                                             </button>
-                                            <button class="btn btn-info btn-sm" 
+                                            <button class="btn btn-archive btn-sm"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#archiveModal"
                                                 data-id="<?= htmlspecialchars($row['id'] ?? '') ?>"
-                                                data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>">
-                                                <i class="bi bi-archive"></i> Archive
+                                                data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>"
+                                                data-bs-toggle="tooltip" data-bs-placement="top" title="Archive role" aria-label="Archive role">
+                                                <i class="bi bi-archive"></i>
                                             </button>
                                         </td>
+
                                     </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
@@ -702,10 +746,20 @@ $totalRoles = $rolesResult->num_rows;
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+// Initialize Bootstrap tooltips for action buttons
+const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+    new bootstrap.Tooltip(tooltipTriggerEl, {
+        trigger: 'hover focus',
+        boundary: 'window'
+    });
+});
+
 // ========================================
 // CHARACTER COUNTER FUNCTIONS
 // ========================================
 function updateCharCount(inputId, counterId, maxLength) {
+
     const input = document.getElementById(inputId);
     const counter = document.getElementById(counterId);
     if (input && counter) {

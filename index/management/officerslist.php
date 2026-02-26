@@ -506,6 +506,15 @@ $officers_count = $current_count + $previous_count;
             gap: 16px;
         }
 
+        #bulkActionsContainer {
+            display: none !important;
+            opacity: 0;
+        }
+
+        #bulkActionsContainer.bulk-visible {
+            opacity: 1;
+        }
+
         /* Bulk Selection */
         .officer-row.selected {
             background-color: #eff6ff;
@@ -773,7 +782,7 @@ $officers_count = $current_count + $previous_count;
     <div class="action-bar">
         <div class="d-flex gap-2 align-items-center">
             <div id="bulkActionsContainer" style="display:none;" class="d-flex gap-2">
-                <span id="selectedCount" class="badge bg-primary" style="font-size: 14px; padding: 10px 16px;">0 selected</span>
+                <span id="selectedCount" class="badge bg-primary" style="font-size: 14px; padding: 10px 16px;"></span>
                 <button id="btnBulkArchive" class="btn btn-warning btn-sm text-white">
                     <i class="bi bi-archive"></i> Archive Selected
                 </button>
@@ -1163,8 +1172,11 @@ function updateBulkActions() {
     const bulkContainer = document.getElementById('bulkActionsContainer');
     const selectedCountBadge = document.getElementById('selectedCount');
     
+    if (!bulkContainer || !selectedCountBadge) return;
+
     if (count > 0) {
         bulkContainer.style.setProperty('display', 'flex', 'important');
+        bulkContainer.classList.add('bulk-visible');
         selectedCountBadge.textContent = `${count} selected`;
         selectedOfficers = Array.from(checkboxes).map(cb => ({
             id: cb.value,
@@ -1172,7 +1184,9 @@ function updateBulkActions() {
         }));
     } else {
         bulkContainer.style.setProperty('display', 'none', 'important');
+        bulkContainer.classList.remove('bulk-visible');
         selectedOfficers = [];
+        selectedCountBadge.textContent = '';
     }
 }
 
@@ -1213,6 +1227,21 @@ document.getElementById('btnDeselectAll')?.addEventListener('click', function() 
         s.checked = false;
         s.indeterminate = false;
     });
+    updateBulkActions();
+});
+
+// Ensure a clean initial state on page load (no preselected rows)
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.officer-checkbox').forEach(cb => {
+        cb.checked = false;
+        updateRowSelection(cb);
+    });
+
+    document.querySelectorAll('.selectAll').forEach(s => {
+        s.checked = false;
+        s.indeterminate = false;
+    });
+
     updateBulkActions();
 });
 

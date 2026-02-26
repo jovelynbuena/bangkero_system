@@ -119,8 +119,16 @@ if (isset($_GET['archive'])) {
             $stmt->close();
 
             $conn->commit();
-            header("Location: archived_announcement.php?archived=1");
+
+            // Redirect back to the same admin page (keep current filters) + show success toast
+            $redirectParams = $_GET;
+            unset($redirectParams['archive']);
+            $redirectParams['archived'] = 1;
+            $qs = http_build_query($redirectParams);
+
+            header('Location: admin_announcement.php' . ($qs ? ('?' . $qs) : ''));
             exit;
+
 
         } catch (Exception $e) {
             $conn->rollback();
@@ -186,8 +194,11 @@ if (!empty($params)) {
     $announcements = $conn->query($sql);
 }
 
+$announcements_count = $announcements ? (int)($announcements->num_rows ?? 0) : 0;
+
 // Helper function to determine announcement status
 function getAnnouncementStatus($expiry_date) {
+
     if (empty($expiry_date)) return 'ongoing';
     
     $today = new DateTime();
@@ -204,18 +215,19 @@ function getAnnouncementStatus($expiry_date) {
     }
 }
 
-// Helper function to get icon based on category
+// Helper function to get icon class based on category (no emojis)
 function getCategoryIcon($category) {
     $icons = [
-        'Event' => '📅',
-        'Fishing' => '🐟',
-        'Meeting' => '📝',
-        'Reminder' => '⏰',
-        'General' => '📢',
-        'Emergency' => '🚨'
+        'Event' => 'bi-calendar-event',
+        'Fishing' => 'bi-water',
+        'Meeting' => 'bi-people',
+        'Reminder' => 'bi-bell',
+        'General' => 'bi-megaphone',
+        'Emergency' => 'bi-exclamation-triangle'
     ];
-    return $icons[$category] ?? '📢';
+    return $icons[$category] ?? 'bi-megaphone';
 }
+
 
 // Get time-based greeting (Philippine Time)
 date_default_timezone_set('Asia/Manila');
@@ -478,6 +490,72 @@ body {
     border-radius: 6px;
 }
 
+/* Export Dropdown (announcements, match memberlist style) */
+.export-dropdown .btn-export {
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 10px;
+    border: none;
+    font-weight: 600;
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    box-shadow: 0 6px 16px rgba(16, 185, 129, 0.35);
+    transition: all 0.2s ease;
+}
+.export-dropdown .btn-export:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 22px rgba(16, 185, 129, 0.45);
+    color: white;
+}
+.export-dropdown .dropdown-menu {
+    display: none;
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.18);
+    border: none;
+    padding: 8px;
+    min-width: 210px;
+    font-size: 13px;
+}
+.export-dropdown.show .dropdown-menu {
+    display: block;
+}
+
+.export-dropdown .dropdown-item {
+    border-radius: 8px;
+    padding: 8px 12px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.export-dropdown .dropdown-item i {
+    width: 18px;
+}
+.export-dropdown .dropdown-item:hover {
+    background-color: #f8fafc;
+}
+
+/* Filter Search Box (with icon, match memberlist style but compact) */
+.filter-row .search-box {
+    position: relative;
+    width: 100%;
+}
+.filter-row .search-box i {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #94a3b8;
+    font-size: 14px;
+}
+.filter-row .search-box input.form-control-sm {
+    padding-left: 32px;
+}
+
+
+
 /* Empty State */
 .empty-state {
     text-align: center;
@@ -597,7 +675,8 @@ body {
                     <i class="bi bi-megaphone-fill"></i>
                     Announcements Management
                 </h2>
-                <p>Manage announcements. Use search and filters to find items.</p>
+                <p>Create, update, and archive announcements. Use filters to narrow results.</p>
+
             </div>
             <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#addAnnouncementModal">
                 <i class="bi bi-plus-circle me-2"></i> Add Announcement
@@ -608,8 +687,12 @@ body {
     <!-- Search & Filters -->
     <form class="row g-2 align-items-center mb-4 filter-row" method="GET">
         <div class="col-auto" style="min-width:260px;">
-            <input name="q" class="form-control form-control-sm" type="search" placeholder="🔍 Search title or content" value="<?= htmlspecialchars($search) ?>">
+            <div class="search-box">
+                <i class="bi bi-search"></i>
+                <input name="q" class="form-control form-control-sm" type="search" placeholder="Search title or content" value="<?= htmlspecialchars($search) ?>">
+            </div>
         </div>
+
         <div class="col-auto">
             <input type="date" name="from" class="form-control form-control-sm" value="<?= htmlspecialchars($date_from) ?>" title="From Date">
         </div>
@@ -629,20 +712,67 @@ body {
         </div>
         <div class="col-auto">
             <select name="has_image" class="form-select form-select-sm">
-                <option value="all" <?= $has_image === 'all' ? 'selected' : '' ?>>All</option>
+                <option value="all" <?= $has_image === 'all' ? 'selected' : '' ?>>All Images</option>
                 <option value="1" <?= $has_image === '1' ? 'selected' : '' ?>>With Image</option>
                 <option value="0" <?= $has_image === '0' ? 'selected' : '' ?>>Without Image</option>
             </select>
         </div>
+
         <div class="col-auto">
             <button class="btn btn-sm btn-primary" type="submit">
                 <i class="bi bi-search"></i> Filter
             </button>
             <a href="admin_announcement.php" class="btn btn-sm btn-secondary ms-1">Reset</a>
         </div>
+        <div class="col-auto ms-auto">
+            <div class="dropdown export-dropdown">
+                <button class="btn-export dropdown-toggle" type="button" id="announcementExportDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                    <i class="bi bi-download"></i> Export
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="announcementExportDropdown">
+                    <li>
+                        <a class="dropdown-item" href="export_announcements_csv.php<?= !empty($_SERVER['QUERY_STRING']) ? '?' . htmlspecialchars($_SERVER['QUERY_STRING'], ENT_QUOTES, 'UTF-8') : '' ?>">
+                            <i class="bi bi-filetype-csv me-2"></i> CSV Format
+                        </a>
+                    </li>
+                    <li>
+                        <a class="dropdown-item" href="export_announcements_print.php<?= !empty($_SERVER['QUERY_STRING']) ? '?' . htmlspecialchars($_SERVER['QUERY_STRING'], ENT_QUOTES, 'UTF-8') : '' ?>" target="_blank">
+                            <i class="bi bi-printer me-2"></i> Print Preview
+                        </a>
+                    </li>
+                </ul>
+
+            </div>
+        </div>
     </form>
 
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="text-muted small">
+            <?php
+                $filters = [];
+                if ($search !== '') $filters[] = 'Search: "' . htmlspecialchars($search) . '"';
+                if ($filter_category !== '') $filters[] = 'Category: ' . htmlspecialchars($filter_category);
+                if ($date_from !== '' || $date_to !== '') {
+                    $range = 'Date: ';
+                    $range .= $date_from !== '' ? htmlspecialchars($date_from) : 'Any';
+                    $range .= ' to ';
+                    $range .= $date_to !== '' ? htmlspecialchars($date_to) : 'Any';
+                    $filters[] = $range;
+                }
+                if ($has_image === '1') $filters[] = 'With Image';
+                elseif ($has_image === '0') $filters[] = 'Without Image';
+
+                if (!empty($filters)) {
+                    echo 'Filtered: ' . implode(' | ', $filters) . ' (' . $announcements_count . ' results)';
+                } else {
+                    echo 'Showing all ' . $announcements_count . ' announcements';
+                }
+            ?>
+        </div>
+    </div>
+
     <?php if ($announcements && $announcements->num_rows > 0): ?>
+
         <?php while ($row = $announcements->fetch_assoc()): 
             $status = getAnnouncementStatus($row['expiry_date'] ?? '');
             $isExpired = $status === 'expired';
@@ -652,13 +782,15 @@ body {
         ?>
             <div class="announcement-item <?= $isExpired ? 'expired' : '' ?>" data-id="<?= $row['id'] ?>">
                 <!-- Status Badge -->
-                <span class="status-badge status-<?= $status ?>">
-                    <?= $status === 'expired' ? '🔒 Expired' : ($status === 'upcoming' ? '⏰ Expiring Soon' : '✅ Active') ?>
+                    <span class="status-badge status-<?= $status ?>">
+                    <?= $status === 'expired' ? 'Expired' : ($status === 'upcoming' ? 'Expiring Soon' : 'Active') ?>
                 </span>
+
 
                 <!-- Header with Icon and Title -->
                 <div class="announcement-header">
-                    <span class="announcement-icon"><?= $icon ?></span>
+                    <span class="announcement-icon"><i class="bi <?= $icon ?>"></i></span>
+
                     <div>
                         <h6><?= htmlspecialchars($row['title']) ?></h6>
                         <div class="announcement-meta">
@@ -685,6 +817,7 @@ body {
                 <!-- Action Buttons -->
                 <div class="action-buttons">
                     <a href="#" class="btn-action btn-view view-btn" 
+                       title="View announcement" data-bs-placement="top" aria-label="View announcement"
                        data-title="<?= htmlspecialchars($row['title']) ?>"
                        data-content="<?= htmlspecialchars($row['content']) ?>"
                        data-image="<?= htmlspecialchars($row['image'] ?? '') ?>"
@@ -696,6 +829,7 @@ body {
                         <i class="bi bi-eye"></i>
                     </a>
                     <a href="#" class="btn-action btn-edit edit-btn" 
+                       title="Edit announcement" data-bs-placement="top" aria-label="Edit announcement"
                        data-id="<?= $row['id'] ?>"
                        data-title="<?= htmlspecialchars($row['title']) ?>"
                        data-content="<?= htmlspecialchars($row['content']) ?>"
@@ -704,10 +838,14 @@ body {
                        data-bs-toggle="modal" data-bs-target="#editAnnouncementModal">
                         <i class="bi bi-pencil-square"></i>
                     </a>
-                    <a href="#" class="btn-action btn-archive archive-announcement" data-id="<?= intval($row['id']) ?>">
+                    <a href="#" class="btn-action btn-archive archive-announcement" 
+                       title="Archive announcement" data-bs-placement="top" aria-label="Archive announcement"
+                       data-id="<?= intval($row['id']) ?>">
                         <i class="bi bi-archive"></i>
                     </a>
                 </div>
+
+
             </div>
         <?php endwhile; ?>
     <?php else: ?>
@@ -739,13 +877,14 @@ body {
                     <div class="mb-3">
                         <label class="form-label fw-bold">Category <span class="text-danger">*</span></label>
                         <select name="category" class="form-select" required>
-                            <option value="General">📢 General</option>
-                            <option value="Event">📅 Event</option>
-                            <option value="Fishing">🐟 Fishing</option>
-                            <option value="Meeting">📝 Meeting</option>
-                            <option value="Reminder">⏰ Reminder</option>
-                            <option value="Emergency">🚨 Emergency</option>
+                            <option value="General">General</option>
+                            <option value="Event">Event</option>
+                            <option value="Fishing">Fishing</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Reminder">Reminder</option>
+                            <option value="Emergency">Emergency</option>
                         </select>
+
                     </div>
                     
                     <div class="mb-3">
@@ -794,13 +933,14 @@ body {
                     <div class="mb-3">
                         <label class="form-label fw-bold">Category <span class="text-danger">*</span></label>
                         <select name="category" id="edit_category" class="form-select" required>
-                            <option value="General">📢 General</option>
-                            <option value="Event">📅 Event</option>
-                            <option value="Fishing">🐟 Fishing</option>
-                            <option value="Meeting">📝 Meeting</option>
-                            <option value="Reminder">⏰ Reminder</option>
-                            <option value="Emergency">🚨 Emergency</option>
+                            <option value="General">General</option>
+                            <option value="Event">Event</option>
+                            <option value="Fishing">Fishing</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Reminder">Reminder</option>
+                            <option value="Emergency">Emergency</option>
                         </select>
+
                     </div>
                     
                     <div class="mb-3">
@@ -877,8 +1017,21 @@ body {
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// Initialize Bootstrap tooltips (do NOT use data-bs-toggle="tooltip" on modal triggers)
+document.addEventListener('DOMContentLoaded', function() {
+    if (typeof bootstrap === 'undefined' || !bootstrap.Tooltip) return;
+
+    document.querySelectorAll('.action-buttons [title], .export-dropdown [title]').forEach(function(el) {
+        new bootstrap.Tooltip(el, {
+            trigger: 'hover focus',
+            boundary: 'window'
+        });
+    });
+});
+
 // Toggle content expansion
 function toggleContent(id) {
+
     const contentEl = document.getElementById('content-' + id);
     const toggleText = document.getElementById('toggle-text-' + id);
     
@@ -961,11 +1114,47 @@ document.querySelectorAll('.archive-announcement').forEach(btn => {
             backdrop: `rgba(0,0,0,0.4)`
         }).then(res => {
             if (res.isConfirmed) {
-                window.location.href = 'admin_announcement.php?archive=' + id;
+                // Keep current filters/search when archiving
+                const params = new URLSearchParams(window.location.search);
+                params.set('archive', id);
+                window.location.href = 'admin_announcement.php?' + params.toString();
             }
         });
+
     });
 });
+
+// Export dropdown manual toggle (no dependency on Bootstrap JS)
+(function() {
+    const exportToggle = document.getElementById('announcementExportDropdown');
+    const exportWrapper = exportToggle ? exportToggle.closest('.export-dropdown') : null;
+
+    if (!exportToggle || !exportWrapper) return;
+
+    // Toggle dropdown on button click
+    exportToggle.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const isOpen = exportWrapper.classList.contains('show');
+
+        // Close any other export dropdowns
+        document.querySelectorAll('.export-dropdown.show').forEach(dd => {
+            if (dd !== exportWrapper) dd.classList.remove('show');
+        });
+
+        if (isOpen) {
+            exportWrapper.classList.remove('show');
+        } else {
+            exportWrapper.classList.add('show');
+        }
+    });
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function() {
+        exportWrapper.classList.remove('show');
+    });
+})();
 
 // SweetAlert notifications
 <?php if ($success === "added"): ?>
@@ -1021,6 +1210,7 @@ Swal.fire({
     }
 });
 <?php endif; ?>
+
 </script>
 </body>
 </html>
