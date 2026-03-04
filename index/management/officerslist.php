@@ -268,6 +268,19 @@ if (isset($_GET['archive'])) {
 $membersResult = $conn->query("SELECT id, name FROM members ORDER BY name ASC");
 $rolesResult   = $conn->query("SELECT id, role_name FROM officer_roles ORDER BY role_name ASC");
 
+// Get occupied positions (current term) for disabling in dropdown
+$occupiedPositions = [];
+$occupiedQuery = $conn->query("
+    SELECT o.role_id, r.role_name, m.name as member_name 
+    FROM officers o
+    JOIN officer_roles r ON o.role_id = r.id
+    JOIN members m ON o.member_id = m.id
+    WHERE o.term_end >= CURDATE()
+");
+while ($row = $occupiedQuery->fetch_assoc()) {
+    $occupiedPositions[$row['role_id']] = $row['member_name'];
+}
+
 // Get search and filter parameters
 $search = trim($_GET['search'] ?? '');
 $role_filter = $_GET['role_filter'] ?? '';
@@ -1010,9 +1023,13 @@ $officers_count = $current_count + $previous_count;
               <select name="role_id" class="form-select" required>
                 <option value="">-- Choose a position --</option>
                 <?php $rolesResult->data_seek(0); while ($r = $rolesResult->fetch_assoc()): ?>
-                  <option value="<?= $r['id'] ?>"><?= htmlspecialchars($r['role_name']) ?></option>
+                  <?php $isOccupied = isset($occupiedPositions[$r['id']]); ?>
+                  <option value="<?= $r['id'] ?>" <?= $isOccupied ? 'disabled style="background-color: #e9ecef; color: #6c757d;"' : '' ?>>
+                    <?= htmlspecialchars($r['role_name']) ?><?= $isOccupied ? ' (Occupied by ' . htmlspecialchars($occupiedPositions[$r['id']]) . ')' : '' ?>
+                  </option>
                 <?php endwhile; ?>
               </select>
+              <small class="text-muted">Greyed out positions are currently occupied</small>
             </div>
 
             <div class="col-md-6">
@@ -1077,9 +1094,13 @@ $officers_count = $current_count + $previous_count;
               <select name="role_id" id="edit_role_id" class="form-select" required>
                 <option value="">-- Choose a position --</option>
                 <?php $rolesResult->data_seek(0); while ($r = $rolesResult->fetch_assoc()): ?>
-                  <option value="<?= $r['id'] ?>"><?= htmlspecialchars($r['role_name']) ?></option>
+                  <?php $isOccupied = isset($occupiedPositions[$r['id']]); ?>
+                  <option value="<?= $r['id'] ?>" <?= $isOccupied ? 'disabled style="background-color: #e9ecef; color: #6c757d;"' : '' ?>>
+                    <?= htmlspecialchars($r['role_name']) ?><?= $isOccupied ? ' (Occupied by ' . htmlspecialchars($occupiedPositions[$r['id']]) . ')' : '' ?>
+                  </option>
                 <?php endwhile; ?>
               </select>
+              <small class="text-muted">Greyed out positions are currently occupied</small>
             </div>
 
             <div class="col-md-6">
@@ -1308,9 +1329,20 @@ document.addEventListener('click', function(e) {
 // Fill and open Edit modal
 document.querySelectorAll('.editBtn').forEach(btn => {
     btn.addEventListener('click', () => {
+        const currentRoleId = btn.dataset.role;
+        
+        // Enable the officer's current role option (it may be disabled due to 'occupied' status)
+        const roleSelect = document.getElementById('edit_role_id');
+        const currentOption = roleSelect.querySelector('option[value="' + currentRoleId + '"');
+        if (currentOption) {
+            currentOption.disabled = false;
+            currentOption.style.backgroundColor = '';
+            currentOption.style.color = '';
+        }
+        
         document.getElementById('edit_officer_id').value = btn.dataset.id;
         document.getElementById('edit_member_name').value = btn.dataset.member;
-        document.getElementById('edit_role_id').value = btn.dataset.role;
+        document.getElementById('edit_role_id').value = currentRoleId;
         document.getElementById('edit_term_start').value = btn.dataset.start;
         document.getElementById('edit_term_end').value = btn.dataset.end;
         document.getElementById('edit_description').value = btn.dataset.desc;

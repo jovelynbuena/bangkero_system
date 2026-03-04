@@ -8,37 +8,109 @@ if (empty($_SESSION['username'])) {
 require_once('../../config/db_connect.php');
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+// Helper function to check if column exists
+function tableHasColumn(mysqli $conn, string $table, string $column): bool {
+    $tableEsc = $conn->real_escape_string($table);
+    $colEsc = $conn->real_escape_string($column);
+    $res = $conn->query("SHOW COLUMNS FROM `{$tableEsc}` LIKE '{$colEsc}'");
+    return ($res && $res->num_rows > 0);
+}
+
 $alertType = $alertMsg = "";
 $memberName = $_SESSION['member_name'] ?? 'Admin';
+
+// Helper function to retain form values after error
+function old($field, $default = '') {
+    return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : $default;
+}
+
+// Helper function to check if option should be selected
+function selected($field, $value) {
+    return (isset($_POST[$field]) && $_POST[$field] === $value) ? 'selected' : '';
+}
+
+// Helper function to check if checkbox should be checked
+function checked($field) {
+    return isset($_POST[$field]) ? 'checked' : '';
+}
 
 /* --------------------------
    ✅ ADD MEMBER HANDLER (with restrictions)
 -------------------------- */
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_member'])) {
+    // Personal Information
     $first_name = trim($_POST['first_name'] ?? '');
     $middle_initial = trim($_POST['middle_initial'] ?? '');
     $last_name = trim($_POST['last_name'] ?? '');
     $name = trim("$first_name $middle_initial $last_name");
-    
     $dob = $_POST['dob'] ?? '';
     $gender = $_POST['gender'] ?? '';
+    $civil_status = $_POST['civil_status'] ?? '';
+    
+    // Contact Information
     $phone = trim($_POST['phone'] ?? '');
     $email = trim($_POST['email'] ?? '');
-    $address = trim($_POST['address'] ?? '');
+    
+    // Address (structured)
+    $street = trim($_POST['street'] ?? '');
+    $barangay = trim($_POST['barangay'] ?? '');
+    $municipality = trim($_POST['municipality'] ?? '');
+    $province = trim($_POST['province'] ?? '');
+    $region = $_POST['region'] ?? '';
+    $zip_code = trim($_POST['zip_code'] ?? '');
+    $address = trim("$street, $barangay, $municipality, $province, $region $zip_code");
+    
+    // Work Information
     $work_type = $_POST['work_type'] ?? '';
     $license_number = trim($_POST['license_number'] ?? '');
+    $municipal_permit_no = trim($_POST['municipal_permit_no'] ?? '');
+    $bfar_fisherfolk_id = trim($_POST['bfar_fisherfolk_id'] ?? '');
     $boat_name = trim($_POST['boat_name'] ?? '');
-    $fishing_area = trim($_POST['fishing_area'] ?? '');
+    $boat_registration = trim($_POST['boat_registration'] ?? '');
+    
+    // Emergency Contact
     $emergency_name = trim($_POST['emergency_name'] ?? '');
     $emergency_phone = trim($_POST['emergency_phone'] ?? '');
+    
     $agreement = isset($_POST['agreement']) ? 1 : 0;
 
     // ✅ RESTRICTION 1: Validate required fields
-    if (empty($first_name) || empty($last_name) || empty($dob) || empty($phone) || empty($email) || empty($address)) {
-        $alertType = "error";
-        $alertMsg = "Please fill in all required fields!";
+    $required_fields = [
+        'First Name' => $first_name,
+        'Last Name' => $last_name,
+        'Date of Birth' => $dob,
+        'Gender' => $gender,
+        'Civil Status' => $civil_status,
+        'Phone Number' => $phone,
+        'Email Address' => $email,
+        'Street/House No.' => $street,
+        'Barangay' => $barangay,
+        'Municipality/City' => $municipality,
+        'Province' => $province,
+        'Region' => $region,
+        'Zip Code' => $zip_code,
+        'Type of Work' => $work_type,
+        'Emergency Contact Name' => $emergency_name,
+        'Emergency Contact Phone' => $emergency_phone
+    ];
+    
+    $missing_fields = [];
+    foreach ($required_fields as $field_name => $value) {
+        if (empty($value)) {
+            $missing_fields[] = $field_name;
+        }
     }
-    // ✅ RESTRICTION 2: Validate age (must be at least 18 years old)
+    
+    if (!empty($missing_fields)) {
+        $alertType = "error";
+        $alertMsg = "Please fill in all required fields: " . implode(", ", $missing_fields);
+    }
+    // ✅ RESTRICTION 2: Validate email format
+    elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $alertType = "error";
+        $alertMsg = "Please enter a valid email address!";
+    }
+    // ✅ RESTRICTION 3: Validate age (must be at least 18 years old)
     elseif (!empty($dob)) {
         $dobDate = new DateTime($dob);
         $today = new DateTime();
@@ -48,9 +120,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_member'])) {
             $alertMsg = "Member must be at least 18 years old!";
         }
     }
+    // ✅ RESTRICTION 4: Validate phone format (Philippine mobile)
+    elseif (!preg_match('/^(09|\+639)\d{9}$/', str_replace(['-', ' '], '', $phone))) {
+        $alertType = "error";
+        $alertMsg = "Please enter a valid Philippine mobile number (e.g., 09XX-XXX-XXXX)!";
+    }
+    // ✅ RESTRICTION 5: Remove - License is now optional (Municipal Permit or BFAR ID can be provided instead)
     
     if (empty($alertMsg)) {
-        // ✅ RESTRICTION 3: Check for duplicate email
+        // ✅ RESTRICTION 6: Check for duplicate email
         $checkEmail = $conn->prepare("SELECT id FROM members WHERE LOWER(email) = LOWER(?)");
         $checkEmail->bind_param("s", $email);
         $checkEmail->execute();
@@ -62,10 +140,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_member'])) {
         }
         $checkEmail->close();
 
-        // ✅ RESTRICTION 4: Check for duplicate phone number
+        // ✅ RESTRICTION 7: Check for duplicate phone number
         if (empty($alertMsg)) {
-            $checkPhone = $conn->prepare("SELECT id FROM members WHERE phone = ?");
-            $checkPhone->bind_param("s", $phone);
+            $phone_clean = str_replace(['-', ' '], '', $phone);
+            $checkPhone = $conn->prepare("SELECT id FROM members WHERE REPLACE(REPLACE(phone, '-', ''), ' ', '') = ?");
+            $checkPhone->bind_param("s", $phone_clean);
             $checkPhone->execute();
             $checkPhone->store_result();
             
@@ -104,11 +183,61 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_member'])) {
 
     // Insert into database
     if (empty($alertMsg)) {
-        $stmt = $conn->prepare("
-            INSERT INTO members (name, dob, gender, phone, email, address, work_type, license_number, boat_name, fishing_area, emergency_name, emergency_phone, agreement, image) 
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        ");
-        $stmt->bind_param("ssssssssssssis", $name, $dob, $gender, $phone, $email, $address, $work_type, $license_number, $boat_name, $fishing_area, $emergency_name, $emergency_phone, $agreement, $image_name);
+        // Check if new columns exist
+        $hasNewColumns = tableHasColumn($conn, 'members', 'street');
+        $hasPermitColumns = tableHasColumn($conn, 'members', 'municipal_permit_no');
+        $hasBoatRegColumn = tableHasColumn($conn, 'members', 'boat_registration');
+        
+        if ($hasNewColumns && $hasPermitColumns && $hasBoatRegColumn) {
+            $stmt = $conn->prepare("
+                INSERT INTO members (name, dob, gender, civil_status, phone, email, 
+                    street, barangay, municipality, province, region, zip_code, address,
+                    work_type, license_number, municipal_permit_no, bfar_fisherfolk_id, boat_name, boat_registration,
+                    emergency_name, emergency_phone, agreement, image) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->bind_param("sssssssssssssssssssssis", 
+                $name, $dob, $gender, $civil_status, $phone, $email,
+                $street, $barangay, $municipality, $province, $region, $zip_code, $address,
+                $work_type, $license_number, $municipal_permit_no, $bfar_fisherfolk_id, $boat_name, $boat_registration,
+                $emergency_name, $emergency_phone, $agreement, $image_name
+            );
+        } elseif ($hasNewColumns && $hasPermitColumns) {
+            $stmt = $conn->prepare("
+                INSERT INTO members (name, dob, gender, civil_status, phone, email, 
+                    street, barangay, municipality, province, region, zip_code, address,
+                    work_type, license_number, municipal_permit_no, bfar_fisherfolk_id, boat_name,
+                    emergency_name, emergency_phone, agreement, image) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->bind_param("ssssssssssssssssssssis", 
+                $name, $dob, $gender, $civil_status, $phone, $email,
+                $street, $barangay, $municipality, $province, $region, $zip_code, $address,
+                $work_type, $license_number, $municipal_permit_no, $bfar_fisherfolk_id, $boat_name,
+                $emergency_name, $emergency_phone, $agreement, $image_name
+            );
+        } elseif ($hasNewColumns) {
+            $stmt = $conn->prepare("
+                INSERT INTO members (name, dob, gender, civil_status, phone, email, 
+                    street, barangay, municipality, province, region, zip_code, address,
+                    work_type, license_number, boat_name,
+                    emergency_name, emergency_phone, agreement, image) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->bind_param("ssssssssssssssssssis", 
+                $name, $dob, $gender, $civil_status, $phone, $email,
+                $street, $barangay, $municipality, $province, $region, $zip_code, $address,
+                $work_type, $license_number, $boat_name,
+                $emergency_name, $emergency_phone, $agreement, $image_name
+            );
+        } else {
+            // Fallback to old query for backward compatibility
+            $stmt = $conn->prepare("
+                INSERT INTO members (name, dob, gender, phone, email, address, work_type, license_number, boat_name, fishing_area, emergency_name, emergency_phone, agreement, image) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ");
+            $stmt->bind_param("ssssssssssssis", $name, $dob, $gender, $phone, $email, $address, $work_type, $license_number, $boat_name, $fishing_area, $emergency_name, $emergency_phone, $agreement, $image_name);
+        }
 
         if ($stmt->execute()) {
             $alertType = "success";
@@ -138,7 +267,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_member'])) {
     $address = trim($_POST['address'] ?? '');
     $work_type = $_POST['work_type'] ?? '';
     $license_number = trim($_POST['license_number'] ?? '');
+    $municipal_permit_no = trim($_POST['municipal_permit_no'] ?? '');
+    $bfar_fisherfolk_id = trim($_POST['bfar_fisherfolk_id'] ?? '');
     $boat_name = trim($_POST['boat_name'] ?? '');
+    $boat_registration = trim($_POST['boat_registration'] ?? '');
     $fishing_area = trim($_POST['fishing_area'] ?? '');
     $emergency_name = trim($_POST['emergency_name'] ?? '');
     $emergency_phone = trim($_POST['emergency_phone'] ?? '');
@@ -231,14 +363,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_member'])) {
 
         // Update database
         if (empty($alertMsg)) {
-            $stmt = $conn->prepare("
-                UPDATE members SET 
-                    name=?, dob=?, gender=?, phone=?, email=?, address=?, 
-                    work_type=?, license_number=?, boat_name=?, fishing_area=?, 
-                    emergency_name=?, emergency_phone=?, agreement=?, image=?
-                WHERE id=?
-            ");
-            $stmt->bind_param("ssssssssssssisi", $name, $dob, $gender, $phone, $email, $address, $work_type, $license_number, $boat_name, $fishing_area, $emergency_name, $emergency_phone, $agreement, $new_image, $member_id);
+            $hasPermitColumns = tableHasColumn($conn, 'members', 'municipal_permit_no');
+            $hasBoatRegColumn = tableHasColumn($conn, 'members', 'boat_registration');
+            
+            if ($hasPermitColumns && $hasBoatRegColumn) {
+                $stmt = $conn->prepare("
+                    UPDATE members SET 
+                        name=?, dob=?, gender=?, phone=?, email=?, address=?, 
+                        work_type=?, license_number=?, municipal_permit_no=?, bfar_fisherfolk_id=?, boat_name=?, boat_registration=?, fishing_area=?, 
+                        emergency_name=?, emergency_phone=?, agreement=?, image=?
+                    WHERE id=?
+                ");
+                $stmt->bind_param("sssssssssssssssisi", $name, $dob, $gender, $phone, $email, $address, $work_type, $license_number, $municipal_permit_no, $bfar_fisherfolk_id, $boat_name, $boat_registration, $fishing_area, $emergency_name, $emergency_phone, $agreement, $new_image, $member_id);
+            } elseif ($hasPermitColumns) {
+                $stmt = $conn->prepare("
+                    UPDATE members SET 
+                        name=?, dob=?, gender=?, phone=?, email=?, address=?, 
+                        work_type=?, license_number=?, municipal_permit_no=?, bfar_fisherfolk_id=?, boat_name=?, fishing_area=?, 
+                        emergency_name=?, emergency_phone=?, agreement=?, image=?
+                    WHERE id=?
+                ");
+                $stmt->bind_param("ssssssssssssssisi", $name, $dob, $gender, $phone, $email, $address, $work_type, $license_number, $municipal_permit_no, $bfar_fisherfolk_id, $boat_name, $fishing_area, $emergency_name, $emergency_phone, $agreement, $new_image, $member_id);
+            } else {
+                $stmt = $conn->prepare("
+                    UPDATE members SET 
+                        name=?, dob=?, gender=?, phone=?, email=?, address=?, 
+                        work_type=?, license_number=?, boat_name=?, fishing_area=?, 
+                        emergency_name=?, emergency_phone=?, agreement=?, image=?
+                    WHERE id=?
+                ");
+                $stmt->bind_param("ssssssssssssisi", $name, $dob, $gender, $phone, $email, $address, $work_type, $license_number, $boat_name, $fishing_area, $emergency_name, $emergency_phone, $agreement, $new_image, $member_id);
+            }
 
             if ($stmt->execute()) {
                 $alertType = "success";
@@ -951,6 +1106,49 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         box-shadow: 0 10px 30px rgba(16, 185, 129, 0.5);
     }
 
+    /* Form Section Styling */
+    .form-section {
+        margin-bottom: 24px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e2e8f0;
+    }
+    .form-section:last-of-type {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    .section-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 16px;
+        font-weight: 600;
+        color: #334155;
+        margin-bottom: 16px;
+        padding-bottom: 8px;
+        border-bottom: 2px solid #667eea;
+    }
+    .section-header i {
+        font-size: 20px;
+        color: #667eea;
+    }
+
+    /* Form Control Consistency */
+    .form-control, .form-select {
+        height: 42px;
+        border: 2px solid #e2e8f0;
+        border-radius: 8px;
+        font-size: 14px;
+        transition: all 0.2s ease;
+    }
+    .form-control:focus, .form-select:focus {
+        border-color: #667eea;
+        box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    }
+    textarea.form-control {
+        height: auto;
+    }
+
     /* Image Preview */
     .img-preview {
         width: 120px;
@@ -1169,15 +1367,6 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                             <option value="inactive_old">Inactive (no recent attendance)</option>
                         </select>
                     </div>
-                    <!-- License Filter (client-side) -->
-                    <div class="col-md-3 col-sm-6">
-                        <label class="form-label-sm">License</label>
-                        <select id="licenseFilter" class="form-select filter-select">
-                            <option value="">All</option>
-                            <option value="with">With license</option>
-                            <option value="none">No license</option>
-                        </select>
-                    </div>
                     <!-- Action Buttons -->
                     <div class="col-md-6 d-flex gap-2 align-items-end justify-content-md-end">
                         <button type="submit" class="btn btn-primary">
@@ -1317,8 +1506,7 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                         }
                     ?>
                         <tr class="member-row" 
-                            data-att-status="<?= htmlspecialchars($statusKey) ?>" 
-                            data-license="<?= !empty($row['license_number']) ? 'with' : 'none' ?>">
+                            data-att-status="<?= htmlspecialchars($statusKey) ?>">
                             <td class="text-center">
                                 <input type="checkbox" class="form-check-input member-checkbox" value="<?= $row['id'] ?>" data-name="<?= htmlspecialchars($row['name']) ?>">
                             </td>
@@ -1352,13 +1540,6 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                                 }
                                 $check_officer->close();
                                 ?>
-                                <div class="mt-1 small">
-                                    <?php if (!empty($row['license_number'])): ?>
-                                        <span class="badge bg-success-subtle text-success">With license</span>
-                                    <?php else: ?>
-                                        <span class="badge bg-light text-muted">No license</span>
-                                    <?php endif; ?>
-                                </div>
                             </td>
                             <td>
                                 <div class="small fw-semibold"><?= $totalPresent ?> event<?= $totalPresent === 1 ? '' : 's' ?></div>
@@ -1392,8 +1573,10 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                                     data-email="<?= htmlspecialchars($row['email']) ?>"
                                     data-address="<?= htmlspecialchars($row['address']) ?>"
                                     data-worktype="<?= htmlspecialchars($row['work_type']) ?>"
-                                    data-license="<?= htmlspecialchars($row['license_number']) ?>"
+                                    data-municipal="<?= htmlspecialchars($row['municipal_permit_no'] ?? '') ?>"
+                                    data-bfar="<?= htmlspecialchars($row['bfar_fisherfolk_id'] ?? '') ?>"
                                     data-boat="<?= htmlspecialchars($row['boat_name']) ?>"
+                                    data-boatreg="<?= htmlspecialchars($row['boat_registration'] ?? '') ?>"
                                     data-fishing="<?= htmlspecialchars($row['fishing_area']) ?>"
                                     data-emergency="<?= htmlspecialchars($row['emergency_name']) ?>"
                                     data-emergencyphone="<?= htmlspecialchars($row['emergency_phone']) ?>"
@@ -1474,111 +1657,236 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
 <!-- Add Member Modal -->
 <div class="modal fade" id="addMemberModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
-      <div class="modal-header">
+      <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
         <h5 class="modal-title">
             <i class="bi bi-person-plus-fill me-2"></i>
             Add New Member
         </h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
-      <form method="post" enctype="multipart/form-data" autocomplete="off">
+      <form method="post" enctype="multipart/form-data" autocomplete="off" id="addMemberForm">
         <input type="hidden" name="add_member" value="1">
-        <div class="modal-body">
-          <div class="row g-4">
-            <div class="col-md-4">
-              <label class="form-label"><i class="bi bi-person me-2"></i>First Name <span class="text-danger">*</span></label>
-              <input type="text" name="first_name" class="form-control" required>
+        <div class="modal-body p-4">
+          
+          <!-- Personal Information Section -->
+          <div class="form-section">
+            <div class="section-header">
+              <i class="bi bi-person-vcard"></i>
+              <span>Personal Information</span>
             </div>
-            <div class="col-md-4">
-              <label class="form-label"><i class="bi bi-person me-2"></i>Middle Initial</label>
-              <input type="text" name="middle_initial" class="form-control" maxlength="2">
-            </div>
-            <div class="col-md-4">
-              <label class="form-label"><i class="bi bi-person me-2"></i>Last Name <span class="text-danger">*</span></label>
-              <input type="text" name="last_name" class="form-control" required>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-calendar-event me-2"></i>Date of Birth <span class="text-danger">*</span></label>
-              <input type="date" name="dob" class="form-control" required max="<?= date('Y-m-d', strtotime('-18 years')) ?>">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-gender-ambiguous me-2"></i>Gender <span class="text-danger">*</span></label>
-              <select name="gender" class="form-select" required>
-                <option value="">-- Select Gender --</option>
-                <option value="Male">Male</option>
-                <option value="Female">Female</option>
-                <option value="Other">Other</option>
-              </select>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-telephone-fill me-2"></i>Phone Number <span class="text-danger">*</span></label>
-              <input type="tel" name="phone" class="form-control" required pattern="[0-9]{10,11}" placeholder="09XXXXXXXXX">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-envelope-fill me-2"></i>Email Address <span class="text-danger">*</span></label>
-              <input type="email" name="email" class="form-control" required placeholder="member@example.com">
-            </div>
-
-            <div class="col-12">
-              <label class="form-label"><i class="bi bi-geo-alt-fill me-2"></i>Address <span class="text-danger">*</span></label>
-              <input type="text" name="address" class="form-control" required>
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-briefcase-fill me-2"></i>Type of Work</label>
-              <select name="work_type" class="form-select">
-                <option value="Fisherman">Fisherman</option>
-                <option value="Bangkero">Bangkero</option>
-                <option value="Both">Both</option>
-              </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-card-heading me-2"></i>License Number</label>
-              <input type="text" name="license_number" class="form-control" placeholder="Optional">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-water me-2"></i>Boat Name</label>
-              <input type="text" name="boat_name" class="form-control" placeholder="Optional">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-pin-map-fill me-2"></i>Fishing Area / Route</label>
-              <input type="text" name="fishing_area" class="form-control" placeholder="Optional">
-            </div>
-
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-person-badge me-2"></i>Emergency Contact Name</label>
-              <input type="text" name="emergency_name" class="form-control" placeholder="Optional">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-telephone me-2"></i>Emergency Contact Phone</label>
-              <input type="tel" name="emergency_phone" class="form-control" placeholder="Optional">
-            </div>
-
-            <div class="col-12">
-              <label class="form-label"><i class="bi bi-image me-2"></i>Upload Photo</label>
-              <input type="file" name="image" id="add_image" class="form-control" accept="image/*">
-              <small class="text-muted">Accepted: JPG, PNG, GIF (Max 2MB)</small>
-              <img id="add_preview" src="" alt="Preview" class="img-preview d-none">
-            </div>
-
-            <div class="col-12">
-              <div class="form-check">
-                <input type="checkbox" name="agreement" class="form-check-input" id="add_agreement" value="1" required>
-                <label for="add_agreement" class="form-check-label">
-                  <strong>I agree to follow the association's rules and regulations</strong>
-                </label>
+            <div class="row g-3">
+              <div class="col-md-3">
+                <label class="form-label">First Name <span class="text-danger">*</span></label>
+                <input type="text" name="first_name" class="form-control" required placeholder="Juan" value="<?= old('first_name') ?>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">M.I.</label>
+                <input type="text" name="middle_initial" class="form-control" maxlength="2" placeholder="M" value="<?= old('middle_initial') ?>">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Last Name <span class="text-danger">*</span></label>
+                <input type="text" name="last_name" class="form-control" required placeholder="Dela Cruz" value="<?= old('last_name') ?>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Date of Birth <span class="text-danger">*</span></label>
+                <input type="date" name="dob" id="add_dob" class="form-control" required max="<?= date('Y-m-d', strtotime('-18 years')) ?>" value="<?= old('dob') ?>">
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Age</label>
+                <input type="text" id="add_age" class="form-control" readonly placeholder="Auto">
+              </div>
+              
+              <div class="col-md-4">
+                <label class="form-label">Gender <span class="text-danger">*</span></label>
+                <select name="gender" class="form-select" required>
+                  <option value="">Select Gender</option>
+                  <option value="Male" <?= selected('gender', 'Male') ?>>Male</option>
+                  <option value="Female" <?= selected('gender', 'Female') ?>>Female</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Civil Status <span class="text-danger">*</span></label>
+                <select name="civil_status" class="form-select" required>
+                  <option value="">Select Status</option>
+                  <option value="Single" <?= selected('civil_status', 'Single') ?>>Single</option>
+                  <option value="Married" <?= selected('civil_status', 'Married') ?>>Married</option>
+                  <option value="Widowed" <?= selected('civil_status', 'Widowed') ?>>Widowed</option>
+                  <option value="Separated" <?= selected('civil_status', 'Separated') ?>>Separated</option>
+                </select>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Upload Photo</label>
+                <input type="file" name="image" id="add_image" class="form-control" accept="image/*">
+                <small class="text-muted">JPG, PNG, GIF (Max 2MB)</small>
               </div>
             </div>
           </div>
+
+          <!-- Contact Information Section -->
+          <div class="form-section">
+            <div class="section-header">
+              <i class="bi bi-telephone"></i>
+              <span>Contact Information</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Phone Number <span class="text-danger">*</span></label>
+                <input type="tel" name="phone" id="add_phone" class="form-control" required placeholder="09XX-XXX-XXXX" maxlength="13" value="<?= old('phone') ?>">
+                <small class="text-muted">Format: 09XX-XXX-XXXX</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Email Address <span class="text-danger">*</span></label>
+                <input type="email" name="email" class="form-control" required placeholder="member@example.com" value="<?= old('email') ?>">
+              </div>
+            </div>
+          </div>
+
+          <!-- Address Section -->
+          <div class="form-section">
+            <div class="section-header">
+              <i class="bi bi-geo-alt"></i>
+              <span>Address</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Street / House No. <span class="text-danger">*</span></label>
+                <input type="text" name="street" class="form-control" required placeholder="123 Main St." value="<?= old('street') ?>">
+                <small class="text-muted">Enter complete house number and street</small>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Barangay <span class="text-danger">*</span></label>
+                <input type="text" name="barangay" class="form-control" required placeholder="Barangay 123" value="<?= old('barangay') ?>">
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">Municipality / City <span class="text-danger">*</span></label>
+                <input type="text" name="municipality" class="form-control" required placeholder="City/Municipality" value="<?= old('municipality') ?>">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Province <span class="text-danger">*</span></label>
+                <input type="text" name="province" class="form-control" required placeholder="Province" value="<?= old('province') ?>">
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">Region <span class="text-danger">*</span></label>
+                <select name="region" class="form-select" required>
+                  <option value="">Select Region</option>
+                  <option value="NCR" <?= selected('region', 'NCR') ?>>NCR - National Capital Region</option>
+                  <option value="CAR" <?= selected('region', 'CAR') ?>>CAR - Cordillera Administrative Region</option>
+                  <option value="Region I" <?= selected('region', 'Region I') ?>>Region I - Ilocos Region</option>
+                  <option value="Region II" <?= selected('region', 'Region II') ?>>Region II - Cagayan Valley</option>
+                  <option value="Region III" <?= selected('region', 'Region III') ?>>Region III - Central Luzon</option>
+                  <option value="Region IV-A" <?= selected('region', 'Region IV-A') ?>>Region IV-A - CALABARZON</option>
+                  <option value="Region IV-B" <?= selected('region', 'Region IV-B') ?>>Region IV-B - MIMAROPA</option>
+                  <option value="Region V" <?= selected('region', 'Region V') ?>>Region V - Bicol Region</option>
+                  <option value="Region VI" <?= selected('region', 'Region VI') ?>>Region VI - Western Visayas</option>
+                  <option value="Region VII" <?= selected('region', 'Region VII') ?>>Region VII - Central Visayas</option>
+                  <option value="Region VIII" <?= selected('region', 'Region VIII') ?>>Region VIII - Eastern Visayas</option>
+                  <option value="Region IX" <?= selected('region', 'Region IX') ?>>Region IX - Zamboanga Peninsula</option>
+                  <option value="Region X" <?= selected('region', 'Region X') ?>>Region X - Northern Mindanao</option>
+                  <option value="Region XI" <?= selected('region', 'Region XI') ?>>Region XI - Davao Region</option>
+                  <option value="Region XII" <?= selected('region', 'Region XII') ?>>Region XII - SOCCSKSARGEN</option>
+                  <option value="Region XIII" <?= selected('region', 'Region XIII') ?>>Region XIII - Caraga</option>
+                  <option value="BARMM" <?= selected('region', 'BARMM') ?>>BARMM - Bangsamoro</option>
+                </select>
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">Zip Code <span class="text-danger">*</span></label>
+                <input type="text" name="zip_code" class="form-control" required placeholder="1000" maxlength="4" pattern="\d{4}" value="<?= old('zip_code') ?>">
+              </div>
+            </div>
+          </div>
+
+          <!-- Work Information Section -->
+          <div class="form-section">
+            <div class="section-header">
+              <i class="bi bi-briefcase"></i>
+              <span>Work Information</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-4">
+                <label class="form-label">Type of Work <span class="text-danger">*</span></label>
+                <select name="work_type" id="add_work_type" class="form-select" required onchange="toggleWorkTypeFields()">
+                  <option value="">Select Type</option>
+                  <option value="Fisherman" <?= selected('work_type', 'Fisherman') ?>>Fisherman</option>
+                  <option value="Bangkero" <?= selected('work_type', 'Bangkero') ?>>Bangkero</option>
+                  <option value="Both" <?= selected('work_type', 'Both') ?>>Both</option>
+                </select>
+                <small class="text-muted">Select your main type of work. License fields depend on your selection.</small>
+              </div>
+            </div>
+
+            <!-- Licenses / Permits Section -->
+            <div id="licenses_section" class="mt-4 d-none">
+              <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2">
+                <i class="bi bi-card-checklist me-2"></i>Licenses / Permits
+              </h6>
+              <div class="row g-3">
+                <div class="col-md-6" id="municipal_field">
+                  <label class="form-label">Municipal Permit No.</label>
+                  <input type="text" name="municipal_permit_no" id="add_municipal_permit" class="form-control" placeholder="Municipal Fisherfolk Permit" value="<?= old('municipal_permit_no') ?>">
+                  <small class="text-muted">Enter your Municipal Fisherfolk Permit from the Municipal Agriculture Office.</small>
+                </div>
+                <div class="col-md-6" id="bfar_field">
+                  <label class="form-label">BFAR Fisherfolk ID</label>
+                  <input type="text" name="bfar_fisherfolk_id" id="add_bfar_id" class="form-control" placeholder="BFAR Fisherfolk ID" value="<?= old('bfar_fisherfolk_id') ?>">
+                  <small class="text-muted">Enter your BFAR Fisherfolk ID from the Bureau of Fisheries. Optional if you have a Municipal Permit.</small>
+                </div>
+              </div>
+            </div>
+
+            <!-- Boat Information Section -->
+            <div id="boat_section" class="mt-4 d-none">
+              <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2">
+                <i class="bi bi-water me-2"></i>Boat Information
+              </h6>
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <label class="form-label">Boat Name / Primary Vessel</label>
+                  <input type="text" name="boat_name" id="add_boat_name" class="form-control" placeholder="Enter boat name" value="<?= old('boat_name') ?>">
+                  <small class="text-muted">Required for Bangkero. Enter the name of the boat you operate (owned or managed).</small>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">Boat Registration / License</label>
+                  <input type="text" name="boat_registration" id="add_boat_registration" class="form-control" placeholder="Enter boat registration number" value="<?= old('boat_registration') ?>">
+                  <small class="text-muted">Enter your boat registration or license number from the Maritime Industry Authority (MARINA) or local port authority.</small>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Emergency Contact Section -->
+          <div class="form-section">
+            <div class="section-header">
+              <i class="bi bi-heart-pulse"></i>
+              <span>Emergency Contact</span>
+            </div>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">Contact Name <span class="text-danger">*</span></label>
+                <input type="text" name="emergency_name" class="form-control" required placeholder="Full name of emergency contact" value="<?= old('emergency_name') ?>">
+              </div>
+              <div class="col-md-6">
+                <label class="form-label">Contact Phone <span class="text-danger">*</span></label>
+                <input type="tel" name="emergency_phone" id="add_emergency_phone" class="form-control" required placeholder="09XX-XXX-XXXX" maxlength="13" value="<?= old('emergency_phone') ?>">
+              </div>
+            </div>
+          </div>
+
+          <!-- Agreement Section -->
+          <div class="form-section mb-0">
+            <div class="form-check p-3 border rounded" style="background: #f8f9fa;">
+              <input type="checkbox" name="agreement" class="form-check-input" id="add_agreement" value="1" required <?= checked('agreement') ?>>
+              <label for="add_agreement" class="form-check-label fw-semibold">
+                I agree to follow the association's rules and regulations <span class="text-danger">*</span>
+              </label>
+            </div>
+          </div>
+
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-          <button type="submit" class="btn-submit">
+        <div class="modal-footer" style="justify-content: flex-end; gap: 10px; padding: 20px;">
+          <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal" style="padding: 10px 24px;">Cancel</button>
+          <button type="submit" class="btn btn-success" style="padding: 12px 32px; font-weight: 600; background: linear-gradient(135deg, #10b981 0%, #059669 100%); border: none;">
             <i class="bi bi-check-circle-fill me-2"></i>
             Add Member
           </button>
@@ -1627,7 +1935,6 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
                 <option value="">-- Select Gender --</option>
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
-                <option value="Other">Other</option>
               </select>
             </div>
 
@@ -1647,24 +1954,54 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
             <div class="col-md-6">
               <label class="form-label"><i class="bi bi-briefcase-fill me-2"></i>Type of Work</label>
-              <select name="work_type" id="edit_work_type" class="form-select">
+              <select name="work_type" id="edit_work_type" class="form-select" onchange="toggleEditWorkTypeFields()">
                 <option value="Fisherman">Fisherman</option>
                 <option value="Bangkero">Bangkero</option>
                 <option value="Both">Both</option>
               </select>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-card-heading me-2"></i>License Number</label>
-              <input type="text" name="license_number" id="edit_license_number" class="form-control">
+              <small class="text-muted">Select your main type of work. License fields depend on your selection.</small>
             </div>
 
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-water me-2"></i>Boat Name</label>
-              <input type="text" name="boat_name" id="edit_boat_name" class="form-control">
+            <!-- Edit: Licenses / Permits Section -->
+            <div id="edit_licenses_section" class="col-12 mt-3 d-none">
+              <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2">
+                <i class="bi bi-card-checklist me-2"></i>Licenses / Permits
+              </h6>
+              <div class="row g-3">
+                <div class="col-md-6" id="edit_municipal_field">
+                  <label class="form-label">Municipal Permit No.</label>
+                  <input type="text" name="municipal_permit_no" id="edit_municipal_permit" class="form-control">
+                  <small class="text-muted">Enter your Municipal Fisherfolk Permit from the Municipal Agriculture Office.</small>
+                </div>
+                <div class="col-md-6" id="edit_bfar_field">
+                  <label class="form-label">BFAR Fisherfolk ID</label>
+                  <input type="text" name="bfar_fisherfolk_id" id="edit_bfar_id" class="form-control">
+                  <small class="text-muted">Enter your BFAR Fisherfolk ID from the Bureau of Fisheries. Optional if you have a Municipal Permit.</small>
+                </div>
+              </div>
             </div>
-            <div class="col-md-6">
-              <label class="form-label"><i class="bi bi-pin-map-fill me-2"></i>Fishing Area / Route</label>
-              <input type="text" name="fishing_area" id="edit_fishing_area" class="form-control">
+
+            <!-- Edit: Boat Information Section -->
+            <div id="edit_boat_section" class="col-12 mt-3 d-none">
+              <h6 class="fw-bold text-secondary mb-3 border-bottom pb-2">
+                <i class="bi bi-water me-2"></i>Boat Information
+              </h6>
+              <div class="row g-3">
+                <div class="col-md-4">
+                  <label class="form-label">Boat Name / Primary Vessel</label>
+                  <input type="text" name="boat_name" id="edit_boat_name" class="form-control">
+                  <small class="text-muted">Required for Bangkero. Enter the name of the boat you operate (owned or managed).</small>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label">Boat Registration / License</label>
+                  <input type="text" name="boat_registration" id="edit_boat_registration" class="form-control">
+                  <small class="text-muted">Enter your boat registration or license number from MARINA or local port authority.</small>
+                </div>
+                <div class="col-md-4">
+                  <label class="form-label"><i class="bi bi-pin-map-fill me-2"></i>Fishing Area / Route</label>
+                  <input type="text" name="fishing_area" id="edit_fishing_area" class="form-control">
+                </div>
+              </div>
             </div>
 
             <div class="col-md-6">
@@ -1716,6 +2053,197 @@ tooltipTriggerList.forEach(function (tooltipTriggerEl) {
     });
 });
 
+// ==========================================
+// ADD MEMBER FORM ENHANCEMENTS
+// ==========================================
+
+// Phone number auto-formatting (Philippine format)
+function formatPhoneNumber(input) {
+    let value = input.value.replace(/\D/g, ''); // Remove non-digits
+    
+    // Ensure starts with 09
+    if (value.length > 0 && !value.startsWith('0')) {
+        if (value.startsWith('9')) {
+            value = '0' + value;
+        }
+    }
+    
+    // Limit to 11 digits
+    value = value.substring(0, 11);
+    
+    // Format as 09XX-XXX-XXXX
+    if (value.length >= 4 && value.length <= 7) {
+        value = value.slice(0, 4) + '-' + value.slice(4);
+    } else if (value.length > 7) {
+        value = value.slice(0, 4) + '-' + value.slice(4, 7) + '-' + value.slice(7);
+    }
+    
+    input.value = value;
+}
+
+// Calculate age from date of birth
+function calculateAge(dobInput, ageInput) {
+    const dob = new Date(dobInput.value);
+    if (isNaN(dob.getTime())) {
+        ageInput.value = '';
+        return;
+    }
+    
+    const today = new Date();
+    let age = today.getFullYear() - dob.getFullYear();
+    const monthDiff = today.getMonth() - dob.getMonth();
+    
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < dob.getDate())) {
+        age--;
+    }
+    
+    ageInput.value = age >= 0 ? age + ' years old' : '';
+}
+
+// Show/hide fields based on work type selection (Add Member)
+function toggleWorkTypeFields() {
+    const workType = document.getElementById('add_work_type').value;
+    const licensesSection = document.getElementById('licenses_section');
+    const boatSection = document.getElementById('boat_section');
+    const municipalField = document.getElementById('municipal_field');
+    const bfarField = document.getElementById('bfar_field');
+    
+    // Hide all sections first
+    licensesSection.classList.add('d-none');
+    boatSection.classList.add('d-none');
+    municipalField.classList.add('d-none');
+    bfarField.classList.add('d-none');
+    
+    if (workType === 'Fisherman') {
+        // Show licenses section with municipal and BFAR fields
+        licensesSection.classList.remove('d-none');
+        municipalField.classList.remove('d-none');
+        bfarField.classList.remove('d-none');
+    } else if (workType === 'Bangkero') {
+        // Show boat section only
+        boatSection.classList.remove('d-none');
+        // Also show general license in licenses section
+        licensesSection.classList.remove('d-none');
+    } else if (workType === 'Both') {
+        // Show everything
+        licensesSection.classList.remove('d-none');
+        boatSection.classList.remove('d-none');
+        municipalField.classList.remove('d-none');
+        bfarField.classList.remove('d-none');
+    }
+}
+
+// Show/hide fields based on work type selection (Edit Member)
+function toggleEditWorkTypeFields() {
+    const workType = document.getElementById('edit_work_type').value;
+    const licensesSection = document.getElementById('edit_licenses_section');
+    const boatSection = document.getElementById('edit_boat_section');
+    const municipalField = document.getElementById('edit_municipal_field');
+    const bfarField = document.getElementById('edit_bfar_field');
+    
+    // Hide all sections first
+    licensesSection.classList.add('d-none');
+    boatSection.classList.add('d-none');
+    municipalField.classList.add('d-none');
+    bfarField.classList.add('d-none');
+    
+    if (workType === 'Fisherman') {
+        // Show licenses section with municipal and BFAR fields
+        licensesSection.classList.remove('d-none');
+        municipalField.classList.remove('d-none');
+        bfarField.classList.remove('d-none');
+    } else if (workType === 'Bangkero') {
+        // Show boat section only
+        boatSection.classList.remove('d-none');
+        // Also show general license in licenses section
+        licensesSection.classList.remove('d-none');
+    } else if (workType === 'Both') {
+        // Show everything
+        licensesSection.classList.remove('d-none');
+        boatSection.classList.remove('d-none');
+        municipalField.classList.remove('d-none');
+        bfarField.classList.remove('d-none');
+    }
+}
+
+// Initialize Add Member Form enhancements
+document.addEventListener('DOMContentLoaded', function() {
+    // Phone formatting
+    const phoneInput = document.getElementById('add_phone');
+    const emergencyPhoneInput = document.getElementById('add_emergency_phone');
+    
+    if (phoneInput) {
+        phoneInput.addEventListener('input', function() {
+            formatPhoneNumber(this);
+        });
+    }
+    
+    if (emergencyPhoneInput) {
+        emergencyPhoneInput.addEventListener('input', function() {
+            formatPhoneNumber(this);
+        });
+    }
+    
+    // Age calculation
+    const dobInput = document.getElementById('add_dob');
+    const ageInput = document.getElementById('add_age');
+    
+    if (dobInput && ageInput) {
+        dobInput.addEventListener('change', function() {
+            calculateAge(this, ageInput);
+        });
+    }
+    
+    // Work type conditional fields
+    const workTypeSelect = document.getElementById('add_work_type');
+    if (workTypeSelect) {
+        workTypeSelect.addEventListener('change', toggleWorkTypeFields);
+        // Initialize on load (for form retention after error)
+        toggleWorkTypeFields();
+    }
+    
+    // Form validation feedback
+    const form = document.getElementById('addMemberForm');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            const requiredFields = form.querySelectorAll('[required]');
+            let isValid = true;
+            
+            requiredFields.forEach(field => {
+                if (!field.value.trim()) {
+                    isValid = false;
+                    field.classList.add('is-invalid');
+                } else {
+                    field.classList.remove('is-invalid');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Required Fields Missing',
+                    text: 'Please fill in all required fields marked with *',
+                    confirmButtonColor: '#667eea'
+                });
+            }
+        });
+        
+        // Remove invalid class on input
+        form.querySelectorAll('input, select').forEach(field => {
+            field.addEventListener('input', function() {
+                this.classList.remove('is-invalid');
+            });
+        });
+    }
+    
+    // Reopen modal if there was an error (form retention)
+    <?php if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_member']) && $alertType === 'error'): ?>
+        const addModal = new bootstrap.Modal(document.getElementById('addMemberModal'));
+        addModal.show();
+    <?php endif; ?>
+});
+
 // Filter panel manual toggle (no Bootstrap dependency)
 const filterToggleBtn = document.getElementById('filterToggleBtn');
 const filterPanelBody = document.getElementById('filterPanelBody');
@@ -1754,8 +2282,13 @@ document.querySelectorAll('.editBtn').forEach(btn => {
         document.getElementById('edit_email').value = btn.dataset.email;
         document.getElementById('edit_address').value = btn.dataset.address;
         document.getElementById('edit_work_type').value = btn.dataset.worktype;
-        document.getElementById('edit_license_number').value = btn.dataset.license;
+        document.getElementById('edit_municipal_permit').value = btn.dataset.municipal || '';
+        document.getElementById('edit_bfar_id').value = btn.dataset.bfar || '';
         document.getElementById('edit_boat_name').value = btn.dataset.boat;
+        document.getElementById('edit_boat_registration').value = btn.dataset.boatreg || '';
+        
+        // Trigger conditional field display
+        toggleEditWorkTypeFields();
         document.getElementById('edit_fishing_area').value = btn.dataset.fishing;
         document.getElementById('edit_emergency_name').value = btn.dataset.emergency;
         document.getElementById('edit_emergency_phone').value = btn.dataset.emergencyphone;
@@ -1882,22 +2415,18 @@ document.addEventListener('DOMContentLoaded', function() {
     updateBulkActions();
 });
 
-// Client-side filters for attendance status & license
+// Client-side filters for attendance status
 (function() {
     const statusFilter = document.getElementById('attendanceStatusFilter');
-    const licenseFilter = document.getElementById('licenseFilter');
 
     function applyMemberRowFilters() {
         const statusVal = statusFilter ? statusFilter.value : '';
-        const licenseVal = licenseFilter ? licenseFilter.value : '';
 
         document.querySelectorAll('#membersTableBody tr.member-row').forEach(row => {
             const rowStatus = row.getAttribute('data-att-status') || '';
-            const rowLicense = row.getAttribute('data-license') || '';
 
             let visible = true;
             if (statusVal && rowStatus !== statusVal) visible = false;
-            if (licenseVal && rowLicense !== licenseVal) visible = false;
 
             row.style.display = visible ? '' : 'none';
         });
@@ -1905,9 +2434,6 @@ document.addEventListener('DOMContentLoaded', function() {
 
     if (statusFilter) {
         statusFilter.addEventListener('change', applyMemberRowFilters);
-    }
-    if (licenseFilter) {
-        licenseFilter.addEventListener('change', applyMemberRowFilters);
     }
 })();
 

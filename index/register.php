@@ -55,7 +55,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($insert->execute()) {
         $insert->close();
-        header("Location: login.php?status=info&message=Registration successful! Your account is pending admin approval");
+        header("Location: login.php?status=info&message=Registration successful. Please wait for administrator approval.");
         exit();
     } else {
         $insert->close();

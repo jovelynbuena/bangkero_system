@@ -1026,14 +1026,26 @@ document.addEventListener('DOMContentLoaded', function() {
   const observer = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
-        entry.target.style.width = entry.target.getAttribute('style').match(/width:\s*([^;]+)/)[1];
+        const targetWidth = entry.target.getAttribute('data-width');
+        if (targetWidth) {
+          entry.target.style.width = targetWidth + '%';
+        }
       }
     });
   }, observerOptions);
 
   progressBars.forEach(bar => {
-    const targetWidth = bar.style.width;
+    // Get the PHP-generated width from inline style
+    const styleAttr = bar.getAttribute('style') || '';
+    const widthMatch = styleAttr.match(/width:\s*([^;%]+)/);
+    const targetWidth = widthMatch ? widthMatch[1].trim() : '0';
+    
+    // Store target width in data attribute
+    bar.setAttribute('data-width', targetWidth);
+    
+    // Reset to 0 for animation
     bar.style.width = '0%';
+    
     observer.observe(bar);
   });
 
