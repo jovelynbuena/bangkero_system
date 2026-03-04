@@ -15,6 +15,45 @@ if ($_SESSION['role'] !== 'admin') {
 require_once('../../config/db_connect.php');
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+// ========================================
+// SCHEMA FEATURE-DETECTION (avoid fatal on old DBs)
+// ========================================
+function tableExists(mysqli $conn, string $table): bool {
+    $tableEsc = $conn->real_escape_string($table);
+    $res = $conn->query("SHOW TABLES LIKE '{$tableEsc}'");
+    return ($res && $res->num_rows > 0);
+}
+
+function tableHasColumn(mysqli $conn, string $table, string $column): bool {
+    $tableEsc = $conn->real_escape_string($table);
+    $colEsc = $conn->real_escape_string($column);
+    $res = $conn->query("SHOW COLUMNS FROM `{$tableEsc}` LIKE '{$colEsc}'");
+    return ($res && $res->num_rows > 0);
+}
+
+$hasOfficerRolesCreatedAt = false;
+$hasOfficerRolesUpdatedAt = false;
+$hasOfficerRolesDisplayOrder = false;
+$hasOfficerRolesArchiveExists = false;
+$hasOfficerRolesArchiveCreatedAt = false;
+
+try {
+    $hasOfficerRolesCreatedAt = tableHasColumn($conn, 'officer_roles', 'created_at');
+    $hasOfficerRolesUpdatedAt = tableHasColumn($conn, 'officer_roles', 'updated_at');
+    $hasOfficerRolesDisplayOrder = tableHasColumn($conn, 'officer_roles', 'display_order');
+    $hasOfficerRolesArchiveExists = tableExists($conn, 'officer_roles_archive');
+    $hasOfficerRolesArchiveCreatedAt = $hasOfficerRolesArchiveExists
+        ? tableHasColumn($conn, 'officer_roles_archive', 'created_at')
+        : false;
+} catch (Throwable $e) {
+    // If schema checks fail for any reason, default to safest behavior.
+    $hasOfficerRolesCreatedAt = false;
+    $hasOfficerRolesUpdatedAt = false;
+    $hasOfficerRolesDisplayOrder = false;
+    $hasOfficerRolesArchiveExists = false;
+    $hasOfficerRolesArchiveCreatedAt = false;
+}
+
 $successMsg = $errorMsg = "";
 
 // ========================================
@@ -50,9 +89,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_role'])) {
                 $description = substr($description, 0, 500);
             }
             
-            // Insert with timestamp
-            $stmt = $conn->prepare("INSERT INTO officer_roles (role_name, description, created_at) VALUES (?, ?, NOW())");
-            $stmt->bind_param("ss", $role_name, $description);
+            // Insert (use created_at only if the column exists)
+            if ($hasOfficerRolesCreatedAt) {
+                $stmt = $conn->prepare("INSERT INTO officer_roles (role_name, description, created_at) VALUES (?, ?, NOW())");
+                $stmt->bind_param("ss", $role_name, $description);
+            } else {
+                $stmt = $conn->prepare("INSERT INTO officer_roles (role_name, description) VALUES (?, ?)");
+                $stmt->bind_param("ss", $role_name, $description);
+            }
             
             if ($stmt->execute()) {
                 $successMsg = "New officer role added successfully!";
@@ -103,10 +147,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['edit_role'])) {
                 $description = substr($description, 0, 500);
             }
             
-            // Update with timestamp
-            $stmt = $conn->prepare("UPDATE officer_roles SET role_name=?, description=?, updated_at=NOW() WHERE id=?");
-            $stmt->bind_param("ssi", $role_name, $description, $id);
-            
+            // Update (use updated_at only if the column exists)
+            if ($hasOfficerRolesUpdatedAt) {
+                $stmt = $conn->prepare("UPDATE officer_roles SET role_name=?, description=?, updated_at=NOW() WHERE id=?");
+                $stmt->bind_param("ssi", $role_name, $description, $id);
+            } else {
+                $stmt = $conn->prepare("UPDATE officer_roles SET role_name=?, description=? WHERE id=?");
+                $stmt->bind_param("ssi", $role_name, $description, $id);
+            }
+
             if ($stmt->execute()) {
                 $successMsg = "Role updated successfully!";
             } else {
@@ -131,11 +180,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_role'])) {
         try {
             $conn->begin_transaction();
             
-            // Move to archive
-            $stmt = $conn->prepare("INSERT INTO officer_roles_archive (original_id, role_name, description, created_at) SELECT id, role_name, description, created_at FROM officer_roles WHERE id=?");
-            $stmt->bind_param("i", $id);
-            $stmt->execute();
-            $stmt->close();
+            // Move to archive (handle DBs without archive table / created_at)
+            if ($hasOfficerRolesArchiveExists) {
+                if ($hasOfficerRolesArchiveCreatedAt) {
+                    if ($hasOfficerRolesCreatedAt) {
+                        $stmt = $conn->prepare("INSERT INTO officer_roles_archive (original_id, role_name, description, created_at) SELECT id, role_name, description, created_at FROM officer_roles WHERE id=?");
+                    } else {
+                        $stmt = $conn->prepare("INSERT INTO officer_roles_archive (original_id, role_name, description, created_at) SELECT id, role_name, description, NOW() FROM officer_roles WHERE id=?");
+                    }
+                } else {
+                    $stmt = $conn->prepare("INSERT INTO officer_roles_archive (original_id, role_name, description) SELECT id, role_name, description FROM officer_roles WHERE id=?");
+                }
+                $stmt->bind_param("i", $id);
+                $stmt->execute();
+                $stmt->close();
+            }
             
             // Delete from main
             $stmt = $conn->prepare("DELETE FROM officer_roles WHERE id=?");
@@ -155,7 +214,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_role'])) {
 // ========================================
 // FETCH ROLES WITH STATISTICS
 // ========================================
-$rolesResult = $conn->query("SELECT * FROM officer_roles ORDER BY created_at DESC");
+// Sort by display_order (hierarchy) if column exists, otherwise fallback to created_at or id
+if ($hasOfficerRolesDisplayOrder) {
+    $orderBy = 'display_order ASC, id ASC';
+} elseif ($hasOfficerRolesCreatedAt) {
+    $orderBy = 'created_at DESC';
+} else {
+    $orderBy = 'id DESC';
+}
+$rolesResult = $conn->query("SELECT * FROM officer_roles ORDER BY {$orderBy}");
 $totalRoles = $rolesResult->num_rows;
 ?>
 

@@ -67,9 +67,8 @@ if ($glanceResult && $glanceResult->num_rows > 0) {
 }
 
 
-// Fetch officers with member names and role names
+// Fetch CURRENT officers with member names and role names (term not yet ended)
 $query = "
-
     SELECT 
         officers.id,
         officer_roles.role_name AS position,
@@ -81,6 +80,7 @@ $query = "
     FROM officers
     JOIN members ON officers.member_id = members.id
     JOIN officer_roles ON officers.role_id = officer_roles.id
+    WHERE officers.term_end >= CURDATE()
     ORDER BY FIELD(officer_roles.role_name, 'President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor', 'Pro') ASC
 ";
 

@@ -778,11 +778,11 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
                 <p class="subtitle">Manage association awards and recognitions</p>
             </div>
             <div class="d-flex gap-2">
-                <div class="dropdown">
-                    <button class="btn btn-outline-light dropdown-toggle" type="button" data-bs-toggle="dropdown" style="padding: 14px 28px; border-radius: 12px; font-weight: 600; border: 2px solid rgba(255,255,255,0.3);">
+                <div class="dropdown" id="exportDropdown">
+                    <button class="btn btn-outline-light dropdown-toggle" type="button" onclick="toggleExportDropdown()" style="padding: 14px 28px; border-radius: 12px; font-weight: 600; border: 2px solid rgba(255,255,255,0.3);">
                         <i class="bi bi-download me-2"></i>Export
                     </button>
-                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2">
+                    <ul class="dropdown-menu dropdown-menu-end shadow border-0 rounded-4 mt-2" id="exportDropdownMenu" style="display: none;">
                         <li><a class="dropdown-item" href="export_selected_awards.php?ids=all&format=csv&search=<?=urlencode($search)?>&category=<?=urlencode($category_filter)?>&year=<?=$year_filter?>&awarding_body=<?=urlencode($body_filter)?>"><i class="bi bi-filetype-csv me-2 text-primary"></i>Export CSV</a></li>
                         <li><a class="dropdown-item" href="export_selected_awards.php?ids=all&format=excel&search=<?=urlencode($search)?>&category=<?=urlencode($category_filter)?>&year=<?=$year_filter?>&awarding_body=<?=urlencode($body_filter)?>"><i class="bi bi-file-earmark-excel me-2 text-success"></i>Export Excel</a></li>
                         <li><a class="dropdown-item" href="export_selected_awards.php?ids=all&format=pdf&search=<?=urlencode($search)?>&category=<?=urlencode($category_filter)?>&year=<?=$year_filter?>&awarding_body=<?=urlencode($body_filter)?>"><i class="bi bi-filetype-pdf me-2 text-danger"></i>Export PDF</a></li>
@@ -1361,9 +1361,13 @@ document.querySelectorAll('.editBtn').forEach(btn => {
    ✅ BULK SELECTION LOGIC
 -------------------------- */
 const selectAll = document.getElementById('selectAll');
-const rowCheckboxes = document.querySelectorAll('.row-checkbox');
 const bulkBar = document.getElementById('bulkActionsBar');
 const selectedCount = document.getElementById('selectedCount');
+
+// Helper to get all row checkboxes (dynamic, for pagination support)
+function getRowCheckboxes() {
+    return document.querySelectorAll('.row-checkbox');
+}
 
 function updateBulkBar() {
     const checked = document.querySelectorAll('.row-checkbox:checked');
@@ -1372,22 +1376,25 @@ function updateBulkBar() {
         selectedCount.innerText = `${checked.length} Award${checked.length > 1 ? 's' : ''} Selected`;
     } else {
         bulkBar.style.display = 'none';
-        selectAll.checked = false;
+        if (selectAll) selectAll.checked = false;
     }
 }
 
+// Use event delegation for dynamic checkboxes
+document.addEventListener('change', function(e) {
+    if (e.target.classList.contains('row-checkbox')) {
+        updateBulkBar();
+    }
+});
+
 selectAll?.addEventListener('change', function() {
-    rowCheckboxes.forEach(cb => cb.checked = this.checked);
+    getRowCheckboxes().forEach(cb => cb.checked = this.checked);
     updateBulkBar();
 });
 
-rowCheckboxes.forEach(cb => {
-    cb.addEventListener('change', updateBulkBar);
-});
-
 function deselectAll() {
-    rowCheckboxes.forEach(cb => cb.checked = false);
-    selectAll.checked = false;
+    getRowCheckboxes().forEach(cb => cb.checked = false);
+    if (selectAll) selectAll.checked = false;
     updateBulkBar();
 }
 
@@ -1414,11 +1421,14 @@ function bulkArchive() {
 
 function bulkExport(format) {
     const ids = getSelectedIds();
+    console.log('Selected IDs:', ids); // Debug
     if (!ids) {
         Swal.fire('No Selection', 'Please select at least one award to export.', 'info');
         return;
     }
-    window.location.href = `export_selected_awards.php?ids=${ids}&format=${format}`;
+    const url = `export_selected_awards.php?ids=${ids}&format=${format}`;
+    console.log('Export URL:', url); // Debug
+    window.location.href = url;
 }
 
 
@@ -1435,6 +1445,23 @@ function bulkExport(format) {
             preview.classList.add('d-none');
         }
     });
+});
+
+// Export dropdown toggle
+function toggleExportDropdown() {
+    const menu = document.getElementById('exportDropdownMenu');
+    if (menu) {
+        menu.style.display = menu.style.display === 'none' ? 'block' : 'none';
+    }
+}
+
+// Close dropdown when clicking outside
+document.addEventListener('click', function(e) {
+    const dropdown = document.getElementById('exportDropdown');
+    const menu = document.getElementById('exportDropdownMenu');
+    if (dropdown && menu && !dropdown.contains(e.target)) {
+        menu.style.display = 'none';
+    }
 });
 
 // Archive confirmation for single award
