@@ -4,91 +4,103 @@ require_once('../../config/db_connect.php');
 
 // Fetch financial summary statistics
 $stats = [
-    'total_donations' => 0,
-    'total_donors' => 0,
-    'active_campaigns' => 0,
-    'funds_allocated' => 0,
-    'remaining_funds' => 0,
+    'total_assistance' => 0,
+    'partner_count' => 0,
+    'active_programs' => 0,
+    'funds_utilized' => 0,
     'last_updated' => date('F Y')
 ];
 
-// Get total donations and total donors
-$donationQuery = "SELECT 
-    COALESCE(SUM(amount), 0) AS total_donations,
-    COUNT(DISTINCT donor_name) AS total_donors,
+// Get total assistance received (using donations table for now)
+$assistanceQuery = "SELECT 
+    COALESCE(SUM(amount), 0) AS total_assistance,
+    COUNT(DISTINCT donor_name) AS partner_count,
     MAX(date_received) AS last_update
     FROM transparency_donations
     WHERE status = 'confirmed'";
-$result = $conn->query($donationQuery);
+$result = $conn->query($assistanceQuery);
 if ($result && $row = $result->fetch_assoc()) {
-    $stats['total_donations'] = $row['total_donations'];
-    $stats['total_donors'] = $row['total_donors'];
+    $stats['total_assistance'] = $row['total_assistance'];
+    $stats['partner_count'] = $row['partner_count'];
     if ($row['last_update']) {
         $stats['last_updated'] = date('F Y', strtotime($row['last_update']));
     }
 }
 
-// Get active campaigns count
-$campaignQuery = "SELECT COUNT(*) AS active_count FROM transparency_campaigns WHERE status = 'active'";
-$result = $conn->query($campaignQuery);
+// Get active programs count
+$programsQuery = "SELECT COUNT(*) AS active_count FROM transparency_programs WHERE status IN ('ongoing', 'active')";
+$result = $conn->query($programsQuery);
 if ($result && $row = $result->fetch_assoc()) {
-    $stats['active_campaigns'] = $row['active_count'];
+    $stats['active_programs'] = $row['active_count'];
 }
 
-// Get funds allocated (sum of campaign targets for active campaigns)
-$allocatedQuery = "SELECT COALESCE(SUM(allocated_budget), 0) AS allocated
+// Get funds utilized
+$utilizedQuery = "SELECT COALESCE(SUM(allocated_budget), 0) AS utilized
     FROM transparency_programs
     WHERE status IN ('ongoing','completed')";
-$result = $conn->query($allocatedQuery);
+$result = $conn->query($utilizedQuery);
 if ($result && $row = $result->fetch_assoc()) {
-    $stats['funds_allocated'] = $row['allocated'];
+    $stats['funds_utilized'] = $row['utilized'];
 }
 
-// Calculate remaining funds
-$stats['remaining_funds'] = $stats['total_donations'] - $stats['funds_allocated'];
-
-// Fetch active campaigns
-$campaignsQuery = "SELECT 
-    c.id,
-    c.name AS campaign_name,
-    c.description,
-    c.goal_amount,
-    COALESCE(SUM(d.amount), 0) AS current_amount,
-    c.status,
-    c.created_at
-    FROM transparency_campaigns c
-    LEFT JOIN transparency_donations d
-        ON d.campaign_id = c.id
-        AND d.status = 'confirmed'
-    WHERE c.status IN ('active', 'completed')
-    GROUP BY c.id, c.name, c.description, c.goal_amount, c.status, c.created_at
-    ORDER BY c.status ASC, c.created_at DESC 
+// Fetch active programs/projects
+$programsQuery = "SELECT 
+    p.id,
+    p.name AS program_name,
+    p.description,
+    p.allocated_budget,
+    p.status,
+    p.created_at
+    FROM transparency_programs p
+    WHERE p.status IN ('active', 'ongoing', 'completed')
+    ORDER BY 
+        CASE p.status 
+            WHEN 'active' THEN 1 
+            WHEN 'ongoing' THEN 2 
+            ELSE 3 
+        END,
+        p.created_at DESC 
     LIMIT 6";
-$campaignsResult = $conn->query($campaignsQuery);
+$programsResult = $conn->query($programsQuery);
 
-// Fetch recent donations (limit 10)
-$donationsQuery = "SELECT 
-    d.donor_name,
-    COALESCE(c.name, 'General Fund') AS campaign_name,
+// Fetch recent assistance received (using donations table - limit 10)
+$assistanceQuery = "SELECT 
+    d.donor_name AS source_name,
+    'OTHER' AS source_type,
     d.amount,
     d.date_received,
-    d.status
+    COALESCE(c.name, 'General Support') AS description
     FROM transparency_donations d
     LEFT JOIN transparency_campaigns c ON d.campaign_id = c.id
+    WHERE d.status = 'confirmed'
     ORDER BY d.date_received DESC 
     LIMIT 10";
-$donationsResult = $conn->query($donationsQuery);
+$assistanceResult = $conn->query($assistanceQuery);
 
 // Helper function to format currency
 function formatCurrency($amount) {
     return '₱' . number_format($amount, 2);
 }
 
-// Helper function to calculate percentage
-function calculatePercentage($current, $goal) {
-    if ($goal <= 0) return 0;
-    $percentage = ($current / $goal) * 100;
-    return min($percentage, 100); // Cap at 100%
+// Helper function to get source type label
+function getSourceTypeLabel($type) {
+    $labels = [
+        'DOLE' => 'DOLE Program',
+        'LGU' => 'LGU Support',
+        'NGO' => 'NGO Partner',
+        'PRIVATE' => 'Private Sponsor',
+        'MEMBERSHIP' => 'Membership Fees',
+        'OTHER' => 'Other Source'
+    ];
+    return $labels[$type] ?? $type;
+}
+
+// Helper function to get status badge class
+function getStatusClass($status) {
+    $status = strtolower($status);
+    if ($status === 'active' || $status === 'ongoing') return 'active';
+    if ($status === 'completed') return 'completed';
+    return 'pending';
 }
 ?>
 
@@ -97,7 +109,7 @@ function calculatePercentage($current, $goal) {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transparency & Community Impact - Bankero & Fishermen Association</title>
+  <title>Transparency & Association Progress - Bankero & Fishermen Association</title>
   
   <!-- Bootstrap CSS & Bootstrap Icons -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
@@ -321,13 +333,13 @@ function calculatePercentage($current, $goal) {
       margin: 1.5rem auto 0;
     }
 
-    /* ==================== CAMPAIGNS SECTION ==================== */
-    .campaigns-section {
+    /* ==================== PROGRAMS SECTION ==================== */
+    .programs-section {
       padding: 60px 0;
       background: white;
     }
 
-    .campaign-card {
+    .program-card {
       background: white;
       border: 2px solid var(--border);
       border-radius: 16px;
@@ -338,7 +350,7 @@ function calculatePercentage($current, $goal) {
       overflow: hidden;
     }
 
-    .campaign-card::before {
+    .program-card::before {
       content: '';
       position: absolute;
       top: 0;
@@ -350,17 +362,17 @@ function calculatePercentage($current, $goal) {
       transition: transform 0.3s ease;
     }
 
-    .campaign-card:hover::before {
+    .program-card:hover::before {
       transform: scaleX(1);
     }
 
-    .campaign-card:hover {
+    .program-card:hover {
       transform: translateY(-6px);
       box-shadow: var(--shadow-lg);
       border-color: var(--accent-color);
     }
 
-    .campaign-status {
+    .program-status {
       position: absolute;
       top: 20px;
       right: 20px;
@@ -372,17 +384,17 @@ function calculatePercentage($current, $goal) {
       letter-spacing: 0.5px;
     }
 
-    .campaign-status.active {
+    .program-status.active, .program-status.ongoing {
       background: var(--pale-blue);
       color: var(--primary-color);
     }
 
-    .campaign-status.completed {
+    .program-status.completed {
       background: #d5f4e6;
       color: #27ae60;
     }
 
-    .campaign-card h4 {
+    .program-card h4 {
       font-family: 'Poppins', sans-serif;
       font-weight: 700;
       color: var(--dark);
@@ -391,75 +403,39 @@ function calculatePercentage($current, $goal) {
       padding-right: 90px;
     }
 
-    .campaign-card p {
+    .program-card p {
       color: var(--gray);
       line-height: 1.6;
       margin-bottom: 18px;
       font-size: 0.9rem;
     }
 
-    .campaign-stats {
+    .program-stats {
       display: flex;
       justify-content: space-between;
       margin-bottom: 12px;
     }
 
-    .campaign-stat {
+    .program-stat {
       text-align: center;
     }
 
-    .campaign-stat-value {
+    .program-stat-value {
       font-size: 1.3rem;
       font-weight: 700;
       color: var(--primary-color);
       font-family: 'Poppins', sans-serif;
     }
 
-    .campaign-stat-label {
+    .program-stat-label {
       font-size: 0.75rem;
       color: var(--gray);
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
-    .progress-container {
-      margin-top: 16px;
-    }
-
-    .progress-header {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 8px;
-      font-size: 0.85rem;
-    }
-
-    .progress-label {
-      color: var(--gray);
-      font-weight: 600;
-    }
-
-    .progress-percentage {
-      color: var(--accent-color);
-      font-weight: 700;
-    }
-
-    .progress {
-      height: 10px;
-      border-radius: 50px;
-      background-color: #e9ecef;
-      overflow: hidden;
-      box-shadow: inset 0 2px 4px rgba(0,0,0,0.05);
-    }
-
-    .progress-bar {
-      background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
-      border-radius: 50px;
-      transition: width 1s ease-in-out;
-      box-shadow: 0 2px 6px rgba(44, 62, 80, 0.3);
-    }
-
-    /* ==================== DONATIONS TABLE ==================== */
-    .donations-section {
+    /* ==================== ASSISTANCE TABLE ==================== */
+    .assistance-section {
       padding: 60px 0;
       background: var(--light-gray);
     }
@@ -545,9 +521,42 @@ function calculatePercentage($current, $goal) {
       font-size: 0.9rem;
     }
 
-    .donor-name {
+    .source-name {
       font-weight: 600;
       color: var(--primary-color);
+    }
+
+    .source-type-badge {
+      padding: 4px 10px;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .source-type-badge.DOLE {
+      background: #e3f2fd;
+      color: #1565c0;
+    }
+
+    .source-type-badge.LGU {
+      background: #f3e5f5;
+      color: #7b1fa2;
+    }
+
+    .source-type-badge.NGO {
+      background: #e8f5e9;
+      color: #2e7d32;
+    }
+
+    .source-type-badge.PRIVATE {
+      background: #fff3e0;
+      color: #ef6c00;
+    }
+
+    .source-type-badge.MEMBERSHIP {
+      background: #fce4ec;
+      color: #c2185b;
     }
 
     .amount-cell {
@@ -555,87 +564,6 @@ function calculatePercentage($current, $goal) {
       color: var(--accent-color);
       font-family: 'Poppins', sans-serif;
       font-size: 1rem;
-    }
-
-    .status-badge {
-      padding: 6px 14px;
-      border-radius: 50px;
-      font-size: 0.8rem;
-      font-weight: 600;
-      display: inline-block;
-      text-transform: uppercase;
-      letter-spacing: 0.3px;
-    }
-
-    .status-badge.completed,
-    .status-badge.confirmed {
-      background: var(--pale-blue);
-      color: var(--primary-color);
-    }
-
-    .status-badge.pending {
-      background: #fff3cd;
-      color: #856404;
-    }
-
-    .pagination-container {
-      display: flex;
-      justify-content: center;
-      padding: 25px;
-      background: white;
-      border-top: 2px solid var(--border);
-    }
-
-    .pagination {
-      display: flex;
-      gap: 8px;
-      margin: 0;
-    }
-
-    .page-btn {
-      padding: 10px 18px;
-      border: 2px solid var(--border);
-      background: white;
-      color: var(--dark);
-      border-radius: 10px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.3s ease;
-    }
-
-    .page-btn:hover {
-      background: var(--accent-color);
-      color: white;
-      border-color: var(--accent-color);
-      transform: translateY(-2px);
-    }
-
-    .page-btn.active {
-      background: var(--accent-color);
-      color: white;
-      border-color: var(--accent-color);
-    }
-
-    .btn-view-full {
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
-      color: white;
-      padding: 14px 32px;
-      border-radius: 50px;
-      font-weight: 600;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 10px;
-      transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(44, 62, 80, 0.3);
-      border: none;
-      cursor: pointer;
-    }
-
-    .btn-view-full:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.4);
-      color: white;
     }
 
     /* ==================== RESPONSIVE DESIGN ==================== */
@@ -652,7 +580,7 @@ function calculatePercentage($current, $goal) {
         margin-bottom: 20px;
       }
 
-      .campaign-card {
+      .program-card {
         margin-bottom: 25px;
       }
     }
@@ -708,12 +636,12 @@ function calculatePercentage($current, $goal) {
         font-size: 1.7rem;
       }
 
-      .campaign-card h4 {
+      .program-card h4 {
         font-size: 1.2rem;
         padding-right: 0;
       }
 
-      .campaign-status {
+      .program-status {
         position: static;
         display: inline-block;
         margin-bottom: 15px;
@@ -747,6 +675,62 @@ function calculatePercentage($current, $goal) {
       color: var(--gray);
       font-size: 0.9rem;
     }
+
+    /* Values Section */
+    .values-section {
+      padding: 60px 0;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+      color: white;
+    }
+
+    .values-section .section-header h2 {
+      color: white;
+    }
+
+    .values-section .section-header h2::after {
+      background: linear-gradient(90deg, var(--accent-color) 0%, var(--light-blue) 100%);
+    }
+
+    .values-section .section-header p {
+      color: rgba(255,255,255,0.85);
+    }
+
+    .value-card {
+      background: rgba(255,255,255,0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      padding: 30px;
+      text-align: center;
+      border: 1px solid rgba(255,255,255,0.2);
+    }
+
+    .value-icon {
+      width: 70px;
+      height: 70px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin: 0 auto 20px;
+    }
+
+    .value-icon i {
+      font-size: 2rem;
+      color: white;
+    }
+
+    .value-card h4 {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      margin-bottom: 10px;
+    }
+
+    .value-card p {
+      color: rgba(255,255,255,0.85);
+      font-size: 0.9rem;
+      margin: 0;
+    }
   </style>
 </head>
 <body>
@@ -761,16 +745,17 @@ function calculatePercentage($current, $goal) {
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb justify-content-center">
           <li class="breadcrumb-item"><a href="user_home.php" style="color: rgba(255,255,255,0.8); text-decoration: none;">Home</a></li>
-          <li class="breadcrumb-item active" aria-current="page">Transparency & Impact</li>
+          <li class="breadcrumb-item active" aria-current="page">Transparency & Progress</li>
         </ol>
       </nav>
 
       <!-- Page Title -->
-      <h1>Transparency & Community Impact Report</h1>
+      <h1>Transparency & Association Progress</h1>
       
       <!-- Subtitle -->
       <p class="subtitle">
-        Promoting accountability through transparent reporting of donations, programs, and community assistance initiatives.
+        Promoting accountability through transparent reporting of assistance received, programs implemented, 
+        and sustainable initiatives that empower our fishing community.
       </p>
 
       <!-- Last Updated -->
@@ -786,115 +771,82 @@ function calculatePercentage($current, $goal) {
 <section class="stats-section">
   <div class="container">
     <div class="row g-4">
-      <!-- Stat 1: Total Donations -->
+      <!-- Stat 1: Total Assistance Received -->
       <div class="col-lg col-md-6">
         <div class="stat-card">
           <div class="stat-icon">
             <i class="bi bi-cash-stack"></i>
           </div>
-          <div class="stat-value"><?= formatCurrency($stats['total_donations']) ?></div>
-          <div class="stat-label">Total Donations Received</div>
+          <div class="stat-value"><?= formatCurrency($stats['total_assistance']) ?></div>
+          <div class="stat-label">Total Assistance Received</div>
         </div>
       </div>
 
-      <!-- Stat 2: Total Donors -->
+      <!-- Stat 2: Partner Organizations -->
       <div class="col-lg col-md-6">
         <div class="stat-card">
           <div class="stat-icon">
-            <i class="bi bi-people-fill"></i>
+            <i class="bi bi-building"></i>
           </div>
-          <div class="stat-value"><?= number_format($stats['total_donors']) ?></div>
-          <div class="stat-label">Total Donors</div>
+          <div class="stat-value"><?= number_format($stats['partner_count']) ?></div>
+          <div class="stat-label">Partner Organizations</div>
         </div>
       </div>
 
-      <!-- Stat 3: Active Campaigns -->
+      <!-- Stat 3: Active Programs -->
       <div class="col-lg col-md-6">
         <div class="stat-card">
           <div class="stat-icon">
-            <i class="bi bi-megaphone-fill"></i>
+            <i class="bi bi-kanban"></i>
           </div>
-          <div class="stat-value"><?= number_format($stats['active_campaigns']) ?></div>
-          <div class="stat-label">Active Campaigns</div>
+          <div class="stat-value"><?= number_format($stats['active_programs']) ?></div>
+          <div class="stat-label">Active Programs</div>
         </div>
       </div>
 
-      <!-- Stat 4: Funds Allocated -->
+      <!-- Stat 4: Funds Utilized -->
       <div class="col-lg col-md-6">
         <div class="stat-card">
           <div class="stat-icon">
             <i class="bi bi-wallet2"></i>
           </div>
-          <div class="stat-value"><?= formatCurrency($stats['funds_allocated']) ?></div>
-          <div class="stat-label">Funds Allocated</div>
-        </div>
-      </div>
-
-      <!-- Stat 5: Remaining Funds -->
-      <div class="col-lg col-md-6">
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="bi bi-piggy-bank-fill"></i>
-          </div>
-          <div class="stat-value"><?= formatCurrency($stats['remaining_funds']) ?></div>
-          <div class="stat-label">Remaining Funds</div>
+          <div class="stat-value"><?= formatCurrency($stats['funds_utilized']) ?></div>
+          <div class="stat-label">Funds Utilized</div>
         </div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- SECTION 3: ACTIVE FUNDRAISING CAMPAIGNS -->
-<section class="campaigns-section">
+<!-- SECTION 3: ACTIVE PROGRAMS & PROJECTS -->
+<section class="programs-section">
   <div class="container">
     <div class="section-header">
-      <h2>Active Fundraising Campaigns</h2>
-      <p>Support our initiatives and help us make a difference in the fishing community</p>
+      <h2>Programs & Projects</h2>
+      <p>Initiatives and livelihood programs that support and empower our fishing community</p>
     </div>
 
-    <?php if ($campaignsResult && $campaignsResult->num_rows > 0): ?>
+    <?php if ($programsResult && $programsResult->num_rows > 0): ?>
     <div class="row g-4">
-      <?php while ($campaign = $campaignsResult->fetch_assoc()): 
-        $percentage = calculatePercentage($campaign['current_amount'], $campaign['goal_amount']);
-      ?>
+      <?php while ($program = $programsResult->fetch_assoc()): ?>
       <div class="col-lg-4 col-md-6">
-        <div class="campaign-card">
+        <div class="program-card">
           <!-- Status Badge -->
-          <span class="campaign-status <?= strtolower($campaign['status']) ?>">
-            <?= htmlspecialchars($campaign['status']) ?>
+          <span class="program-status <?= getStatusClass($program['status']) ?>">
+            <?= htmlspecialchars(ucfirst($program['status'])) ?>
           </span>
 
-          <!-- Campaign Title -->
-          <h4><?= htmlspecialchars($campaign['campaign_name']) ?></h4>
+          <!-- Program Title -->
+          <h4><?= htmlspecialchars($program['program_name']) ?></h4>
 
-          <!-- Campaign Description -->
-          <p><?= htmlspecialchars(substr($campaign['description'], 0, 120)) ?>...</p>
+          <!-- Program Description -->
+          <p><?= htmlspecialchars(substr($program['description'], 0, 120)) ?>...</p>
 
-          <!-- Campaign Stats -->
-          <div class="campaign-stats">
-            <div class="campaign-stat">
-              <div class="campaign-stat-value"><?= formatCurrency($campaign['goal_amount']) ?></div>
-              <div class="campaign-stat-label">Goal</div>
-            </div>
-            <div class="campaign-stat">
-              <div class="campaign-stat-value"><?= formatCurrency($campaign['current_amount']) ?></div>
-              <div class="campaign-stat-label">Raised</div>
-            </div>
-          </div>
-
-          <!-- Progress Bar -->
-          <div class="progress-container">
-            <div class="progress-header">
-              <span class="progress-label">Progress</span>
-              <span class="progress-percentage"><?= number_format($percentage, 1) ?>%</span>
-            </div>
-            <div class="progress">
-              <div class="progress-bar" role="progressbar" 
-                   style="width: <?= $percentage ?>%"
-                   aria-valuenow="<?= $percentage ?>" 
-                   aria-valuemin="0" 
-                   aria-valuemax="100">
-              </div>
+          <!-- Program Budget -->
+          <div class="program-stats">
+            <div class="program-stat">
+              <div class="program-stat-value"><?= formatCurrency($program['allocated_budget']) ?></div>
+              <div class="program-stat-label">Budget Allocated</div>
             </div>
           </div>
         </div>
@@ -903,83 +855,107 @@ function calculatePercentage($current, $goal) {
     </div>
     <?php else: ?>
     <div class="empty-state">
-      <i class="bi bi-megaphone"></i>
-      <h4>No Active Campaigns</h4>
-      <p>There are currently no active fundraising campaigns. Please check back later.</p>
+      <i class="bi bi-kanban"></i>
+      <h4>No Active Programs</h4>
+      <p>There are currently no active programs. Please check back later for updates.</p>
     </div>
     <?php endif; ?>
   </div>
 </section>
 
-<!-- SECTION 4: RECENT DONATIONS TABLE -->
-<section class="donations-section">
+<!-- SECTION 4: CORE VALUES -->
+<section class="values-section">
   <div class="container">
     <div class="section-header">
-      <h2>Recent Donations</h2>
-      <p>Latest contributions from our generous donors and supporters</p>
+      <h2>Our Core Values</h2>
+      <p>The principles that guide our association from leadership to membership</p>
+    </div>
+
+    <div class="row g-4">
+      <div class="col-md-4">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-eye"></i>
+          </div>
+          <h4>Transparency</h4>
+          <p>Open and honest reporting of all assistance received and how funds are utilized for the benefit of our community.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-shield-check"></i>
+          </div>
+          <h4>Discipline</h4>
+          <p>Committed to proper documentation, accountability, and responsible management of all resources entrusted to us.</p>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="value-card">
+          <div class="value-icon">
+            <i class="bi bi-heart"></i>
+          </div>
+          <h4>Honesty</h4>
+          <p>Integrity in all our dealings, from the chairman to every member, ensuring trust within our association.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SECTION 5: RECENT ASSISTANCE RECEIVED -->
+<section class="assistance-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Recent Assistance Received</h2>
+      <p>Support from government agencies, NGOs, and partners that help sustain our programs</p>
     </div>
 
     <!-- Table Controls -->
     <div class="table-controls">
       <div class="search-box">
         <i class="bi bi-search"></i>
-        <input type="text" id="searchInput" placeholder="Search by donor name or campaign..." />
+        <input type="text" id="searchInput" placeholder="Search by source or type..." />
       </div>
-      <button class="btn-view-full" onclick="window.location.href='donations-full.php'">
-        <i class="bi bi-file-earmark-text"></i> View Full Donation Records
-      </button>
     </div>
 
-    <!-- Donations Table -->
-    <?php if ($donationsResult && $donationsResult->num_rows > 0): ?>
+    <!-- Assistance Table -->
+    <?php if ($assistanceResult && $assistanceResult->num_rows > 0): ?>
     <div class="table-container">
       <table class="data-table">
         <thead>
           <tr>
-            <th>Donor Name</th>
-            <th>Campaign</th>
-            <th>Amount</th>
-            <th>Date</th>
-            <th>Status</th>
+            <th>Source</th>
+            <th>Type</th>
+            <th>Amount/Description</th>
+            <th>Date Received</th>
           </tr>
         </thead>
-        <tbody id="donationsTableBody">
-          <?php while ($donation = $donationsResult->fetch_assoc()): ?>
+        <tbody id="assistanceTableBody">
+          <?php while ($assistance = $assistanceResult->fetch_assoc()): ?>
           <tr>
             <td>
-              <span class="donor-name"><?= htmlspecialchars($donation['donor_name']) ?></span>
+              <span class="source-name"><?= htmlspecialchars($assistance['source_name']) ?></span>
             </td>
-            <td><?= htmlspecialchars($donation['campaign_name']) ?></td>
             <td>
-              <span class="amount-cell"><?= formatCurrency($donation['amount']) ?></span>
-            </td>
-            <td><?= date('M d, Y', strtotime($donation['date_received'])) ?></td>
-            <td>
-              <span class="status-badge <?= strtolower($donation['status']) ?>">
-                <?= htmlspecialchars($donation['status']) ?>
+              <span class="source-type-badge OTHER">
+                Support/Assistance
               </span>
             </td>
+            <td>
+              <span class="amount-cell"><?= formatCurrency($assistance['amount']) ?></span>
+            </td>
+            <td><?= date('M d, Y', strtotime($assistance['date_received'])) ?></td>
           </tr>
           <?php endwhile; ?>
         </tbody>
       </table>
-
-      <!-- Pagination -->
-      <div class="pagination-container">
-        <div class="pagination">
-          <button class="page-btn"><i class="bi bi-chevron-left"></i></button>
-          <button class="page-btn active">1</button>
-          <button class="page-btn">2</button>
-          <button class="page-btn">3</button>
-          <button class="page-btn"><i class="bi bi-chevron-right"></i></button>
-        </div>
-      </div>
     </div>
     <?php else: ?>
     <div class="empty-state">
       <i class="bi bi-inbox"></i>
-      <h4>No Donations Yet</h4>
-      <p>No donation records available at the moment.</p>
+      <h4>No Records Yet</h4>
+      <p>No assistance records available at the moment.</p>
     </div>
     <?php endif; ?>
   </div>
@@ -996,7 +972,7 @@ function calculatePercentage($current, $goal) {
 <script>
 document.addEventListener('DOMContentLoaded', function() {
   const searchInput = document.getElementById('searchInput');
-  const tableBody = document.getElementById('donationsTableBody');
+  const tableBody = document.getElementById('assistanceTableBody');
   
   if (searchInput && tableBody) {
     const rows = Array.from(tableBody.querySelectorAll('tr'));
@@ -1005,10 +981,10 @@ document.addEventListener('DOMContentLoaded', function() {
       const searchTerm = this.value.toLowerCase().trim();
       
       rows.forEach(row => {
-        const donorName = row.cells[0].textContent.toLowerCase();
-        const campaign = row.cells[1].textContent.toLowerCase();
+        const sourceName = row.cells[0].textContent.toLowerCase();
+        const sourceType = row.cells[1].textContent.toLowerCase();
         
-        if (donorName.includes(searchTerm) || campaign.includes(searchTerm)) {
+        if (sourceName.includes(searchTerm) || sourceType.includes(searchTerm)) {
           row.style.display = '';
         } else {
           row.style.display = 'none';
@@ -1016,38 +992,6 @@ document.addEventListener('DOMContentLoaded', function() {
       });
     });
   }
-
-  // Animate progress bars on scroll
-  const progressBars = document.querySelectorAll('.progress-bar');
-  const observerOptions = {
-    threshold: 0.5
-  };
-
-  const observer = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      if (entry.isIntersecting) {
-        const targetWidth = entry.target.getAttribute('data-width');
-        if (targetWidth) {
-          entry.target.style.width = targetWidth + '%';
-        }
-      }
-    });
-  }, observerOptions);
-
-  progressBars.forEach(bar => {
-    // Get the PHP-generated width from inline style
-    const styleAttr = bar.getAttribute('style') || '';
-    const widthMatch = styleAttr.match(/width:\s*([^;%]+)/);
-    const targetWidth = widthMatch ? widthMatch[1].trim() : '0';
-    
-    // Store target width in data attribute
-    bar.setAttribute('data-width', targetWidth);
-    
-    // Reset to 0 for animation
-    bar.style.width = '0%';
-    
-    observer.observe(bar);
-  });
 
   // Animate stat values on scroll
   const statValues = document.querySelectorAll('.stat-value');

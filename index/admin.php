@@ -320,7 +320,26 @@ if ($eventTypeCol) {
     }
 }
 
-$marchEventPercent = 82;
+// Calculate current month progress dynamically
+$currentYear = date('Y');
+$currentMonth = date('m');
+$currentMonthName = date('F');
+
+// Get total ACTIVE events for current month (excluding archived)
+$totalEventsQuery = $conn->query("SELECT COUNT(*) as total FROM events WHERE YEAR(date) = $currentYear AND MONTH(date) = $currentMonth AND (is_archived = 0 OR is_archived IS NULL)");
+$totalEvents = $totalEventsQuery ? $totalEventsQuery->fetch_assoc()['total'] : 0;
+
+// Get completed ACTIVE events for current month (events with date < today, excluding archived)
+$today = date('Y-m-d');
+$completedEventsQuery = $conn->query("SELECT COUNT(*) as completed FROM events WHERE YEAR(date) = $currentYear AND MONTH(date) = $currentMonth AND date < '$today' AND (is_archived = 0 OR is_archived IS NULL)");
+$completedEvents = $completedEventsQuery ? $completedEventsQuery->fetch_assoc()['completed'] : 0;
+
+// Calculate percentage
+if ($totalEvents > 0) {
+    $marchEventPercent = round(($completedEvents / $totalEvents) * 100);
+} else {
+    $marchEventPercent = 0; // No events planned for this month
+}
 ?>
 
 <!DOCTYPE html>
@@ -1133,10 +1152,15 @@ body {
                         <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f0fdf4 0%, #ffffff 100%);">
                             <div class="card-body p-4">
                                 <h6 class="card-title fw-bold text-dark mb-3">
-                                    <i class="bi bi-trophy-fill me-2" style="color: #10b981;"></i>March Progress
+                                    <i class="bi bi-trophy-fill me-2" style="color: #10b981;"></i><?php echo $currentMonthName; ?> Progress
                                 </h6>
                                 <div class="chart-fixed" style="height: 250px;">
                                     <canvas id="marchEventChart" class="chart-canvas"></canvas>
+                                </div>
+                                <div class="text-center mt-2">
+                                    <small class="text-muted">
+                                        <?php echo $completedEvents; ?> completed / <?php echo $totalEvents; ?> total events
+                                    </small>
                                 </div>
                             </div>
                         </div>
@@ -1814,12 +1838,13 @@ Chart.defaults.font.size = 11;
         }
 
         const marchPercent = <?php echo json_encode($marchEventPercent); ?> || 0;
+        const currentMonthName = <?php echo json_encode($currentMonthName); ?> || 'Current Month';
         const marchCtx = document.getElementById('marchEventChart');
         if (marchCtx) {
             new Chart(marchCtx, {
                 type: 'bar',
                 data: {
-                    labels: ['March'],
+                    labels: [currentMonthName],
                     datasets: [{
                         label: 'Achievement %',
                         data: [marchPercent],

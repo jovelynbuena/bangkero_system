@@ -1,5 +1,5 @@
 <?php
-// Transparency Campaigns Management
+// Transparency Programs Management
 session_start();
 
 require_once('../../config/db_connect.php');
@@ -109,7 +109,7 @@ try {
                 $banner      = trim($_POST['banner_image'] ?? '');
 
                 if ($name === '') {
-                    throw new Exception('Campaign name is required.');
+                    throw new Exception('Program name is required.');
                 }
 
                 if ($slug === '') {
@@ -136,7 +136,7 @@ try {
                 $stmt->close();
 
                 $alertType = 'success';
-                $alertMsg  = 'Campaign created successfully.';
+                $alertMsg  = 'Program created successfully.';
 
             } elseif ($action === 'edit_campaign') {
                 $id          = (int) ($_POST['id'] ?? 0);
@@ -150,10 +150,10 @@ try {
                 $banner      = trim($_POST['banner_image'] ?? '');
 
                 if ($id <= 0) {
-                    throw new Exception('Invalid campaign ID.');
+                    throw new Exception('Invalid program ID.');
                 }
                 if ($name === '') {
-                    throw new Exception('Campaign name is required.');
+                    throw new Exception('Program name is required.');
                 }
                 if ($slug === '') {
                     $slug = strtolower(preg_replace('/[^a-z0-9]+/i', '-', $name));
@@ -179,7 +179,7 @@ try {
                 $stmt->close();
 
                 $alertType = 'success';
-                $alertMsg  = 'Campaign updated successfully.';
+                $alertMsg  = 'Program updated successfully.';
             }
         }
     }
@@ -337,7 +337,7 @@ $baseQuery = http_build_query($queryString);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Transparency Campaigns</title>
+    <title>Transparency Programs</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -445,12 +445,12 @@ $baseQuery = http_build_query($queryString);
     <div class="page-header">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h2><i class="bi bi-bullseye"></i> Transparency Campaigns</h2>
-                <p>Manage fundraising campaigns that power your community programs.</p>
+                <h2><i class="bi bi-bullseye"></i> Transparency Programs</h2>
+                <p>Manage programs and initiatives that support the fishing community.</p>
             </div>
-            <button class="btn btn-light text-primary" data-bs-toggle="modal" data-bs-target="#addCampaignModal" style="border-radius: 999px; font-weight: 600; padding: 10px 22px;">
-                <i class="bi bi-plus-circle"></i> New Campaign
-            </button>
+                <button class="btn btn-light text-primary" data-bs-toggle="modal" data-bs-target="#addCampaignModal" style="border-radius: 999px; font-weight: 600; padding: 10px 22px;">
+                    <i class="bi bi-plus-circle"></i> New Program
+                </button>
         </div>
     </div>
 
@@ -460,7 +460,7 @@ $baseQuery = http_build_query($queryString);
                 <div class="stat-icon"><i class="bi bi-bullseye"></i></div>
                 <div>
                     <h3><?= number_format($stats['total']); ?></h3>
-                    <span>Total campaigns</span>
+                    <span>Total programs</span>
                 </div>
             </div>
         </div>
@@ -469,7 +469,7 @@ $baseQuery = http_build_query($queryString);
                 <div class="stat-icon" style="background:#ecfdf3;color:#16a34a;"><i class="bi bi-lightning-charge"></i></div>
                 <div>
                     <h3><?= number_format($stats['active']); ?></h3>
-                    <span>Active campaigns</span>
+                    <span>Active programs</span>
                 </div>
             </div>
         </div>
@@ -478,7 +478,7 @@ $baseQuery = http_build_query($queryString);
                 <div class="stat-icon" style="background:#eff6ff;color:#0ea5e9;"><i class="bi bi-cash-stack"></i></div>
                 <div>
                     <h3>₱<?= number_format($stats['raised'], 2); ?></h3>
-                    <span>Total confirmed donations</span>
+                    <span>Total assistance received</span>
                 </div>
             </div>
         </div>
@@ -518,8 +518,8 @@ $baseQuery = http_build_query($queryString);
                     <option value="date_old" <?= $sort === 'date_old' ? 'selected' : ''; ?>>Oldest</option>
                     <option value="name_asc" <?= $sort === 'name_asc' ? 'selected' : ''; ?>>Name A-Z</option>
                     <option value="name_desc" <?= $sort === 'name_desc' ? 'selected' : ''; ?>>Name Z-A</option>
-                    <option value="goal_high" <?= $sort === 'goal_high' ? 'selected' : ''; ?>>Goal High-Low</option>
-                    <option value="goal_low" <?= $sort === 'goal_low' ? 'selected' : ''; ?>>Goal Low-High</option>
+                    <option value="goal_high" <?= $sort === 'goal_high' ? 'selected' : ''; ?>>Budget High-Low</option>
+                    <option value="goal_low" <?= $sort === 'goal_low' ? 'selected' : ''; ?>>Budget Low-High</option>
                 </select>
             </div>
             <div class="col-12 d-flex gap-2 mt-2">
@@ -539,8 +539,8 @@ $baseQuery = http_build_query($queryString);
                 <thead>
                     <tr>
                         <th style="width:60px;" class="text-center">#</th>
-                        <th>Campaign</th>
-                        <th style="width:160px;">Goal Amount</th>
+                        <th>Program</th>
+                        <th style="width:160px;">Budget/Allocation</th>
                         <th style="width:130px;">Status</th>
                         <th style="width:190px;">Timeline</th>
                         <th style="width:160px;">Created</th>
@@ -550,7 +550,7 @@ $baseQuery = http_build_query($queryString);
                 <tbody>
                 <?php if (count($campaigns) === 0): ?>
                     <tr>
-                        <td colspan="7" class="text-center py-4 text-muted">No campaigns found yet. Try adjusting filters or create a new campaign.</td>
+                        <td colspan="7" class="text-center py-4 text-muted">No programs found yet. Try adjusting filters or create a new program.</td>
                     </tr>
                 <?php else: ?>
                     <?php $i = 1 + $offset; foreach ($campaigns as $c): ?>
@@ -618,9 +618,9 @@ $baseQuery = http_build_query($queryString);
         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
             <div class="pagination-summary">
                 <?php if ($total > 0): ?>
-                    Showing <strong><?= 1 + $offset; ?></strong> to <strong><?= min($offset + $perPage, $total); ?></strong> of <strong><?= $total; ?></strong> campaigns
+                    Showing <strong><?= 1 + $offset; ?></strong> to <strong><?= min($offset + $perPage, $total); ?></strong> of <strong><?= $total; ?></strong> programs
                 <?php else: ?>
-                    No campaigns to show
+                    No programs to show
                 <?php endif; ?>
             </div>
             <nav>
@@ -655,12 +655,12 @@ $baseQuery = http_build_query($queryString);
         <input type="hidden" name="csrf_token" value="<?= e($csrf); ?>">
         <input type="hidden" name="action" value="add_campaign">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-plus-circle"></i> New Campaign</h5>
+          <h5 class="modal-title"><i class="bi bi-plus-circle"></i> New Program</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">Campaign Name</label>
+            <label class="form-label">Program Name</label>
             <input type="text" name="name" class="form-control" required>
           </div>
           <div class="mb-3">
@@ -673,7 +673,7 @@ $baseQuery = http_build_query($queryString);
           </div>
           <div class="row g-3">
             <div class="col-md-4">
-              <label class="form-label">Goal Amount (₱)</label>
+              <label class="form-label">Budget Allocation (₱)</label>
               <input type="number" step="0.01" name="goal_amount" class="form-control" value="0">
             </div>
             <div class="col-md-4">
@@ -704,7 +704,7 @@ $baseQuery = http_build_query($queryString);
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary">Save Campaign</button>
+          <button type="submit" class="btn btn-primary">Save Program</button>
         </div>
       </form>
     </div>
@@ -720,12 +720,12 @@ $baseQuery = http_build_query($queryString);
         <input type="hidden" name="action" value="edit_campaign">
         <input type="hidden" name="id" id="edit-id" value="">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Campaign</h5>
+          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Program</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="mb-3">
-            <label class="form-label">Campaign Name</label>
+            <label class="form-label">Program Name</label>
             <input type="text" name="name" id="edit-name" class="form-control" required>
           </div>
           <div class="mb-3">
@@ -738,7 +738,7 @@ $baseQuery = http_build_query($queryString);
           </div>
           <div class="row g-3">
             <div class="col-md-4">
-              <label class="form-label">Goal Amount (₱)</label>
+              <label class="form-label">Budget Allocation (₱)</label>
               <input type="number" step="0.01" name="goal_amount" id="edit-goal" class="form-control">
             </div>
             <div class="col-md-4">
