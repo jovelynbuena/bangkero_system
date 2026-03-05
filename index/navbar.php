@@ -68,6 +68,9 @@ $canTransPrograms  = in_array(strtolower($role), ['admin'], true)
     || (strtolower($role) === 'officer' && in_array($transRole, ['secretary','both'], true))
     || (strtolower($role) === 'officer' && !$transRole && $officerPosition === 'secretary');
 
+// Combined access for single transparency page
+$canAccessTransparency = $canTransCampaigns || $canTransDonations || $canTransPrograms;
+
 // Format role for display (capitalize first letter)
 $roleDisplay = match(strtolower($role)) {
     'admin' => 'Administrator',
@@ -128,8 +131,8 @@ $assocPhone = htmlspecialchars($config['assoc_phone'] ?? '+63 912 345 6789');
 $assocAddress = htmlspecialchars($config['assoc_address'] ?? '123 Association Street, City, Philippines');
 
 // Pages for dropdowns
-$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php','transparency_campaigns.php','transparency_donations.php','transparency_programs.php'];
-$archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php'];
+$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php','transparency.php','transparency_reports.php','archives_transparency.php'];
+$archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php','archives_transparency.php'];
 $utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php'];
 
 $settingsPages = ['system_config.php','profile_settings.php','about_association_content.php'];
@@ -681,24 +684,10 @@ body.sidebar-open {
            <i class="bi bi-envelope"></i> Contact Messages
         </a>
 
-        <?php if ($canTransCampaigns): ?>
-        <a href="<?= BASE_URL; ?>management/transparency_campaigns.php"
-           class="<?= ($current_page == 'transparency_campaigns.php') ? 'active' : ''; ?>">
-           <i class="bi bi-bullseye"></i> Transparency Campaigns
-        </a>
-        <?php endif; ?>
-
-        <?php if ($canTransDonations): ?>
-        <a href="<?= BASE_URL; ?>management/transparency_donations.php"
-           class="<?= ($current_page == 'transparency_donations.php') ? 'active' : ''; ?>">
-           <i class="bi bi-cash-coin"></i> Transparency Donations
-        </a>
-        <?php endif; ?>
-
-        <?php if ($canTransPrograms): ?>
-        <a href="<?= BASE_URL; ?>management/transparency_programs.php"
-           class="<?= ($current_page == 'transparency_programs.php') ? 'active' : ''; ?>">
-           <i class="bi bi-diagram-3"></i> Transparency Programs
+        <?php if ($canAccessTransparency): ?>
+        <a href="<?= BASE_URL; ?>management/transparency.php"
+           class="<?= ($current_page == 'transparency.php' || $current_page == 'transparency_reports.php') ? 'active' : ''; ?>">
+           <i class="bi bi-shield-check"></i> Transparency
         </a>
         <?php endif; ?>
 
@@ -783,6 +772,11 @@ body.sidebar-open {
             <a href="<?= BASE_URL; ?>management/archives_website_content.php"
                class="<?= ($current_page == 'archives_website_content.php') ? 'active' : ''; ?>">
                <i class="bi bi-file-text" style="opacity: 0.7;"></i> Archived Website Content
+            </a>
+
+            <a href="<?= BASE_URL; ?>management/archives_transparency.php"
+               class="<?= ($current_page == 'archives_transparency.php') ? 'active' : ''; ?>">
+               <i class="bi bi-shield-x" style="opacity: 0.7;"></i> Archived Transparency
             </a>
         </div>
 

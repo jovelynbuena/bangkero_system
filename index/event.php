@@ -7,6 +7,40 @@ if (empty($_SESSION['username'])) {
 
 include('../config/db_connect.php');
 
+// Auto-add category column to events table if it doesn't exist
+$checkCol = $conn->query("SHOW COLUMNS FROM events LIKE 'category'");
+if ($checkCol && $checkCol->num_rows === 0) {
+    $conn->query("ALTER TABLE events ADD COLUMN category varchar(100) DEFAULT 'General' AFTER location");
+}
+
+// Auto-add event_poster column to events table if it doesn't exist
+$checkPoster = $conn->query("SHOW COLUMNS FROM events LIKE 'event_poster'");
+if ($checkPoster && $checkPoster->num_rows === 0) {
+    $conn->query("ALTER TABLE events ADD COLUMN event_poster varchar(255) DEFAULT NULL AFTER description");
+}
+
+// Auto-add is_archived column to events table if it doesn't exist
+$checkArchived = $conn->query("SHOW COLUMNS FROM events LIKE 'is_archived'");
+if ($checkArchived && $checkArchived->num_rows === 0) {
+    $conn->query("ALTER TABLE events ADD COLUMN is_archived tinyint(1) DEFAULT 0 AFTER event_poster");
+}
+
+// Auto-create member_attendance table if it doesn't exist  
+$checkTable = $conn->query("SHOW TABLES LIKE 'member_attendance'");
+if ($checkTable && $checkTable->num_rows === 0) {
+    $conn->query("CREATE TABLE IF NOT EXISTS member_attendance (
+        id INT AUTO_INCREMENT PRIMARY KEY,
+        event_id INT NOT NULL,
+        member_id INT NOT NULL,
+        status ENUM('present','absent','excused') DEFAULT 'present',
+        time_in TIME,
+        notes TEXT,
+        recorded_by INT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE KEY unique_attendance (event_id, member_id)
+    ) ENGINE=InnoDB");
+}
+
 $flash = ['type'=>'','message'=>''];
 
 function event_poster_basename($value): string {

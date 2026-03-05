@@ -499,8 +499,8 @@ $totalRoles = $rolesResult->num_rows;
     /* Statistics Cards (more compact) */
     .stats-card {
         background: white;
-        border-radius: 14px;
-        padding: 18px 20px;
+        border-radius: 12px;
+        padding: 10px 14px;
         text-align: center;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.10);
         transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -512,21 +512,21 @@ $totalRoles = $rolesResult->num_rows;
     }
     
     .stats-card .icon {
-        font-size: 36px;
-        margin-bottom: 8px;
+        font-size: 22px;
+        margin-bottom: 4px;
     }
     
     .stats-card h3 {
-        font-size: 30px;
+        font-size: 20px;
         font-weight: 700;
-        margin: 8px 0 4px 0;
+        margin: 4px 0 2px 0;
         color: #2d3748;
     }
     
     .stats-card p {
         color: #718096;
         margin: 0;
-        font-size: 13px;
+        font-size: 11px;
         font-weight: 500;
     }
 
@@ -585,9 +585,9 @@ $totalRoles = $rolesResult->num_rows;
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row mb-3">
+    <div class="row mb-2">
 
-        <div class="col-md-6 mb-3">
+        <div class="col-md-6 mb-2">
             <div class="stats-card" style="border-left: 4px solid #667eea;">
                 <div class="icon" style="color: #667eea;">
                     <i class="bi bi-list-ul"></i>
@@ -596,7 +596,7 @@ $totalRoles = $rolesResult->num_rows;
                 <p>Total Roles</p>
             </div>
         </div>
-        <div class="col-md-6 mb-3">
+        <div class="col-md-6 mb-2">
             <div class="stats-card" style="border-left: 4px solid #f59e0b;">
                 <div class="icon" style="color: #f59e0b;">
                     <i class="bi bi-people-fill"></i>

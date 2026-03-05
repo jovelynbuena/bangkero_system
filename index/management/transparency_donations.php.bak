@@ -1,5 +1,5 @@
 <?php
-// Transparency Donations Management
+// Transparency Assistance Management
 session_start();
 
 require_once('../../config/db_connect.php');
@@ -142,7 +142,7 @@ try {
             $stmt->close();
 
             $alertType = 'success';
-            $alertMsg  = 'Donation recorded successfully.';
+            $alertMsg  = 'Assistance recorded successfully.';
 
         } elseif ($action === 'edit_donation') {
             $id            = (int)($_POST['id'] ?? 0);
@@ -159,7 +159,7 @@ try {
             $notes          = trim($_POST['notes'] ?? '');
 
             if ($id <= 0) {
-                throw new Exception('Invalid donation ID.');
+                throw new Exception('Invalid assistance ID.');
             }
             if ($amount <= 0) {
                 throw new Exception('Amount must be greater than zero.');
@@ -190,7 +190,7 @@ try {
             $stmt->close();
 
             $alertType = 'success';
-            $alertMsg  = 'Donation updated successfully.';
+            $alertMsg  = 'Assistance updated successfully.';
         }
     }
 } catch (Exception $ex) {
@@ -360,7 +360,7 @@ $baseQuery = http_build_query($queryString);
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Transparency Donations</title>
+    <title>Transparency Assistance</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
@@ -394,11 +394,11 @@ $baseQuery = http_build_query($queryString);
     <div class="page-header">
         <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
             <div>
-                <h2><i class="bi bi-cash-coin"></i> Transparency Donations</h2>
-                <p>Record and review all donations linked to transparency campaigns.</p>
+                <h2><i class="bi bi-cash-coin"></i> Transparency Assistance</h2>
+                <p>Record and review all assistance/support received from partners and programs.</p>
             </div>
             <button class="btn btn-light text-primary" data-bs-toggle="modal" data-bs-target="#addDonationModal" style="border-radius:999px;font-weight:600;padding:10px 22px;">
-                <i class="bi bi-plus-circle"></i> New Donation
+                <i class="bi bi-plus-circle"></i> New Assistance
             </button>
         </div>
     </div>
@@ -409,7 +409,7 @@ $baseQuery = http_build_query($queryString);
                 <div class="stat-icon" style="background:#eef2ff;color:#4f46e5;"><i class="bi bi-receipt"></i></div>
                 <div>
                     <h3><?= number_format($stats['count']); ?></h3>
-                    <span>Total donations</span>
+                    <span>Total assistance</span>
                 </div>
             </div>
         </div>
@@ -418,7 +418,7 @@ $baseQuery = http_build_query($queryString);
                 <div class="stat-icon" style="background:#ecfdf3;color:\#16a34a;"><i class="bi bi-check-circle"></i></div>
                 <div>
                     <h3>₱<?= number_format($stats['sum_confirmed'], 2); ?></h3>
-                    <span>Confirmed donations</span>
+                    <span>Confirmed assistance</span>
                 </div>
             </div>
         </div>
@@ -427,7 +427,7 @@ $baseQuery = http_build_query($queryString);
                 <div class="stat-icon" style="background:#fef3c7;color:#d97706;"><i class="bi bi-hourglass-split"></i></div>
                 <div>
                     <h3>₱<?= number_format($stats['sum_pending'], 2); ?></h3>
-                    <span>Pending donations</span>
+                    <span>Pending assistance</span>
                 </div>
             </div>
         </div>
@@ -503,8 +503,8 @@ $baseQuery = http_build_query($queryString);
                 <thead>
                     <tr>
                         <th style="width:60px;" class="text-center">#</th>
-                        <th>Donor</th>
-                        <th>Campaign</th>
+                        <th>Source</th>
+                        <th>Program</th>
                         <th style="width:150px;">Amount</th>
                         <th style="width:140px;">Status</th>
                         <th style="width:160px;">Date Received</th>
@@ -515,7 +515,7 @@ $baseQuery = http_build_query($queryString);
                 <tbody>
                 <?php if (count($donations) === 0): ?>
                     <tr>
-                        <td colspan="8" class="text-center py-4 text-muted">No donations found yet. Try adjusting filters or add a new donation.</td>
+                        <td colspan="8" class="text-center py-4 text-muted">No assistance records found yet. Try adjusting filters or add a new record.</td>
                     </tr>
                 <?php else: ?>
                     <?php $i = 1 + $offset; foreach ($donations as $d): ?>
@@ -524,11 +524,11 @@ $baseQuery = http_build_query($queryString);
                         <td>
                             <div class="fw-semibold mb-1"><?= e($d['donor_name'] ?: 'Anonymous'); ?></div>
                             <?php if (!empty($d['donor_type'])): ?>
-                                <div class="text-muted small">Type: <?= e(ucfirst($d['donor_type'])); ?></div>
+                                <div class="text-muted small"><?= e(ucfirst($d['donor_type'])); ?></div>
                             <?php endif; ?>
                         </td>
                         <td>
-                            <div class="small fw-semibold"><?= e($d['campaign_name'] ?: 'Unassigned'); ?></div>
+                            <div class="small fw-semibold"><?= e($d['campaign_name'] ?: 'General Fund'); ?></div>
                         </td>
                         <td>
                             <div class="fw-semibold">₱<?= number_format((float)$d['amount'], 2); ?></div>
@@ -551,9 +551,9 @@ $baseQuery = http_build_query($queryString);
                                 : 'N/A'; ?>
                         </td>
                         <td>
-                            <div class="small fw-semibold"><?= e($d['reference_code']); ?></div>
+                            <div class="small fw-semibold"><?= e($d['reference_code'] ?: 'N/A'); ?></div>
                             <?php if (!empty($d['payment_method'])): ?>
-                                <div class="text-muted small"><i class="bi bi-credit-card"></i> <?= e(ucfirst($d['payment_method'])); ?></div>
+                                <div class="text-muted small"><i class="bi bi-file-text"></i> <?= e(ucfirst($d['payment_method'])); ?></div>
                             <?php endif; ?>
                         </td>
                         <td class="text-center">
@@ -585,9 +585,9 @@ $baseQuery = http_build_query($queryString);
         <div class="d-flex justify-content-between align-items-center px-3 py-2 border-top">
             <div class="text-muted small">
                 <?php if ($total > 0): ?>
-                    Showing <strong><?= 1 + $offset; ?></strong> to <strong><?= min($offset + $perPage, $total); ?></strong> of <strong><?= $total; ?></strong> donations
+                    Showing <strong><?= 1 + $offset; ?></strong> to <strong><?= min($offset + $perPage, $total); ?></strong> of <strong><?= $total; ?></strong> records
                 <?php else: ?>
-                    No donations to show
+                    No records to show
                 <?php endif; ?>
             </div>
             <nav>
@@ -622,31 +622,33 @@ $baseQuery = http_build_query($queryString);
         <input type="hidden" name="csrf_token" value="<?= e($csrf); ?>">
         <input type="hidden" name="action" value="add_donation">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-plus-circle"></i> New Donation</h5>
+          <h5 class="modal-title"><i class="bi bi-plus-circle"></i> New Assistance</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Campaign</label>
+              <label class="form-label">Program</label>
               <select name="campaign_id" class="form-select">
-                <option value="0">Unassigned / General fund</option>
+                <option value="0">General Fund</option>
                 <?php foreach ($campaignOptions as $co): ?>
                   <option value="<?= (int)$co['id']; ?>"><?= e($co['name']); ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Donor Name</label>
-              <input type="text" name="donor_name" class="form-control" placeholder="Leave blank for Anonymous">
+              <label class="form-label">Source Name</label>
+              <input type="text" name="donor_name" class="form-control" placeholder="e.g., DOLE, LGU, NGO name">
             </div>
             <div class="col-md-4">
-              <label class="form-label">Donor Type</label>
+              <label class="form-label">Source Type</label>
               <select name="donor_type" class="form-select">
-                <option value="">Not specified</option>
-                <option value="individual">Individual</option>
-                <option value="organization">Organization</option>
-                <option value="corporate">Corporate</option>
+                <option value="">Select type</option>
+                <option value="DOLE">DOLE Program</option>
+                <option value="LGU">LGU Support</option>
+                <option value="NGO">NGO Partner</option>
+                <option value="Private">Private Sponsor</option>
+                <option value="Membership">Membership Fees</option>
               </select>
             </div>
             <div class="col-md-4">
@@ -666,8 +668,8 @@ $baseQuery = http_build_query($queryString);
               <input type="text" name="payment_method" class="form-control" placeholder="Cash, GCash, bank transfer...">
             </div>
             <div class="col-md-4">
-              <label class="form-label">Reference Code</label>
-              <input type="text" name="reference_code" class="form-control" placeholder="OR#, transaction ID, etc.">
+              <label class="form-label">Reference/Control No.</label>
+              <input type="text" name="reference_code" class="form-control" placeholder="OR #, Document #, etc.">
             </div>
             <div class="col-md-4">
               <label class="form-label">Status</label>
@@ -686,14 +688,14 @@ $baseQuery = http_build_query($queryString);
               </div>
             </div>
             <div class="col-12">
-              <label class="form-label">Notes</label>
-              <textarea name="notes" class="form-control" rows="3" placeholder="Optional notes about this donation..."></textarea>
+              <label class="form-label">Notes/Description</label>
+              <textarea name="notes" class="form-control" rows="3" placeholder="Description of assistance, purpose, etc."></textarea>
             </div>
           </div>
         </div>
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          <button type="submit" class="btn btn-primary">Save Donation</button>
+          <button type="submit" class="btn btn-primary">Save Assistance</button>
         </div>
       </form>
     </div>
@@ -709,31 +711,33 @@ $baseQuery = http_build_query($queryString);
         <input type="hidden" name="action" value="edit_donation">
         <input type="hidden" name="id" id="edit-id" value="">
         <div class="modal-header">
-          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Donation</h5>
+          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> Edit Assistance</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
         </div>
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">Campaign</label>
+              <label class="form-label">Program</label>
               <select name="campaign_id" id="edit-campaign_id" class="form-select">
-                <option value="0">Unassigned / General fund</option>
+                <option value="0">General Fund</option>
                 <?php foreach ($campaignOptions as $co): ?>
                   <option value="<?= (int)$co['id']; ?>"><?= e($co['name']); ?></option>
                 <?php endforeach; ?>
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">Donor Name</label>
+              <label class="form-label">Source Name</label>
               <input type="text" name="donor_name" id="edit-donor_name" class="form-control">
             </div>
             <div class="col-md-4">
-              <label class="form-label">Donor Type</label>
+              <label class="form-label">Source Type</label>
               <select name="donor_type" id="edit-donor_type" class="form-select">
-                <option value="">Not specified</option>
-                <option value="individual">Individual</option>
-                <option value="organization">Organization</option>
-                <option value="corporate">Corporate</option>
+                <option value="">Select type</option>
+                <option value="DOLE">DOLE Program</option>
+                <option value="LGU">LGU Support</option>
+                <option value="NGO">NGO Partner</option>
+                <option value="Private">Private Sponsor</option>
+                <option value="Membership">Membership Fees</option>
               </select>
             </div>
             <div class="col-md-4">
@@ -786,6 +790,22 @@ $baseQuery = http_build_query($queryString);
     </div>
   </div>
 </div>
+
+<!-- Filter: Change Donor to Source -->
+<script>
+// Update sort dropdown text
+document.addEventListener('DOMContentLoaded', function() {
+    const sortSelect = document.querySelector('select[name="sort"]');
+    if (sortSelect) {
+        const options = sortSelect.querySelectorAll('option');
+        options.forEach(opt => {
+            if (opt.textContent.includes('Donor')) {
+                opt.textContent = opt.textContent.replace('Donor', 'Source');
+            }
+        });
+    }
+});
+</script>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>

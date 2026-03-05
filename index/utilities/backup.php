@@ -1,12 +1,9 @@
 <?php 
 session_start();
 
-// Huwag mag-render ng full navbar/HTML kapag AJAX request (para malinis ang JSON response)
-$isAjaxRequest = isset($_GET['ajax']) && $_GET['ajax'] === '1';
-
-if (!$isAjaxRequest) {
-    include('../navbar.php');
-}
+// Detect AJAX requests (GET or POST)
+$isAjaxRequest = (isset($_GET['ajax']) && $_GET['ajax'] === '1') || 
+                 (isset($_SERVER['HTTP_X_REQUESTED_WITH']) && $_SERVER['HTTP_X_REQUESTED_WITH'] === 'XMLHttpRequest');
 
 require_once('../../config/db_connect.php');
 
@@ -21,6 +18,91 @@ function backup_check_csrf() {
         return false;
     }
     return true;
+}
+
+// Helper function to parse SQL file into individual queries - MUST BE DEFINED BEFORE USE
+function parseSqlFile($sql) {
+    $queries = [];
+    $currentQuery = '';
+    $length = strlen($sql);
+    $inString = false;
+    $stringChar = null;
+    $escapeNext = false;
+    $inComment = false;
+    $commentType = null;
+    
+    for ($i = 0; $i < $length; $i++) {
+        $char = $sql[$i];
+        $nextChar = ($i + 1 < $length) ? $sql[$i + 1] : null;
+        
+        if ($escapeNext) {
+            $currentQuery .= $char;
+            $escapeNext = false;
+            continue;
+        }
+        
+        if ($char === '\\') {
+            $currentQuery .= $char;
+            $escapeNext = true;
+            continue;
+        }
+        
+        if (!$inString && !$inComment) {
+            if ($char === '-' && $nextChar === '-') {
+                $inComment = true;
+                $commentType = 'line';
+                continue;
+            }
+            if ($char === '/' && $nextChar === '*') {
+                $inComment = true;
+                $commentType = 'block';
+                $i++;
+                continue;
+            }
+        } elseif ($inComment) {
+            if ($commentType === 'line' && ($char === "\n" || $char === "\r")) {
+                $inComment = false;
+                $commentType = null;
+            } elseif ($commentType === 'block' && $char === '*' && $nextChar === '/') {
+                $inComment = false;
+                $commentType = null;
+                $i++;
+            }
+            continue;
+        }
+        
+        if (!$inString && ($char === "'" || $char === '"' || $char === '`')) {
+            $inString = true;
+            $stringChar = $char;
+            $currentQuery .= $char;
+        } elseif ($inString && $char === $stringChar) {
+            $inString = false;
+            $stringChar = null;
+            $currentQuery .= $char;
+        } else {
+            $currentQuery .= $char;
+        }
+        
+        if (!$inString && !$inComment && $char === ';') {
+            $trimmed = trim($currentQuery);
+            if (!empty($trimmed) && !preg_match('/^\s*(--|#|\/\*)/', $trimmed)) {
+                $queries[] = $trimmed;
+            }
+            $currentQuery = '';
+        }
+    }
+    
+    $trimmed = trim($currentQuery);
+    if (!empty($trimmed) && !preg_match('/^\s*(--|#|\/\*)/', $trimmed)) {
+        $queries[] = $trimmed;
+    }
+    
+    return $queries;
+}
+
+// Include navbar only for non-AJAX requests
+if (!$isAjaxRequest) {
+    include('../navbar.php');
 }
 
 // Read flash messages from restore_action.php (if any)
@@ -234,6 +316,13 @@ if (isset($_POST['restore_file'])) {
     if (!backup_check_csrf()) {
         $error_message = 'Invalid session token. Please reload the page and try again.';
     } else {
+        $conn->query('SET FOREIGN_KEY_CHECKS=0');
+        $restoreResults = [
+            'success' => 0,
+            'failed' => 0,
+            'errors' => []
+        ];
+        
         try {
             $filename = basename($_POST['restore_file']);
             $filepath = $backupDir . $filename;
@@ -242,88 +331,57 @@ if (isset($_POST['restore_file'])) {
                 throw new Exception('Selected backup file does not exist or is invalid.');
             }
 
-            // Read SQL file
             $sql = file_get_contents($filepath);
             if ($sql === false || $sql === '') {
                 throw new Exception('Backup SQL file is empty or unreadable.');
             }
 
-            // Disable foreign key checks and autocommit
-            if (!$conn->query('SET FOREIGN_KEY_CHECKS=0')) {
-                throw new Exception('Failed to disable foreign key checks: ' . $conn->error);
-            }
-            if (!$conn->query('SET autocommit=0')) {
-                throw new Exception('Failed to disable autocommit: ' . $conn->error);
-            }
-
-            // Execute multi-query with proper error checking
-            if (!$conn->multi_query($sql)) {
-                throw new Exception('Failed to execute SQL: ' . $conn->error);
-            }
-
-            // Process all results and check for errors
-            $queryCount = 0;
-            $errors = [];
-            do {
-                if ($result = $conn->store_result()) {
-                    $result->free();
-                }
-                if ($conn->error) {
-                    $errors[] = $conn->error;
+            // Parse SQL into individual statements
+            $queries = parseSqlFile($sql);
+            
+            // Execute each query individually with error tracking
+            foreach ($queries as $index => $query) {
+                $query = trim($query);
+                if (empty($query)) continue;
+                
+                if (!$conn->query($query)) {
+                    $restoreResults['failed']++;
+                    $errorPreview = substr($query, 0, 80) . (strlen($query) > 80 ? '...' : '');
+                    $restoreResults['errors'][] = "Query " . ($index + 1) . ": " . $conn->error . " | Preview: " . $errorPreview;
                 } else {
-                    $queryCount++;
+                    $restoreResults['success']++;
                 }
-                $hasMoreResults = $conn->more_results();
-                if ($hasMoreResults && !$conn->next_result()) {
-                    if ($conn->error) {
-                        $errors[] = 'Failed to move to next query: ' . $conn->error;
-                    }
-                    break;
-                }
-            } while ($hasMoreResults);
-
-            // Commit changes
-            if (!$conn->query('COMMIT')) {
-                throw new Exception('Failed to commit changes: ' . $conn->error);
-            }
-
-            // Re-enable foreign key checks and autocommit
-            $conn->query('SET FOREIGN_KEY_CHECKS=1');
-            $conn->query('SET autocommit=1');
-
-            // If there were any errors during execution, surface them as warning/error
-            if (count($errors) > 0) {
-                $errorSummary = 'Restore completed with ' . count($errors) . ' error(s):\n' . implode("\n", array_slice($errors, 0, 3));
-                if (count($errors) > 3) {
-                    $errorSummary .= "\n... and " . (count($errors) - 3) . ' more errors';
-                }
-                $warning_message = $errorSummary;
             }
 
             // Log activity
             $user_id = $_SESSION['user_id'];
             $action = 'Database Restore';
-            $description = "Restored database from backup file: {$filename} ({$queryCount} queries executed)";
+            $description = "Restored from {$filename}: {$restoreResults['success']} success, {$restoreResults['failed']} failed";
             $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
             $log_stmt = $conn->prepare('INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)');
             $log_stmt->bind_param('isss', $user_id, $action, $description, $ip_address);
             $log_stmt->execute();
 
-            $success_message = "Database restored successfully from {$filename} ({$queryCount} queries executed).";
+            // Build result message
+            if ($restoreResults['failed'] === 0) {
+                $success_message = "Database restored successfully! {$restoreResults['success']} queries executed.";
+            } elseif ($restoreResults['success'] > 0) {
+                $success_message = "Partial restore completed. {$restoreResults['success']} queries succeeded, {$restoreResults['failed']} failed.";
+                $warning_message = "Some queries failed:\n" . implode("\n", array_slice($restoreResults['errors'], 0, 5));
+                if (count($restoreResults['errors']) > 5) {
+                    $warning_message .= "\n... and " . (count($restoreResults['errors']) - 5) . " more errors";
+                }
+            } else {
+                throw new Exception("All queries failed. First error: " . ($restoreResults['errors'][0] ?? 'Unknown'));
+            }
 
         } catch (Exception $e) {
-            $conn->query('ROLLBACK');
-            $conn->query('SET FOREIGN_KEY_CHECKS=1');
-            $conn->query('SET autocommit=1');
             $error_message = 'Restore failed: ' . $e->getMessage();
+        } finally {
+            $conn->query('SET FOREIGN_KEY_CHECKS=1');
         }
     }
 }
-
-
-
-
-
 
 // Handle delete
 if (isset($_POST['delete_file'])) {
@@ -807,50 +865,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             color: white;
         }
 
-        /* File Input - Compact and Clear */
-        .file-upload-wrapper {
-            margin-bottom: 14px;
-        }
-
-        .file-upload-label {
-            display: block;
-            padding: 16px 20px;
-            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
-            border: 2px dashed #dee2e6;
-            border-radius: 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            position: relative;
-        }
-
-        .file-upload-label:hover {
-            background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
-            border-color: #667eea;
-        }
-
-        .file-upload-label.has-file {
-            background: linear-gradient(135deg, #e7f5ff 0%, #d0ebff 100%);
-            border-color: #667eea;
-            border-style: solid;
-        }
-
-        .file-upload-icon {
-            font-size: 28px;
-            color: #667eea;
-            margin-bottom: 8px;
-        }
-
-        .file-upload-text {
-            color: #495057;
-            font-weight: 500;
-            font-size: 13px;
-        }
-
-        .file-upload-wrapper input[type="file"] {
-            display: none;
-        }
-
         /* Backup History - Compact */
         .history-card {
             background: white;
@@ -1113,14 +1127,14 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         </div>
 
         <!-- Alert Messages -->
-        <?php if (isset($success_message)): ?>
+        <?php if (!empty($success_message)): ?>
             <div class="alert-custom alert-success-custom" id="successAlert">
                 <div class="alert-icon">
                     <i class="bi bi-check-circle-fill"></i>
                 </div>
                 <div class="flex-grow-1">
                     <strong>Success!</strong> <?= htmlspecialchars($success_message) ?>
-                    <?php if (isset($download_file)): ?>
+                    <?php if (!empty($download_file)): ?>
                         <a href="download_backup.php?file=<?= urlencode($download_file) ?>" class="download-badge">
                             <i class="bi bi-download"></i>
                             Download: <?= htmlspecialchars($download_file) ?>
@@ -1130,7 +1144,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             </div>
         <?php endif; ?>
 
-        <?php if (isset($warning_message)): ?>
+        <?php if (!empty($warning_message)): ?>
             <div class="alert-custom alert-error-custom" id="warningAlert" style="background: linear-gradient(135deg,#fff3cd 0%,#ffeeba 100%); color:#856404;">
                 <div class="alert-icon" style="background:#ffc107;">
                     <i class="bi bi-exclamation-circle-fill"></i>
@@ -1141,7 +1155,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             </div>
         <?php endif; ?>
 
-        <?php if (isset($error_message)): ?>
+        <?php if (!empty($error_message)): ?>
             <div class="alert-custom alert-error-custom" id="errorAlert">
                 <div class="alert-icon">
                     <i class="bi bi-exclamation-triangle-fill"></i>
@@ -1259,27 +1273,34 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                         </div>
                         <h3>Restore Database</h3>
                     </div>
-                    <p class="mb-2">To restore, choose one of the backups below and click <strong>Restore</strong> on that row.</p>
-                    <?php if (!empty($backups)): ?>
-                        <?php $latest = $backups[0]; ?>
-                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mt-2">
-                            <div>
-                                <div style="font-size:13px; color:#6c757d;">Latest backup:</div>
-                                <div style="font-size:13px; font-weight:600;">
-                                    <?= htmlspecialchars($latest['name']) ?>
+
+                    <!-- Restore from existing backups -->
+                    <div class="mb-3">
+                        <p class="mb-2" style="font-size:13px; color:#495057; font-weight:600;">
+                            <i class="bi bi-server me-1"></i> Restore from System Backups:
+                        </p>
+                        <?php if (!empty($backups)): ?>
+                            <?php $latest = $backups[0]; ?>
+                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-2 bg-light rounded">
+                                <div>
+                                    <div style="font-size:12px; color:#6c757d;">Latest:</div>
+                                    <div style="font-size:13px; font-weight:600;">
+                                        <?= htmlspecialchars($latest['name']) ?>
+                                    </div>
+                                    <div style="font-size:11px; color:#6c757d;">
+                                        <?= date('M j, Y - g:i A', $latest['date']) ?> · <?= formatFileSize($latest['size']) ?>
+                                    </div>
                                 </div>
-                                <div style="font-size:12px; color:#6c757d;">
-                                    <?= date('M j, Y - g:i A', $latest['date']) ?> · <?= formatFileSize($latest['size']) ?>
-                                </div>
+                                <button type="button" class="btn btn-sm btn-success" onclick="confirmRestoreFromBackup('<?= htmlspecialchars($latest['name'], ENT_QUOTES) ?>')">
+                                    <i class="bi bi-arrow-counterclockwise"></i> Restore
+                                </button>
                             </div>
-                            <button type="button" class="btn-custom btn-success-custom" onclick="confirmRestoreFromBackup('<?= htmlspecialchars($latest['name'], ENT_QUOTES) ?>')">
-                                <i class="bi bi-arrow-counterclockwise"></i>
-                                Restore Latest Backup
-                            </button>
-                        </div>
-                    <?php else: ?>
-                        <p class="text-muted" style="font-size:13px;">No backups yet. Create one on the left before restoring.</p>
-                    <?php endif; ?>
+                        <?php else: ?>
+                            <p class="text-muted" style="font-size:12px;">No system backups yet.</p>
+                        <?php endif; ?>
+                    </div>
+
+
                 </div>
             </div>
 
@@ -1333,6 +1354,41 @@ window.addEventListener('DOMContentLoaded', function() {
     }).then(() => {
         // Reload the page to show updated backup list
         window.location.href = 'backup.php';
+    });
+});
+<?php endif; ?>
+
+// Show upload restore success SweetAlert
+<?php if (isset($upload_restore_success) && $upload_restore_success === true): ?>
+window.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        title: 'Upload & Restore Successful!',
+        html: 'Database has been restored successfully from your uploaded file:<br><br><strong><?= htmlspecialchars($upload_restore_filename) ?></strong><br><br><small class="text-muted"><?= $upload_restore_query_count ?> queries executed</small>',
+        icon: 'success',
+        confirmButtonColor: '#28a745',
+        confirmButtonText: 'OK',
+        customClass: {
+            confirmButton: 'btn btn-success px-4 py-2'
+        },
+        buttonsStyling: false
+    });
+});
+<?php endif; ?>
+
+// Show warning SweetAlert for partial restores
+<?php if (!empty($warning_message)): ?>
+window.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        title: 'Restore Completed with Warnings',
+        html: '<div style="text-align:left; max-height:300px; overflow-y:auto; font-size:13px;"><?= htmlspecialchars(str_replace("\n", "<br>", $warning_message)) ?></div>',
+        icon: 'warning',
+        confirmButtonColor: '#ffc107',
+        confirmButtonText: 'OK',
+        customClass: {
+            confirmButton: 'btn btn-warning px-4 py-2'
+        },
+        buttonsStyling: false,
+        width: '600px'
     });
 });
 <?php endif; ?>

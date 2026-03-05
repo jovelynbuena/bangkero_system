@@ -342,8 +342,13 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05); 
             margin-bottom: 24px;
             background: white;
-            overflow: hidden;
+            overflow: visible;
             transition: all 0.3s ease;
+        }
+
+        /* Officers table card needs scroll, not clip */
+        #officersTable-card {
+            overflow: visible;
         }
         
         .card:hover {
@@ -463,9 +468,36 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
 
 
+        /* Icon-only Action Buttons */
+        .btn-icon {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 32px;
+            height: 32px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.2s ease;
+            padding: 0;
+        }
+        .btn-icon:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+        }
+        .btn-icon-success  { background: #10b981; color: white; }
+        .btn-icon-success:hover  { background: #059669; }
+        .btn-icon-warning  { background: #f59e0b; color: white; }
+        .btn-icon-warning:hover  { background: #d97706; }
+        .btn-icon-secondary { background: #64748b; color: white; }
+        .btn-icon-secondary:hover { background: #475569; }
+        .btn-icon-archive  { background: #f59e0b; color: white; }
+        .btn-icon-archive:hover  { background: #d97706; }
+
         /* Table Styles */
         .table { 
-            font-size: 14px;
+            font-size: 17px;
             margin: 0;
         }
         
@@ -475,7 +507,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
             border-bottom: 2px solid #f1f5f9;
             padding: 14px 16px;
             font-weight: 700;
-            font-size: 12px;
+            font-size: 15px;
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
@@ -485,6 +517,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
             vertical-align: middle;
             border-color: #f1f5f9;
             color: #1e293b;
+            font-size: 17px;
         }
         
         .table-hover tbody tr:hover { 
@@ -492,8 +525,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .badge { 
-            font-size: 12px; 
-            padding: 5px 10px;
+            font-size: 14px; 
+            padding: 6px 12px;
             border-radius: 6px;
             font-weight: 600;
         }
@@ -517,8 +550,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         
         .stats-card {
             background: white;
-            border-radius: 16px;
-            padding: 20px;
+            border-radius: 12px;
+            padding: 12px 16px;
             text-align: center;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.05);
             transition: all 0.3s ease;
@@ -533,28 +566,28 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .stats-card .icon {
-            font-size: 32px;
-            margin-bottom: 8px;
+            font-size: 22px;
+            margin-bottom: 4px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            width: 56px;
-            height: 56px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             background: #f8fafc;
         }
         
         .stats-card h3 {
-            font-size: 28px;
+            font-size: 20px;
             font-weight: 800;
-            margin: 8px 0 4px 0;
+            margin: 4px 0 2px 0;
             color: #1e293b;
         }
         
         .stats-card p {
             color: #64748b;
             margin: 0;
-            font-size: 13px;
+            font-size: 11px;
             font-weight: 600;
             text-transform: uppercase;
             letter-spacing: 0.5px;
@@ -649,6 +682,35 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                 font-size: 28px;
             }
         }
+
+        /* Responsive table fixes for smaller screens */
+        .table-responsive-wrapper {
+            width: 100%;
+            overflow-x: auto;
+            overflow-y: visible;
+            -webkit-overflow-scrolling: touch;
+            display: block;
+        }
+
+        @media (max-width: 1400px) {
+            #officersTable th,
+            #officersTable td {
+                font-size: 15px;
+                padding: 10px 8px;
+                white-space: nowrap;
+            }
+
+            .transRoleSelect {
+                min-width: 110px !important;
+                font-size: 13px !important;
+            }
+
+            .action-btn-group {
+                display: flex;
+                flex-wrap: nowrap;
+                gap: 3px;
+            }
+        }
     </style>
 </head>
 <body>
@@ -668,7 +730,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
     </div>
 
     <!-- Statistics Cards -->
-    <div class="row g-3 mb-4">
+    <div class="row g-2 mb-2">
         <?php
         $total_officers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role IN ('officer', 'admin')")->fetch_assoc()['count'];
         $pending_officers = $conn->query("SELECT COUNT(*) as count FROM users WHERE role IN ('officer', 'admin') AND status='pending'")->fetch_assoc()['count'];
@@ -784,7 +846,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
 
     <!-- Officers Table -->
     <div class="card">
-        <div class="card-body table-responsive">
+        <div class="card-body">
+        <div class="table-responsive-wrapper">
             <table class="table table-bordered table-hover align-middle text-center" id="officersTable">
                 <thead>
                     <tr>
@@ -822,7 +885,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                                         <span class='badge bg-secondary'><i class='bi bi-person me-1'></i>Officer</span>
                                     <?php endif; ?>
                                 </td>
-                                <td style="color: #000;"><?= date('M d, Y g:i A', strtotime($row['created_at'])) ?></td>
+                                <td style="color: #000;"><?= date('M d, Y', strtotime($row['created_at'])) ?></td>
                                 <td>
                                     <?php if ($hasTransparencyRoleCol): ?>
                                         <?php
@@ -858,30 +921,30 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                                 <td>
                                     <div class="action-btn-group">
                                         <?php if ($row['status'] == 'pending'): ?>
-                                            <button class="btn btn-success btn-sm actionBtn" data-action="approve" data-id="<?= $row['id'] ?>" title="Approve Officer">
-                                                <i class="bi bi-check-lg"></i> Approve
+                                            <button class="btn-icon btn-icon-success actionBtn" data-action="approve" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" title="Approve Officer">
+                                                <i class="bi bi-check-lg"></i>
                                             </button>
-                                            <button class="btn btn-warning btn-sm actionBtn" data-action="reject" data-id="<?= $row['id'] ?>" title="Reject Officer">
-                                                <i class="bi bi-x-lg"></i> Reject
+                                            <button class="btn-icon btn-icon-warning actionBtn" data-action="reject" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" title="Reject Officer">
+                                                <i class="bi bi-x-lg"></i>
                                             </button>
                                         <?php elseif ($row['status'] == 'approved'): ?>
-                                            <button class="btn btn-warning btn-sm actionBtn" data-action="reject" data-id="<?= $row['id'] ?>" title="Reject Officer">
-                                                <i class="bi bi-x-lg"></i> Reject
+                                            <button class="btn-icon btn-icon-warning actionBtn" data-action="reject" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" title="Reject Officer">
+                                                <i class="bi bi-x-lg"></i>
                                             </button>
                                         <?php elseif ($row['status'] == 'rejected'): ?>
-                                            <button class="btn btn-success btn-sm actionBtn" data-action="approve" data-id="<?= $row['id'] ?>" title="Approve Officer">
-                                                <i class="bi bi-check-lg"></i> Approve
+                                            <button class="btn-icon btn-icon-success actionBtn" data-action="approve" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" title="Approve Officer">
+                                                <i class="bi bi-check-lg"></i>
                                             </button>
                                         <?php endif; ?>
 
                                         <?php if($row['is_admin']==1): ?>
-                                            <button class="btn btn-secondary btn-sm actionBtn" data-action="demote" data-id="<?= $row['id'] ?>" title="Remove admin privileges">
-                                                <i class="bi bi-arrow-down-circle"></i> Demote
+                                            <button class="btn-icon btn-icon-secondary actionBtn" data-action="demote" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" title="Demote from Admin">
+                                                <i class="bi bi-arrow-down-circle"></i>
                                             </button>
                                         <?php endif; ?>
 
-                                        <button class="btn btn-warning btn-sm actionBtn text-white" data-action="archive" data-id="<?= $row['id'] ?>" title="Archive officer">
-                                            <i class="bi bi-archive"></i> Archive
+                                        <button class="btn-icon btn-icon-archive actionBtn" data-action="archive" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" title="Archive Officer">
+                                            <i class="bi bi-archive"></i>
                                         </button>
                                     </div>
                                 </td>
@@ -892,7 +955,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                     <?php endif; ?>
                 </tbody>
             </table>
-        </div>
+        </div><!-- end table-responsive-wrapper -->
+        </div><!-- end card-body -->
         
         <!-- Pagination Footer -->
         <div class="card-footer bg-white border-0 pt-3">
@@ -914,6 +978,11 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// Initialize Bootstrap Tooltips
+document.addEventListener('DOMContentLoaded', function () {
+    const tooltipEls = document.querySelectorAll('[data-bs-toggle="tooltip"]');
+    tooltipEls.forEach(el => new bootstrap.Tooltip(el, { trigger: 'hover' }));
+});
 // Promote Officer to Admin Form Handler
 document.getElementById('promoteForm').addEventListener('submit', function(e) {
     e.preventDefault();

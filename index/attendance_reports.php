@@ -7,6 +7,47 @@ if (empty($_SESSION['username'])) {
 
 require_once('../config/db_connect.php');
 
+// Auto-create events table if it doesn't exist
+$checkTable = $conn->query("SHOW TABLES LIKE 'events'");
+if ($checkTable->num_rows === 0) {
+    $conn->query("CREATE TABLE IF NOT EXISTS `events` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `event_name` varchar(255) NOT NULL,
+        `date` date NOT NULL,
+        `time` time DEFAULT NULL,
+        `location` varchar(255) DEFAULT NULL,
+        `description` text,
+        `is_archived` tinyint(1) DEFAULT '0',
+        `created_by` int(11) DEFAULT NULL,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` datetime DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        KEY `idx_date` (`date`),
+        KEY `idx_is_archived` (`is_archived`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+// Auto-create attendance table if it doesn't exist
+$checkAttendance = $conn->query("SHOW TABLES LIKE 'attendance'");
+if ($checkAttendance->num_rows === 0) {
+    $conn->query("CREATE TABLE IF NOT EXISTS `attendance` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `event_id` int(11) NOT NULL,
+        `member_id` int(11) NOT NULL,
+        `attendance_date` date NOT NULL,
+        `status` enum('present','absent','excused') DEFAULT 'present',
+        `time_in` time DEFAULT NULL,
+        `notes` text,
+        `recorded_by` int(11) DEFAULT NULL,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` datetime DEFAULT NULL,
+        PRIMARY KEY (`id`),
+        UNIQUE KEY `unique_attendance` (`event_id`,`member_id`,`attendance_date`),
+        KEY `idx_member` (`member_id`),
+        KEY `idx_event` (`event_id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
 // Fetch list of active (non-archived) events for selector
 $events = [];
 $evRes = $conn->query("SELECT id, event_name, date, time, location FROM events WHERE is_archived = 0 ORDER BY date DESC, time DESC");

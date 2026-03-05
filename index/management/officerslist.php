@@ -7,6 +7,38 @@ if (empty($_SESSION['username'])) {
 
 require_once('../../config/db_connect.php');
 
+// Auto-create officer_roles table if it doesn't exist
+$checkTable = $conn->query("SHOW TABLES LIKE 'officer_roles'");
+if ($checkTable->num_rows === 0) {
+    $conn->query("CREATE TABLE IF NOT EXISTS `officer_roles` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `role_name` varchar(100) NOT NULL,
+        `description` text,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        `updated_at` datetime DEFAULT NULL,
+        `display_order` int(11) DEFAULT '0',
+        PRIMARY KEY (`id`),
+        KEY `idx_created_at` (`created_at`),
+        KEY `idx_role_name` (`role_name`),
+        KEY `idx_display_order` (`display_order`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    
+    // Insert default roles
+    $defaultRoles = [
+        ['President', 1],
+        ['Vice President', 2],
+        ['Secretary', 3],
+        ['Treasurer', 4],
+        ['Board of Director', 0]
+    ];
+    $stmt = $conn->prepare("INSERT INTO officer_roles (role_name, display_order) VALUES (?, ?)");
+    foreach ($defaultRoles as $role) {
+        $stmt->bind_param("si", $role[0], $role[1]);
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
 $alertType = $alertMsg = "";
 
 /* --------------------------
