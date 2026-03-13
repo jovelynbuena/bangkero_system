@@ -45,6 +45,8 @@ foreach ($transactions as $t) {
 
 $assocName = 'Bankero and Fishermen Association';
 $generatedDate = date('F d, Y h:i A');
+$logoPath = '../../images/logo1.png';
+$logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
 
 // Simple HTML to PDF-like output
 ?>
@@ -62,16 +64,26 @@ $generatedDate = date('F d, Y h:i A');
             margin: 20px;
         }
         .header {
-            text-align: center;
+            display: flex;
+            align-items: center;
             border-bottom: 2px solid #667eea;
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
-        .header h2 {
+        .header img {
+            width: 70px;
+            height: 70px;
+            margin-right: 15px;
+            object-fit: contain;
+        }
+        .header-text {
+            flex: 1;
+        }
+        .header-text h2 {
             margin: 0 0 5px 0;
             color: #667eea;
         }
-        .header p {
+        .header-text p {
             margin: 0;
             color: #666;
         }
@@ -132,8 +144,11 @@ $generatedDate = date('F d, Y h:i A');
 </head>
 <body>
     <div class="header">
-        <h2><?= htmlspecialchars($assocName) ?></h2>
-        <p><strong>TRANSPARENCY REPORT</strong></p>
+        <?= $logoData ? '<img src="data:image/png;base64,' . $logoData . '" alt="Logo">' : '' ?>
+        <div class="header-text">
+            <h2><?= htmlspecialchars($assocName) ?></h2>
+            <p><strong>TRANSPARENCY REPORT</strong></p>
+        </div>
     </div>
 
     <div class="info">

@@ -108,6 +108,9 @@ if ($format === 'csv') {
 }
 
 if ($format === 'pdf' || $format === 'print') {
+    $logoPath = '../../images/logo1.png';
+    $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
+    
     echo '<!DOCTYPE html>
     <html lang="en">
     <head>
@@ -115,7 +118,11 @@ if ($format === 'pdf' || $format === 'print') {
         <title>Awards Export</title>
         <style>
             body { font-family: "Inter", sans-serif; padding: 40px; color: #333; }
-            table { width: 100%; border-collapse: collapse; margin-top: 30px; }
+            .header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 15px; }
+            .logo { width: 70px; height: 70px; margin-right: 15px; object-fit: contain; }
+            .header-text h1 { margin: 0; color: #1f2937; font-size: 22px; }
+            .header-text p { margin: 3px 0; color: #6b7280; font-size: 12px; }
+            table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; font-size: 14px; }
             th { background-color: #667eea; color: white; text-transform: uppercase; letter-spacing: 0.5px; }
             tr:nth-child(even) { background-color: #f8fafc; }
@@ -124,8 +131,14 @@ if ($format === 'pdf' || $format === 'print') {
         </style>
     </head>
     <body onload="' . ($format === 'print' ? 'window.print()' : '') . '">
-        <h1>Awards Export</h1>
-        <div class="meta">Generated: ' . date('F d, Y h:i A') . '</div>
+        <div class="header">
+            ' . ($logoData ? '<img src="data:image/png;base64,' . $logoData . '" class="logo" alt="Logo">' : '') . '
+            <div class="header-text">
+                <h1>Awards Export</h1>
+                <p>Bankero and Fisherman Association</p>
+                <p>Generated: ' . date('F d, Y h:i A') . '</p>
+            </div>
+        </div>
         <table>
             <thead>
                 <tr>

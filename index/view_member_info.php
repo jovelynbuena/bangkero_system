@@ -144,18 +144,18 @@ if ($member && !empty($member['image']) && file_exists($serverPath . $member['im
         </div>
 
         <div class="section-title">Personal Information</div>
-        <div class="info-row"><span class="label">Full Name:</span><span class="value"><?php echo htmlspecialchars($member['name']); ?></span></div>
-        <div class="info-row"><span class="label">Date of Birth:</span><span class="value"><?php echo htmlspecialchars($member['dob']); ?></span></div>
-        <div class="info-row"><span class="label">Gender:</span><span class="value"><?php echo htmlspecialchars($member['gender']); ?></span></div>
-        <div class="info-row"><span class="label">Phone:</span><span class="value"><?php echo htmlspecialchars($member['phone']); ?></span></div>
-        <div class="info-row"><span class="label">Email:</span><span class="value"><?php echo htmlspecialchars($member['email']); ?></span></div>
-        <div class="info-row"><span class="label">Address:</span><span class="value"><?php echo htmlspecialchars($member['address']); ?></span></div>
+        <div class="info-row"><span class="label">Full Name:</span><span class="value"><?php echo htmlspecialchars($member['name'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">Date of Birth:</span><span class="value"><?php echo htmlspecialchars($member['dob'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">Gender:</span><span class="value"><?php echo htmlspecialchars($member['gender'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">Phone:</span><span class="value"><?php echo htmlspecialchars($member['phone'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">Email:</span><span class="value"><?php echo htmlspecialchars($member['email'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">Address:</span><span class="value"><?php echo htmlspecialchars($member['address'] ?? ''); ?></span></div>
     </div>
 
     <div class="section">
         <div class="section-title">Work & License Information</div>
-        <div class="info-row"><span class="label">Work Type:</span><span class="value"><?php echo htmlspecialchars($member['work_type']); ?></span></div>
-        <div class="info-row"><span class="label">License Number:</span><span class="value"><?php echo htmlspecialchars($member['license_number']); ?></span></div>
+        <div class="info-row"><span class="label">Work Type:</span><span class="value"><?php echo htmlspecialchars($member['work_type'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">License Number:</span><span class="value"><?php echo htmlspecialchars($member['license_number'] ?? ''); ?></span></div>
         <div class="info-row"><span class="label">License Status:</span><span class="value">
             <?php if (!empty($member['license_number'])): ?>
                 <span class="badge bg-success">With license on record</span>
@@ -163,8 +163,8 @@ if ($member && !empty($member['image']) && file_exists($serverPath . $member['im
                 <span class="badge bg-secondary">No license information</span>
             <?php endif; ?>
         </span></div>
-        <div class="info-row"><span class="label">Boat Name:</span><span class="value"><?php echo htmlspecialchars($member['boat_name']); ?></span></div>
-        <div class="info-row"><span class="label">Fishing Area:</span><span class="value"><?php echo htmlspecialchars($member['fishing_area']); ?></span></div>
+        <div class="info-row"><span class="label">Boat Name:</span><span class="value"><?php echo htmlspecialchars($member['boat_name'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">Fishing Area:</span><span class="value"><?php echo htmlspecialchars($member['fishing_area'] ?? ''); ?></span></div>
     </div>
 
     <div class="section">
@@ -217,8 +217,8 @@ if ($member && !empty($member['image']) && file_exists($serverPath . $member['im
 
     <div class="section">
         <div class="section-title">Emergency Contact</div>
-        <div class="info-row"><span class="label">Contact Name:</span><span class="value"><?php echo htmlspecialchars($member['emergency_name']); ?></span></div>
-        <div class="info-row"><span class="label">Contact Phone:</span><span class="value"><?php echo htmlspecialchars($member['emergency_phone']); ?></span></div>
+        <div class="info-row"><span class="label">Contact Name:</span><span class="value"><?php echo htmlspecialchars($member['emergency_name'] ?? ''); ?></span></div>
+        <div class="info-row"><span class="label">Contact Phone:</span><span class="value"><?php echo htmlspecialchars($member['emergency_phone'] ?? ''); ?></span></div>
     </div>
 
     <div class="section">
