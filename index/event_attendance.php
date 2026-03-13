@@ -102,15 +102,35 @@ $initialPresent = count($existing);
   }
   @media print {
     body { background: #fff; }
-    .navbar, .page-header, .btn, #memberSearch, #presentFilter { display: none !important; }
+    .navbar, .page-header, .btn, #memberSearch, #presentFilter, #extraFilter { display: none !important; }
     .main-content { margin: 0; padding: 0; }
     .card-attendance { box-shadow: none; border-radius: 0; }
+    .print-header { display: block !important; }
   }
+  .print-header { display: none; }
+  .print-logo { width: 60px; height: 60px; object-fit: contain; margin-right: 15px; }
 </style>
 </head>
 <body>
 <?php include('navbar.php'); ?>
 <div class="main-content">
+  <!-- Print Header with Logo -->
+  <div class="print-header" style="margin-bottom: 20px; border-bottom: 3px solid #0e7490; padding-bottom: 15px;">
+    <div style="display: flex; align-items: center;">
+      <?php
+      $logoPath = __DIR__ . '/../images/logo1.png';
+      if (file_exists($logoPath)) {
+          echo '<img src="data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) . '" class="print-logo">';
+      }
+      ?>
+      <div>
+        <h2 style="margin: 0; color: #0e7490; font-size: 20px;">Bangkero & Fishermen Association</h2>
+        <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Event Attendance Report</p>
+        <p style="margin: 3px 0 0 0; color: #999; font-size: 11px;">Generated: <?= date('Y-m-d h:i A') ?></p>
+      </div>
+    </div>
+  </div>
+
   <div class="page-header">
     <h3><i class="bi bi-people-check"></i> Event Attendance</h3>
     <p class="mb-0 small">Record attendance for this association event.</p>

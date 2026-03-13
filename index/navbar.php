@@ -131,7 +131,7 @@ $assocPhone = htmlspecialchars($config['assoc_phone'] ?? '+63 912 345 6789');
 $assocAddress = htmlspecialchars($config['assoc_address'] ?? '123 Association Street, City, Philippines');
 
 // Pages for dropdowns
-$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php','transparency.php','transparency_reports.php','archives_transparency.php'];
+$managementPages = ['officerslist.php','memberlist.php','manage_officer.php','officer_roles.php','gallery_add.php','contact_messages.php','awards.php','transparency.php','transparency_reports.php','archives_transparency.php','admin_users.php'];
 $archivePages = ['archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php','archives_transparency.php'];
 $utilitiesPages = ['backup.php','logs.php','archives_members.php','archives_officers.php','archived_events.php','archived_announcement.php','archives_awards.php','archives_galleries.php','archives_contact_messages.php','archives_officer_roles.php','archives_users.php','archives_website_content.php'];
 
@@ -666,6 +666,11 @@ body.sidebar-open {
         <a href="<?= BASE_URL; ?>management/manage_officer.php"
            class="<?= ($current_page == 'manage_officer.php') ? 'active' : ''; ?>">
            <i class="bi bi-shield-lock"></i> Manage Officers
+        </a>
+
+        <a href="<?= BASE_URL; ?>admin_users.php"
+           class="<?= ($current_page == 'admin_users.php') ? 'active' : ''; ?>">
+           <i class="bi bi-key"></i> Officer Accounts
         </a>
 
         <a href="<?= BASE_URL; ?>management/officer_roles.php"

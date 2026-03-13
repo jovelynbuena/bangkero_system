@@ -68,22 +68,35 @@ if ($format === 'csv') {
 
 // PDF Export (basic implementation)
 if ($format === 'pdf') {
+    $logoPath = '../../images/logo1.png';
+    $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
+    
     echo '<!DOCTYPE html>
     <html>
     <head>
         <title>Selected Members Export</title>
         <style>
             body { font-family: Arial, sans-serif; padding: 20px; }
+            .header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #0e7490; padding-bottom: 15px; }
+            .logo { width: 70px; height: 70px; margin-right: 15px; object-fit: contain; }
+            .header-text h1 { margin: 0; color: #1f2937; font-size: 22px; }
+            .header-text p { margin: 3px 0; color: #6b7280; font-size: 12px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
-            th { background-color: #667eea; color: white; }
+            th { background-color: #0e7490; color: white; }
             h1 { color: #667eea; }
         </style>
     </head>
     <body>
-        <h1>Selected Members Export</h1>
-        <p>Generated: ' . date('F d, Y h:i A') . '</p>
-        <table>
+        <div class="header">
+            ' . ($logoData ? '<img src="data:image/png;base64,' . $logoData . '" class="logo" alt="Logo">' : '') . '
+            <div class="header-text">
+                <h1>Selected Members Export</h1>
+                <p>Bankero and Fisherman Association</p>
+                <p>Generated: ' . date('F d, Y h:i A') . '</p>
+            </div>
+        </div>';
+    echo '<table>
             <thead>
                 <tr>
                     <th>ID</th>

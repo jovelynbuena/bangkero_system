@@ -126,9 +126,8 @@ if ($format === 'pdf') {
 
     // Use standardized association name and real logo for this report
     $systemName = 'Bankero and Fisherman Association';
-    // Prefer JPEG logo for PDF compatibility (no GD required)
-    // This points to index/images/logo1.png
-    $logoPath = __DIR__ . '/../images/logo.jpg';
+    // Prefer PNG logo for PDF compatibility
+    $logoPath = __DIR__ . '/../../images/logo1.png';
 
     // --- PDF helpers (no external libs) ---
     function pdf_escape_text($text) {

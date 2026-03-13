@@ -1357,6 +1357,12 @@ $(document).ready(function() {
     });
   }
 
+  // Logo for PDF export
+  const logoBase64 = '<?php
+    $logoPath = __DIR__ . '/../images/logo1.png';
+    echo file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
+  ?>';
+
   // --- Initialize DataTables once ---
   const tableUpcoming = $('#eventsTableUpcoming').DataTable({
     dom: '<"d-flex justify-content-between align-items-center mb-3"Bf>rtip',
@@ -1379,13 +1385,46 @@ $(document).ready(function() {
         extend: 'pdf',
         text: '<i class="bi bi-file-earmark-pdf me-2"></i>PDF',
         className: 'btn buttons-pdf',
-        exportOptions: { columns: ':not(:last-child)' }
+        exportOptions: { columns: ':not(:last-child)' },
+        customize: function(doc) {
+          doc.pageMargins = [40, 80, 40, 40];
+          doc.header = function(currentPage, pageCount, pageSize) {
+            return {
+              columns: [
+                logoBase64 ? { image: 'data:image/png;base64,' + logoBase64, width: 50, margin: [40, 20, 0, 0] } : {},
+                {
+                  stack: [
+                    { text: 'Bangkero & Fishermen Association', style: 'headerTitle' },
+                    { text: 'Events Report', style: 'headerSubtitle' },
+                    { text: 'Generated: ' + new Date().toLocaleString(), style: 'headerDate' }
+                  ],
+                  margin: logoBase64 ? [70, 20, 0, 0] : [40, 20, 0, 0]
+                }
+              ]
+            };
+          };
+          doc.styles.headerTitle = { fontSize: 16, bold: true, color: '#0e7490' };
+          doc.styles.headerSubtitle = { fontSize: 12, color: '#666' };
+          doc.styles.headerDate = { fontSize: 9, color: '#999', margin: [0, 5, 0, 0] };
+        }
       },
       {
         extend: 'print',
         text: '<i class="bi bi-printer me-2"></i>Print',
         className: 'btn buttons-print',
-        exportOptions: { columns: ':not(:last-child)' }
+        exportOptions: { columns: ':not(:last-child)' },
+        customize: function(win) {
+          $(win.document.body).prepend(
+            '<div style="display:flex;align-items:center;margin-bottom:20px;border-bottom:3px solid #0e7490;padding-bottom:15px;">' +
+            (logoBase64 ? '<img src="data:image/png;base64,' + logoBase64 + '" style="width:60px;height:60px;margin-right:15px;object-fit:contain;">' : '') +
+            '<div>' +
+            '<h2 style="margin:0;color:#0e7490;font-size:20px;">Bangkero & Fishermen Association</h2>' +
+            '<p style="margin:5px 0 0 0;color:#666;font-size:14px;">Events Report</p>' +
+            '<p style="margin:3px 0 0 0;color:#999;font-size:11px;">Generated: ' + new Date().toLocaleString() + '</p>' +
+            '</div></div>'
+          );
+          $(win.document.body).css('font-family', 'Arial, sans-serif');
+        }
       }
     ],
     columnDefs: [{ orderable: false, targets: [1,8] }],
@@ -1413,13 +1452,46 @@ $(document).ready(function() {
         extend: 'pdf',
         text: '<i class="bi bi-file-earmark-pdf me-2"></i>PDF',
         className: 'btn buttons-pdf',
-        exportOptions: { columns: ':not(:last-child)' }
+        exportOptions: { columns: ':not(:last-child)' },
+        customize: function(doc) {
+          doc.pageMargins = [40, 80, 40, 40];
+          doc.header = function(currentPage, pageCount, pageSize) {
+            return {
+              columns: [
+                logoBase64 ? { image: 'data:image/png;base64,' + logoBase64, width: 50, margin: [40, 20, 0, 0] } : {},
+                {
+                  stack: [
+                    { text: 'Bangkero & Fishermen Association', style: 'headerTitle' },
+                    { text: 'Completed Events Report', style: 'headerSubtitle' },
+                    { text: 'Generated: ' + new Date().toLocaleString(), style: 'headerDate' }
+                  ],
+                  margin: logoBase64 ? [70, 20, 0, 0] : [40, 20, 0, 0]
+                }
+              ]
+            };
+          };
+          doc.styles.headerTitle = { fontSize: 16, bold: true, color: '#0e7490' };
+          doc.styles.headerSubtitle = { fontSize: 12, color: '#666' };
+          doc.styles.headerDate = { fontSize: 9, color: '#999', margin: [0, 5, 0, 0] };
+        }
       },
       {
         extend: 'print',
         text: '<i class="bi bi-printer me-2"></i>Print',
         className: 'btn buttons-print',
-        exportOptions: { columns: ':not(:last-child)' }
+        exportOptions: { columns: ':not(:last-child)' },
+        customize: function(win) {
+          $(win.document.body).prepend(
+            '<div style="display:flex;align-items:center;margin-bottom:20px;border-bottom:3px solid #0e7490;padding-bottom:15px;">' +
+            (logoBase64 ? '<img src="data:image/png;base64,' + logoBase64 + '" style="width:60px;height:60px;margin-right:15px;object-fit:contain;">' : '') +
+            '<div>' +
+            '<h2 style="margin:0;color:#0e7490;font-size:20px;">Bangkero & Fishermen Association</h2>' +
+            '<p style="margin:5px 0 0 0;color:#666;font-size:14px;">Completed Events Report</p>' +
+            '<p style="margin:3px 0 0 0;color:#999;font-size:11px;">Generated: ' + new Date().toLocaleString() + '</p>' +
+            '</div></div>'
+          );
+          $(win.document.body).css('font-family', 'Arial, sans-serif');
+        }
       }
     ],
     columnDefs: [{ orderable: false, targets: [1,8] }],

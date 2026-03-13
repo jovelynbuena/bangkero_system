@@ -94,8 +94,8 @@ if ($result) {
 
 $generatedAt = date('F d, Y h:i A');
 $systemName  = 'Bankero and Fisherman Association';
-// Prefer JPEG logo if available; will gracefully fall back if missing
-$logoPath    = __DIR__ . '/../images/logo.jpg';
+// Prefer PNG logo if available; will gracefully fall back if missing
+$logoPath    = __DIR__ . '/../../images/logo1.png';
 
 // -------------------------
 // PDF helper functions (no external library)

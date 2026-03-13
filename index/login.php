@@ -17,7 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $hasTransparencyRole = false;
     }
 
-    $fields = "id, username, password_hash, role, status, first_name, last_name";
+    $fields = "id, username, password_hash, role, status, first_name, last_name, force_password_change, temp_password";
     if ($hasTransparencyRole) {
         $fields .= ", transparency_role";
     }
@@ -51,12 +51,26 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit();
         }
 
-        // ✅ Password verification
-        if (password_verify($password, $row["password_hash"]) || $password === $row["password_hash"]) {
+        // ✅ Password verification (check normal password or temp password)
+        $is_temp_login = false;
+        if ($row["force_password_change"] == 1 && !empty($row["temp_password"])) {
+            // Allow login with temporary password
+            $is_temp_login = password_verify($password, $row["temp_password"]) || $password === $row["temp_password"];
+        }
+        
+        if (password_verify($password, $row["password_hash"]) || $password === $row["password_hash"] || $is_temp_login) {
             $_SESSION["user_id"] = $row["id"];
             $_SESSION["username"] = $row["username"];
             $_SESSION["role"] = $row["role"];
             $_SESSION["transparency_role"] = strtolower(trim((string)($row["transparency_role"] ?? '')));
+            
+            // ✅ Check if password change is required
+            if ($row["force_password_change"] == 1) {
+                $_SESSION["force_password_change"] = true;
+                $_SESSION["is_temp_login"] = $is_temp_login;
+                header("Location: change-password-required.php");
+                exit();
+            }
             
             // ✅ Store first name and last name in session
             $_SESSION["first_name"] = $row["first_name"];
@@ -94,7 +108,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             $redirectUrl = match ($row["role"]) {
                 "admin" => "admin.php",
                 "officer" => "admin.php",
-                default => "index.php"
+                default => "admin.php"
             };
 
             header("Location: $redirectUrl?login=success");
@@ -510,13 +524,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 </div>
             </div>
 
-            <div class="options-row">
+            <div class="options-row" style="justify-content: flex-start;">
                 <div class="form-check">
                     <input class="form-check-input" type="checkbox" name="remember" id="remember" 
                            <?php echo isset($_COOKIE['remembered_user']) ? 'checked' : ''; ?>>
                     <label class="form-check-label" for="remember">Remember me</label>
                 </div>
-                <a href="forgot-password.php">Forgot Password?</a>
             </div>
 
             <button type="submit" class="btn-login">Sign In</button>
@@ -546,6 +559,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         Swal.fire({
             icon: 'info',
             title: 'Registration Successful',
+            text: "<?php echo htmlspecialchars($_GET['message']); ?>",
+            confirmButtonColor: '#2367b7',
+            confirmButtonText: 'OK'
+        });
+    </script>
+    <?php endif; ?>
+    
+    <?php if (isset($_GET['login']) && $_GET['login'] === 'success' && !empty($_GET['message'])): ?>
+    <script>
+        Swal.fire({
+            icon: 'success',
+            title: 'Success',
             text: "<?php echo htmlspecialchars($_GET['message']); ?>",
             confirmButtonColor: '#2367b7',
             confirmButtonText: 'OK'

@@ -1074,6 +1074,7 @@ body {
             </div>
         </a>
     </div>
+
 </div>
 
 <!-- Member Analytics Panel -->

@@ -9,6 +9,26 @@ if (empty($_SESSION['username'])) {
 include('../../config/db_connect.php');
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+// Ensure member_archive table has all required columns
+$conn->query("CREATE TABLE IF NOT EXISTS member_archive (
+    member_id INT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    dob DATE DEFAULT NULL,
+    gender VARCHAR(20) DEFAULT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    email VARCHAR(150) DEFAULT NULL,
+    address TEXT DEFAULT NULL,
+    work_type VARCHAR(50) DEFAULT NULL,
+    license_number VARCHAR(100) DEFAULT NULL,
+    boat_name VARCHAR(100) DEFAULT NULL,
+    fishing_area VARCHAR(200) DEFAULT NULL,
+    emergency_name VARCHAR(150) DEFAULT NULL,
+    emergency_phone VARCHAR(50) DEFAULT NULL,
+    agreement TINYINT DEFAULT NULL,
+    image VARCHAR(255) DEFAULT NULL,
+    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
 $adminName = isset($_SESSION['username']) ? $_SESSION['username'] : 'Admin';
 
 // Handle retrieve from archives back to members - RESTORE ALL FIELDS
@@ -30,7 +50,22 @@ if (isset($_GET['retrieve'])) {
                 throw new Exception("Member not found in archive");
             }
 
-            // Restore ALL columns to members table
+            // Restore ALL columns to members table (handle NULL values)
+            $name = $member['name'] ?? '';
+            $dob = $member['dob'] ?? null;
+            $gender = $member['gender'] ?? null;
+            $phone = $member['phone'] ?? '';
+            $email = $member['email'] ?? '';
+            $address = $member['address'] ?? '';
+            $work_type = $member['work_type'] ?? null;
+            $license_number = $member['license_number'] ?? '';  // Default to empty string
+            $boat_name = $member['boat_name'] ?? '';
+            $fishing_area = $member['fishing_area'] ?? '';
+            $emergency_name = $member['emergency_name'] ?? '';
+            $emergency_phone = $member['emergency_phone'] ?? '';
+            $agreement = $member['agreement'] ?? null;
+            $image = $member['image'] ?? null;
+
             $stmt_insert = $conn->prepare("
                 INSERT INTO members (
                     name, dob, gender, phone, email, address, 
@@ -41,20 +76,20 @@ if (isset($_GET['retrieve'])) {
             
             $stmt_insert->bind_param(
                 "ssssssssssssss",
-                $member['name'],
-                $member['dob'],
-                $member['gender'],
-                $member['phone'],
-                $member['email'],
-                $member['address'],
-                $member['work_type'],
-                $member['license_number'],
-                $member['boat_name'],
-                $member['fishing_area'],
-                $member['emergency_name'],
-                $member['emergency_phone'],
-                $member['agreement'],
-                $member['image']
+                $name,
+                $dob,
+                $gender,
+                $phone,
+                $email,
+                $address,
+                $work_type,
+                $license_number,
+                $boat_name,
+                $fishing_area,
+                $emergency_name,
+                $emergency_phone,
+                $agreement,
+                $image
             );
 
             if (!$stmt_insert->execute()) {
@@ -211,17 +246,20 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
 
         .stats-container {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-            gap: 20px;
-            margin-bottom: 30px;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
         }
 
         .stat-card {
             background: white;
-            border-radius: 12px;
-            padding: 24px;
+            border-radius: 10px;
+            padding: 16px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             transition: transform 0.3s ease, box-shadow 0.3s ease;
+            display: flex;
+            align-items: center;
+            gap: 12px;
         }
 
         .stat-card:hover {
@@ -230,14 +268,14 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
         }
 
         .stat-card .icon {
-            width: 50px;
-            height: 50px;
-            border-radius: 12px;
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            margin-bottom: 16px;
+            font-size: 20px;
+            flex-shrink: 0;
         }
 
         .stat-card.purple .icon {
@@ -250,17 +288,17 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             color: white;
         }
 
-        .stat-card h3 {
-            font-size: 2rem;
+        .stat-card .stat-content h3 {
+            font-size: 1.5rem;
             font-weight: 700;
-            margin: 0 0 8px 0;
+            margin: 0 0 2px 0;
             color: #1f2937;
         }
 
-        .stat-card p {
+        .stat-card .stat-content p {
             margin: 0;
             color: #6b7280;
-            font-size: 0.95rem;
+            font-size: 0.85rem;
             font-weight: 500;
         }
 
@@ -325,9 +363,9 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             color: white;
             font-weight: 600;
             text-transform: uppercase;
-            font-size: 0.85rem;
+            font-size: 0.8rem;
             letter-spacing: 0.5px;
-            padding: 16px;
+            padding: 12px 10px;
             border: none;
         }
 
@@ -337,26 +375,28 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
 
         .table tbody tr:hover {
             background-color: #f8f9ff;
-            transform: scale(1.01);
         }
 
         .table tbody td {
-            padding: 16px;
+            padding: 12px 10px;
             vertical-align: middle;
             border-bottom: 1px solid #f3f4f6;
+            font-size: 0.9rem;
         }
 
         .btn-restore {
             background: linear-gradient(135deg, #10b981 0%, #059669 100%);
             border: none;
-            border-radius: 8px;
-            padding: 8px 16px;
+            border-radius: 6px;
+            padding: 6px 10px;
             color: white;
             font-weight: 500;
+            font-size: 0.85rem;
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
+            white-space: nowrap;
         }
 
         .btn-restore:hover {
@@ -368,14 +408,16 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
         .btn-delete-perm {
             background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
             border: none;
-            border-radius: 8px;
-            padding: 8px 16px;
+            border-radius: 6px;
+            padding: 6px 10px;
             color: white;
             font-weight: 500;
+            font-size: 0.85rem;
             transition: all 0.3s ease;
             display: inline-flex;
             align-items: center;
-            gap: 6px;
+            gap: 4px;
+            white-space: nowrap;
         }
 
         .btn-delete-perm:hover {
@@ -475,15 +517,19 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             <div class="icon">
                 <i class="bi bi-archive"></i>
             </div>
-            <h3><?php echo number_format($totalArchived); ?></h3>
-            <p>Total Archived</p>
+            <div class="stat-content">
+                <h3><?php echo number_format($totalArchived); ?></h3>
+                <p>Total Archived</p>
+            </div>
         </div>
         <div class="stat-card orange">
             <div class="icon">
                 <i class="bi bi-calendar-check"></i>
             </div>
-            <h3><?php echo number_format($thisMonth); ?></h3>
-            <p>Archived This Month</p>
+            <div class="stat-content">
+                <h3><?php echo number_format($thisMonth); ?></h3>
+                <p>Archived This Month</p>
+            </div>
         </div>
     </div>
 
@@ -565,13 +611,13 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
                 <thead>
                     <tr>
                         <th width="40px"></th>
-                        <th>Member ID</th>
+                        <th width="80px">Member ID</th>
                         <th>Name</th>
-                        <th>Email</th>
-                        <th>Phone</th>
-                        <th>Work Type</th>
-                        <th>Archived Date</th>
-                        <th class="text-center">Actions</th>
+                        <th width="200px">Email</th>
+                        <th width="120px">Phone</th>
+                        <th width="100px">Work Type</th>
+                        <th width="110px">Archived Date</th>
+                        <th width="180px" class="text-center">Actions</th>
                     </tr>
                 </thead>
                 <tbody>

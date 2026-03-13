@@ -23,6 +23,26 @@ if (!isset($_POST['id']) || !is_numeric($_POST['id'])) {
 
 require_once('../../config/db_connect.php');
 
+// Ensure member_archive table has all required columns
+$conn->query("CREATE TABLE IF NOT EXISTS member_archive (
+    member_id INT PRIMARY KEY,
+    name VARCHAR(150) NOT NULL,
+    dob DATE DEFAULT NULL,
+    gender VARCHAR(20) DEFAULT NULL,
+    phone VARCHAR(50) DEFAULT NULL,
+    email VARCHAR(150) DEFAULT NULL,
+    address TEXT DEFAULT NULL,
+    work_type VARCHAR(50) DEFAULT NULL,
+    license_number VARCHAR(100) DEFAULT NULL,
+    boat_name VARCHAR(100) DEFAULT NULL,
+    fishing_area VARCHAR(200) DEFAULT NULL,
+    emergency_name VARCHAR(150) DEFAULT NULL,
+    emergency_phone VARCHAR(50) DEFAULT NULL,
+    agreement TINYINT DEFAULT NULL,
+    image VARCHAR(255) DEFAULT NULL,
+    archived_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)");
+
 $id = intval($_POST['id']);
 
 try {
