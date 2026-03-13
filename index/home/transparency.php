@@ -28,38 +28,41 @@ if ($result && $row = $result->fetch_assoc()) {
 }
 
 // Get active programs count
-$programsQuery = "SELECT COUNT(*) AS active_count FROM transparency_programs WHERE status IN ('ongoing', 'active')";
+$programsQuery = "SELECT COUNT(*) AS active_count FROM transparency_campaigns WHERE status IN ('ongoing', 'active')";
 $result = $conn->query($programsQuery);
 if ($result && $row = $result->fetch_assoc()) {
     $stats['active_programs'] = $row['active_count'];
 }
 
-// Get funds utilized
-$utilizedQuery = "SELECT COALESCE(SUM(allocated_budget), 0) AS utilized
-    FROM transparency_programs
+// Get funds utilized (using goal_amount from campaigns)
+$utilizedQuery = "SELECT COALESCE(SUM(goal_amount), 0) AS utilized
+    FROM transparency_campaigns
     WHERE status IN ('ongoing','completed')";
 $result = $conn->query($utilizedQuery);
 if ($result && $row = $result->fetch_assoc()) {
     $stats['funds_utilized'] = $row['utilized'];
 }
 
-// Fetch active programs/projects
+// Fetch active programs/projects from transparency_campaigns
 $programsQuery = "SELECT 
-    p.id,
-    p.name AS program_name,
-    p.description,
-    p.allocated_budget,
-    p.status,
-    p.created_at
-    FROM transparency_programs p
-    WHERE p.status IN ('active', 'ongoing', 'completed')
+    c.id,
+    c.name AS program_name,
+    c.description,
+    c.goal_amount AS allocated_budget,
+    c.status,
+    c.created_at,
+    COALESCE(SUM(d.amount), 0) AS received_amount
+    FROM transparency_campaigns c
+    LEFT JOIN transparency_donations d ON c.id = d.campaign_id AND d.status='confirmed'
+    WHERE c.status IN ('active', 'ongoing', 'completed')
+    GROUP BY c.id
     ORDER BY 
-        CASE p.status 
+        CASE c.status 
             WHEN 'active' THEN 1 
             WHEN 'ongoing' THEN 2 
             ELSE 3 
         END,
-        p.created_at DESC 
+        c.created_at DESC 
     LIMIT 6";
 $programsResult = $conn->query($programsQuery);
 
