@@ -172,10 +172,28 @@ try {
         // Delete Program
         elseif ($action === 'delete_program') {
             $id = (int)($_POST['id'] ?? 0);
+            
+            // Get program name first to also delete from featured_programs
+            $stmtName = $conn->prepare("SELECT name FROM transparency_campaigns WHERE id=?");
+            $stmtName->bind_param('i', $id);
+            $stmtName->execute();
+            $result = $stmtName->get_result();
+            $programName = ($row = $result->fetch_assoc()) ? $row['name'] : null;
+            $stmtName->close();
+            
             $stmt = $conn->prepare("DELETE FROM transparency_campaigns WHERE id=?");
             $stmt->bind_param('i', $id);
             $stmt->execute();
             $stmt->close();
+            
+            // Also delete from featured_programs if title matches
+            if ($programName) {
+                $stmtFeat = $conn->prepare("DELETE FROM featured_programs WHERE title = ?");
+                $stmtFeat->bind_param('s', $programName);
+                $stmtFeat->execute();
+                $stmtFeat->close();
+            }
+            
             $alertType = 'success';
             $alertMsg = 'Program deleted.';
         }
@@ -227,6 +245,15 @@ if (isset($_GET['archive_program']) && $canEdit) {
             $stmt->bind_param('i', $id);
             $stmt->execute();
             $stmt->close();
+            
+            // Also delete from featured_programs if title matches
+            $programName = $program['name'] ?? null;
+            if ($programName) {
+                $stmtFeat = $conn->prepare("DELETE FROM featured_programs WHERE title = ?");
+                $stmtFeat->bind_param('s', $programName);
+                $stmtFeat->execute();
+                $stmtFeat->close();
+            }
 
             $alertType = 'success';
             $alertMsg = 'Program archived successfully.';
@@ -382,9 +409,6 @@ $sourceTypes = ['DOLE', 'LGU', 'NGO', 'Private', 'Membership', 'Others'];
             <div class="d-flex gap-2">
                 <a href="transparency_reports.php" class="btn btn-light">
                     <i class="bi bi-file-earmark-text"></i> View Reports
-                </a>
-                <a href="archives_transparency.php" class="btn btn-light">
-                    <i class="bi bi-archive"></i> Archive
                 </a>
             </div>
         </div>
