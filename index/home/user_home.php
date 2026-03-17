@@ -96,6 +96,30 @@ if ($featuredProgramsResult && $featuredProgramsResult->num_rows > 0) {
     }
 }
 
+// Fetch Transparency & Impact Highlights data for homepage section
+$impactStats = [
+    'total_donations'   => 0,
+    'beneficiaries'     => 0,
+    'programs_completed'=> 0,
+    'impact_story'      => null,
+];
+
+// Total confirmed donations
+$r = $conn->query("SELECT COALESCE(SUM(amount),0) AS total FROM transparency_donations WHERE status='confirmed'");
+if ($r && $row = $r->fetch_assoc()) { $impactStats['total_donations'] = (float)$row['total']; }
+
+// Total beneficiaries
+$r = $conn->query("SELECT COUNT(*) AS total FROM transparency_beneficiaries WHERE status='served'");
+if ($r && $row = $r->fetch_assoc()) { $impactStats['beneficiaries'] = (int)$row['total']; }
+
+// Completed programs
+$r = $conn->query("SELECT COUNT(*) AS total FROM transparency_campaigns WHERE status='completed'");
+if ($r && $row = $r->fetch_assoc()) { $impactStats['programs_completed'] = (int)$row['total']; }
+
+// Latest featured impact story/beneficiary
+$r = $conn->query("SELECT name, short_story, photo_path, date_assisted FROM transparency_beneficiaries WHERE featured=1 AND short_story IS NOT NULL ORDER BY date_assisted DESC LIMIT 1");
+if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
+
 ?>
 
 
@@ -1155,6 +1179,264 @@ if ($featuredProgramsResult && $featuredProgramsResult->num_rows > 0) {
       box-shadow: 0 12px 40px rgba(44, 62, 80, 0.12);
     }
 
+    /* ==================== TRANSPARENCY & IMPACT HIGHLIGHTS ==================== */
+    .impact-section {
+      background: linear-gradient(160deg, #f0f4f8 0%, #e8eef5 50%, #f0f4f8 100%);
+      padding: 70px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .impact-section::before {
+      content: '';
+      position: absolute;
+      top: -80px; right: -80px;
+      width: 320px; height: 320px;
+      background: radial-gradient(circle, rgba(44,62,80,0.07) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .impact-section::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; left: -60px;
+      width: 260px; height: 260px;
+      background: radial-gradient(circle, rgba(52,152,219,0.07) 0%, transparent 70%);
+      border-radius: 50%;
+      pointer-events: none;
+    }
+    .impact-section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+      position: relative;
+      z-index: 1;
+    }
+    .impact-section-header .section-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      color: white;
+      font-size: 0.78rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 6px 18px;
+      border-radius: 50px;
+      margin-bottom: 16px;
+    }
+    .impact-section-header h2 {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.4rem;
+      font-weight: 800;
+      color: #1a252f;
+      margin-bottom: 0.8rem;
+      line-height: 1.2;
+    }
+    .impact-section-header p {
+      color: #64748b;
+      font-size: 1.05rem;
+      max-width: 640px;
+      margin: 0 auto;
+      line-height: 1.7;
+    }
+
+    /* Impact Cards */
+    .impact-card {
+      background: #ffffff;
+      border-radius: 20px;
+      padding: 32px 26px 28px;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      box-shadow:
+        0 1px 2px rgba(44,62,80,0.06),
+        0 6px 18px rgba(44,62,80,0.10),
+        0 16px 32px rgba(44,62,80,0.06);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1.5px solid rgba(44,62,80,0.06);
+    }
+    .impact-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 4px;
+      background: linear-gradient(90deg, var(--grad-start, #2c3e50) 0%, var(--grad-end, #3498db) 100%);
+      border-radius: 20px 20px 0 0;
+    }
+    .impact-card:hover {
+      transform: translateY(-8px) scale(1.01);
+      box-shadow:
+        0 2px 4px rgba(44,62,80,0.08),
+        0 12px 28px rgba(44,62,80,0.14),
+        0 28px 48px rgba(44,62,80,0.10);
+      border-color: rgba(52,152,219,0.2);
+    }
+    /* Faint watermark icon */
+    .impact-card .card-watermark {
+      position: absolute;
+      bottom: -10px; right: -10px;
+      font-size: 7rem;
+      color: rgba(44,62,80,0.04);
+      line-height: 1;
+      pointer-events: none;
+      transition: color 0.35s;
+    }
+    .impact-card:hover .card-watermark {
+      color: rgba(52,152,219,0.07);
+    }
+
+    .impact-icon-wrap {
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-bottom: 20px;
+      background: linear-gradient(135deg, var(--grad-start, #2c3e50) 0%, var(--grad-end, #3498db) 100%);
+      box-shadow: 0 6px 18px rgba(44,62,80,0.22);
+      transition: transform 0.35s ease, box-shadow 0.35s ease;
+    }
+    .impact-card:hover .impact-icon-wrap {
+      transform: rotate(-6deg) scale(1.1);
+      box-shadow: 0 10px 24px rgba(44,62,80,0.28);
+    }
+    .impact-icon-wrap i {
+      font-size: 1.7rem;
+      color: #fff;
+    }
+
+    .impact-number {
+      font-family: 'Poppins', sans-serif;
+      font-size: 2.6rem;
+      font-weight: 800;
+      color: #1a252f;
+      line-height: 1;
+      margin-bottom: 6px;
+      letter-spacing: -1px;
+    }
+    .impact-number .impact-prefix,
+    .impact-number .impact-suffix {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+    .impact-label {
+      font-size: 0.82rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      color: #64748b;
+      margin-bottom: 10px;
+    }
+    .impact-desc {
+      font-size: 0.88rem;
+      color: #94a3b8;
+      line-height: 1.5;
+      margin: 0;
+    }
+
+    /* Story card */
+    .impact-story-card {
+      --grad-start: #1a252f;
+      --grad-end: #2c3e50;
+      background: linear-gradient(145deg, #1a252f 0%, #2c3e50 100%) !important;
+      color: white;
+    }
+    .impact-story-card::before {
+      background: linear-gradient(90deg, #3498db 0%, #5dade2 100%);
+    }
+    .impact-story-card .impact-label { color: rgba(255,255,255,0.65); }
+    .impact-story-card .impact-desc  { color: rgba(255,255,255,0.80); }
+    .impact-story-card .card-watermark { color: rgba(255,255,255,0.04); }
+    .impact-story-card:hover .card-watermark { color: rgba(255,255,255,0.07); }
+    .impact-story-card .story-name {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+    .impact-story-card .impact-icon-wrap {
+      background: rgba(255,255,255,0.15);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+    }
+    .story-quote {
+      font-style: italic;
+      font-size: 0.9rem;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.6;
+      padding-left: 14px;
+      border-left: 3px solid rgba(255,255,255,0.3);
+      margin: 0 0 14px;
+    }
+    .story-date-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.65);
+      background: rgba(255,255,255,0.1);
+      padding: 4px 12px;
+      border-radius: 50px;
+    }
+    .impact-cta-link {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 0.82rem;
+      font-weight: 700;
+      color: rgba(255,255,255,0.8);
+      text-decoration: none;
+      margin-top: 16px;
+      transition: color 0.2s;
+    }
+    .impact-cta-link:hover { color: #fff; }
+    .impact-cta-link i { transition: transform 0.2s; }
+    .impact-cta-link:hover i { transform: translateX(4px); }
+
+    /* View more transparency link */
+    .impact-view-more {
+      text-align: center;
+      margin-top: 2.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .btn-impact-more {
+      display: inline-flex;
+      align-items: center;
+      gap: 10px;
+      padding: 14px 36px;
+      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+      color: white;
+      border-radius: 50px;
+      font-weight: 700;
+      font-size: 0.95rem;
+      text-decoration: none;
+      box-shadow: 0 4px 16px rgba(44,62,80,0.25);
+      transition: all 0.3s ease;
+    }
+    .btn-impact-more:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 8px 24px rgba(44,62,80,0.35);
+      color: white;
+    }
+    .btn-impact-more i { transition: transform 0.25s ease; }
+    .btn-impact-more:hover i { transform: translateX(4px); }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+      .impact-number { font-size: 2.1rem; }
+      .impact-section-header h2 { font-size: 1.9rem; }
+      .impact-card { padding: 24px 20px 22px; }
+    }
+    @media (max-width: 576px) {
+      .impact-section { padding: 50px 0; }
+      .impact-number { font-size: 1.9rem; }
+      .impact-section-header h2 { font-size: 1.6rem; }
+    }
+
    /* Footer spacing */
     .bottom-space { height: 40px; }
     
@@ -1612,6 +1894,115 @@ if ($featuredProgramsResult && $featuredProgramsResult->num_rows > 0) {
   </div>
 </section>
 
+<!-- ===== TRANSPARENCY & IMPACT HIGHLIGHTS ===== -->
+<section class="impact-section">
+  <div class="container" style="position:relative; z-index:1;">
+
+    <!-- Section Header -->
+    <div class="impact-section-header">
+      <span class="section-eyebrow">
+        <i class="bi bi-shield-check-fill"></i> Transparency &amp; Impact
+      </span>
+      <h2>Where Every Peso Goes &amp; Who It Helps</h2>
+      <p>A snapshot of our community's accountability — real numbers, real people, real results.</p>
+    </div>
+
+    <div class="row g-4 justify-content-center">
+
+      <!-- Card 1: Total Donations -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="impact-card" style="--grad-start:#2c3e50; --grad-end:#3498db;">
+          <i class="bi bi-piggy-bank card-watermark"></i>
+          <div class="impact-icon-wrap">
+            <i class="bi bi-cash-coin"></i>
+          </div>
+          <div class="impact-number">
+            <span class="impact-prefix">₱</span><span
+              class="counter"
+              data-target="<?= number_format($impactStats['total_donations'], 0, '.', '') ?>"
+              data-prefix="₱"
+              data-format="peso">0</span>
+          </div>
+          <div class="impact-label">Total Donations Received</div>
+          <p class="impact-desc">Confirmed funds received from donors, LGU, NGOs, and partner organizations.</p>
+        </div>
+      </div>
+
+      <!-- Card 2: Beneficiaries -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="impact-card" style="--grad-start:#1a6b3c; --grad-end:#27ae60;">
+          <i class="bi bi-people card-watermark"></i>
+          <div class="impact-icon-wrap" style="background:linear-gradient(135deg,#1a6b3c,#27ae60);">
+            <i class="bi bi-people-fill"></i>
+          </div>
+          <div class="impact-number">
+            <span class="counter" data-target="<?= $impactStats['beneficiaries'] ?>" data-format="count">0</span><span class="impact-suffix">+</span>
+          </div>
+          <div class="impact-label">Number of Beneficiaries</div>
+          <p class="impact-desc">Fishermen and families directly served through our assistance programs.</p>
+        </div>
+      </div>
+
+      <!-- Card 3: Programs Completed -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="impact-card" style="--grad-start:#7d3c98; --grad-end:#9b59b6;">
+          <i class="bi bi-journal-check card-watermark"></i>
+          <div class="impact-icon-wrap" style="background:linear-gradient(135deg,#7d3c98,#9b59b6);">
+            <i class="bi bi-patch-check-fill"></i>
+          </div>
+          <div class="impact-number">
+            <span class="counter" data-target="<?= $impactStats['programs_completed'] ?>" data-format="count">0</span>
+          </div>
+          <div class="impact-label">Community Programs Completed</div>
+          <p class="impact-desc">Successfully concluded livelihood, relief, and training campaigns.</p>
+        </div>
+      </div>
+
+      <!-- Card 4: Impact Story -->
+      <div class="col-sm-6 col-lg-3">
+        <div class="impact-card impact-story-card">
+          <i class="bi bi-stars card-watermark"></i>
+          <div class="impact-icon-wrap">
+            <i class="bi bi-heart-pulse-fill"></i>
+          </div>
+          <?php if (!empty($impactStats['impact_story'])): $story = $impactStats['impact_story']; ?>
+            <div class="impact-label">Recent Impact Story</div>
+            <p class="story-name"><?= htmlspecialchars($story['name']) ?></p>
+            <p class="story-quote"><?= htmlspecialchars(mb_strimwidth($story['short_story'], 0, 110, '…')) ?></p>
+            <span class="story-date-badge">
+              <i class="bi bi-calendar-event"></i>
+              <?= date('M Y', strtotime($story['date_assisted'])) ?>
+            </span>
+            <br>
+            <a href="transparency.php" class="impact-cta-link">
+              Read Full Story <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+          <?php else: ?>
+            <div class="impact-label">Recent Impact Story</div>
+            <p class="story-name">Building Brighter Futures</p>
+            <p class="story-quote">Our members continue to uplift their families through the programs and resources provided by our association every season.</p>
+            <a href="transparency.php" class="impact-cta-link">
+              View All Stories <i class="bi bi-arrow-right-circle-fill"></i>
+            </a>
+          <?php endif; ?>
+        </div>
+      </div>
+
+    </div><!-- /.row -->
+
+    <!-- View Full Transparency Report -->
+    <div class="impact-view-more">
+      <a href="transparency.php" class="btn-impact-more">
+        <i class="bi bi-bar-chart-line-fill"></i>
+        View Full Transparency Report
+        <i class="bi bi-arrow-right"></i>
+      </a>
+    </div>
+
+  </div>
+</section>
+<!-- ===== END: TRANSPARENCY & IMPACT HIGHLIGHTS ===== -->
+
 <section class="container my-5">
    <section class="announcements-section">
     <div class="container">
@@ -1665,6 +2056,62 @@ if ($featuredProgramsResult && $featuredProgramsResult->num_rows > 0) {
 
 
 
+
+<!-- Animated Impact Counters -->
+<script>
+(function() {
+  'use strict';
+  function easeOutQuart(t) { return 1 - Math.pow(1 - t, 4); }
+
+  function formatPeso(val) {
+    if (val >= 1000000) return (val / 1000000).toFixed(1).replace(/\.0$/, '') + 'M';
+    if (val >= 1000)    return (val / 1000).toFixed(1).replace(/\.0$/, '') + 'K';
+    return val.toLocaleString();
+  }
+
+  function animateCounter(el) {
+    const target   = parseFloat(el.dataset.target) || 0;
+    const format   = el.dataset.format || 'count';
+    const duration = 1800;
+    let startTime  = null;
+
+    function step(timestamp) {
+      if (!startTime) startTime = timestamp;
+      const elapsed  = timestamp - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      const eased    = easeOutQuart(progress);
+      const current  = Math.floor(eased * target);
+
+      if (format === 'peso') {
+        el.textContent = formatPeso(current);
+      } else {
+        el.textContent = current.toLocaleString();
+      }
+
+      if (progress < 1) requestAnimationFrame(step);
+      else {
+        el.textContent = (format === 'peso') ? formatPeso(target) : Math.round(target).toLocaleString();
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
+  // Intersection Observer — fire only when section scrolls into view
+  const counters = document.querySelectorAll('.impact-section .counter');
+  if (!counters.length) return;
+
+  const observer = new IntersectionObserver(function(entries, obs) {
+    entries.forEach(function(entry) {
+      if (entry.isIntersecting) {
+        animateCounter(entry.target);
+        obs.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.35 });
+
+  counters.forEach(function(c) { observer.observe(c); });
+})();
+</script>
 
 <!-- Counter Script -->
 <script>
