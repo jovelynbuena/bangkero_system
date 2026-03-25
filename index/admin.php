@@ -1182,10 +1182,10 @@ body {
 
                 <div class="d-flex flex-wrap align-items-center gap-2 justify-content-end w-100">
                     <div class="d-flex align-items-center gap-2">
-                        <button type="button" class="btn btn-sm btn-outline-secondary calendar-nav-btn" id="calendarPrev" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary calendar-nav-btn" id="calendarPrev" title="Previous Month" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-chevron-left"></i>
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary calendar-nav-btn" id="calendarToday" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary calendar-nav-btn" id="calendarToday" title="Go to Today" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-calendar"></i>
                         </button>
                         <select class="form-select form-select-sm" id="calendarMonth" style="width: auto; min-width: 110px; height: 32px;">
@@ -1212,32 +1212,32 @@ body {
                             </option>
                             <?php endfor; ?>
                         </select>
-                        <button type="button" class="btn btn-sm btn-outline-secondary calendar-nav-btn" id="calendarNext" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary calendar-nav-btn" id="calendarNext" title="Next Month" style="width: 32px; height: 32px; padding: 0; display: flex; align-items: center; justify-content: center;">
                             <i class="bi bi-chevron-right"></i>
                         </button>
                     </div>
 
                     <div class="d-flex align-items-center gap-2 flex-wrap">
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle24h" style="height: 32px;">24h</button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="calendarFilter" style="height: 32px;">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle24h" title="Toggle 24-hour format" style="height: 32px;">24h</button>
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="calendarFilter" title="Filter Events" style="height: 32px;">
                             <i class="bi bi-funnel"></i> Filter
                         </button>
-                        <button type="button" class="btn btn-sm btn-outline-secondary" id="calendarThisMonth" style="height: 32px;">This Month</button>
+                        <span class="badge bg-light text-dark border" id="currentMonthDisplay" style="height: 32px; display: flex; align-items: center; font-size: 0.875rem; font-weight: 500;">This Month</span>
                         <div class="btn-group" role="group">
-                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn" data-view="listWeek" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn" data-view="listWeek" title="List View" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-list-ul"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn" data-view="timeGridWeek" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn" data-view="timeGridWeek" title="Week View (with time)" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-calendar-week"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn active" data-view="dayGridMonth" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn active" data-view="dayGridMonth" title="Month View" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-calendar3"></i>
                             </button>
-                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn" data-view="dayGrid" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
+                            <button type="button" class="btn btn-sm btn-outline-secondary calendar-view-btn" data-view="dayGrid" title="Year View" style="height: 32px; width: 36px; padding: 0; display: flex; align-items: center; justify-content: center;">
                                 <i class="bi bi-grid-3x3"></i>
                             </button>
                         </div>
-                        <button type="button" class="btn btn-sm btn-dark" id="addEventBtn" style="height: 32px; display: flex; align-items: center; gap: 6px;">
+                        <button type="button" class="btn btn-sm btn-dark" id="addEventBtn" title="Add New Event" style="height: 32px; display: flex; align-items: center; gap: 6px;">
                             <i class="bi bi-calendar-plus"></i> Add Event
                         </button>
                     </div>
@@ -1341,7 +1341,7 @@ document.addEventListener('DOMContentLoaded', function() {
     const prevBtn = document.getElementById('calendarPrev');
     const nextBtn = document.getElementById('calendarNext');
     const todayBtn = document.getElementById('calendarToday');
-    const thisMonthBtn = document.getElementById('calendarThisMonth');
+    const currentMonthDisplay = document.getElementById('currentMonthDisplay');
     const monthSelect = document.getElementById('calendarMonth');
     const yearSelect = document.getElementById('calendarYear');
     const toggle24hBtn = document.getElementById('toggle24h');
@@ -1392,6 +1392,13 @@ document.addEventListener('DOMContentLoaded', function() {
         const d = calendar.getDate();
         monthSelect.value = String(d.getMonth());
         yearSelect.value = String(d.getFullYear());
+        
+        // Update the current month display text
+        if (currentMonthDisplay) {
+            const monthNames = ['January', 'February', 'March', 'April', 'May', 'June',
+                               'July', 'August', 'September', 'October', 'November', 'December'];
+            currentMonthDisplay.textContent = monthNames[d.getMonth()] + ' ' + d.getFullYear();
+        }
     }
 
     function setActiveViewButton(viewName) {
@@ -1460,7 +1467,6 @@ document.addEventListener('DOMContentLoaded', function() {
     prevBtn?.addEventListener('click', () => calendar.prev());
     nextBtn?.addEventListener('click', () => calendar.next());
     todayBtn?.addEventListener('click', () => calendar.today());
-    thisMonthBtn?.addEventListener('click', () => calendar.today());
 
     // Month/Year jump
     monthSelect?.addEventListener('change', function() {
@@ -1477,10 +1483,10 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Views
     const viewMap = {
-        listWeek: 'listWeek',
+        listWeek: 'listMonth',   // List view shows events for the current month only
         timeGridWeek: 'timeGridWeek',
         dayGridMonth: 'dayGridMonth',
-        dayGrid: 'dayGridWeek'
+        dayGrid: 'multiMonthYear'   // Year view - shows all months
     };
 
     viewBtns.forEach(btn => {

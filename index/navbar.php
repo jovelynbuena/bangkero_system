@@ -668,10 +668,12 @@ body.sidebar-open {
            <i class="bi bi-shield-lock"></i> Manage Officers
         </a>
 
+        <!-- Officer Accounts menu - temporarily disabled
         <a href="<?= BASE_URL; ?>admin_users.php"
            class="<?= ($current_page == 'admin_users.php') ? 'active' : ''; ?>">
            <i class="bi bi-key"></i> Officer Accounts
         </a>
+        -->
 
         <a href="<?= BASE_URL; ?>management/officer_roles.php"
            class="<?= ($current_page == 'officer_roles.php') ? 'active' : ''; ?>">

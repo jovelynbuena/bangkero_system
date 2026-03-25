@@ -843,8 +843,6 @@ $officers_count = $current_count + $previous_count;
                 <ul class="dropdown-menu dropdown-menu-end">
                     <li><a class="dropdown-item" href="#" onclick="exportData('csv'); return false;"><i class="bi bi-filetype-csv me-2"></i>CSV Format</a></li>
                     <li><a class="dropdown-item" href="#" onclick="exportData('pdf'); return false;"><i class="bi bi-file-earmark-pdf me-2"></i>PDF Document</a></li>
-                    <li><hr class="dropdown-divider"></li>
-                    <li><a class="dropdown-item" href="#" onclick="exportData('print'); return false;"><i class="bi bi-printer me-2"></i>Print Preview</a></li>
                 </ul>
             </div>
         </div>

@@ -17,7 +17,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $hasTransparencyRole = false;
     }
 
-    $fields = "id, username, password_hash, role, status, first_name, last_name, force_password_change, temp_password";
+    $fields = "id, username, password_hash, role, status, first_name, last_name";
     if ($hasTransparencyRole) {
         $fields .= ", transparency_role";
     }
@@ -51,26 +51,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             exit();
         }
 
-        // ✅ Password verification (check normal password or temp password)
-        $is_temp_login = false;
-        if ($row["force_password_change"] == 1 && !empty($row["temp_password"])) {
-            // Allow login with temporary password
-            $is_temp_login = password_verify($password, $row["temp_password"]) || $password === $row["temp_password"];
-        }
-        
-        if (password_verify($password, $row["password_hash"]) || $password === $row["password_hash"] || $is_temp_login) {
+        // ✅ Password verification
+        if (password_verify($password, $row["password_hash"]) || $password === $row["password_hash"]) {
             $_SESSION["user_id"] = $row["id"];
             $_SESSION["username"] = $row["username"];
             $_SESSION["role"] = $row["role"];
             $_SESSION["transparency_role"] = strtolower(trim((string)($row["transparency_role"] ?? '')));
-            
-            // ✅ Check if password change is required
-            if ($row["force_password_change"] == 1) {
-                $_SESSION["force_password_change"] = true;
-                $_SESSION["is_temp_login"] = $is_temp_login;
-                header("Location: change-password-required.php");
-                exit();
-            }
             
             // ✅ Store first name and last name in session
             $_SESSION["first_name"] = $row["first_name"];
