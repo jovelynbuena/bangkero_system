@@ -7,70 +7,66 @@ if (empty($_SESSION['username'])) {
 
 require_once('../../config/db_connect.php');
 
-// Read filters from query string (same as officerslist.php)
-$search      = trim($_GET['search'] ?? '');
-$role_filter = $_GET['role_filter'] ?? '';
-$term_status = $_GET['term_status'] ?? 'all';
-$sort        = $_GET['sort'] ?? 'pos_asc';
+// Read filters from query string (same as memberlist.php)
+$search = trim($_GET['search'] ?? '');
+$role = $_GET['role'] ?? '';
+$sort = $_GET['sort'] ?? 'name_asc';
+$date_from = $_GET['date_from'] ?? '';
+$date_to = $_GET['date_to'] ?? '';
 
-$where  = [];
+$where_clauses = [];
 $params = [];
-$types  = '';
+$types = '';
 
-if ($term_status === 'current') {
-    $where[] = 'o.term_end >= CURDATE()';
-} elseif ($term_status === 'previous') {
-    $where[] = 'o.term_end < CURDATE()';
-}
-
-if ($search !== '') {
-    $where[] = '(m.name LIKE ? OR r.role_name LIKE ? OR o.description LIKE ?)';
+// Search filter
+if (!empty($search)) {
+    $where_clauses[] = "(name LIKE ? OR phone LIKE ? OR email LIKE ? OR id LIKE ?)";
     $search_param = "%{$search}%";
     $params[] = $search_param;
     $params[] = $search_param;
     $params[] = $search_param;
-    $types   .= 'sss';
+    $params[] = $search_param;
+    $types .= 'ssss';
 }
 
-if ($role_filter !== '') {
-    $where[]  = 'o.role_id = ?';
-    $params[] = $role_filter;
-    $types   .= 'i';
+// Role filter
+if ($role === 'officer') {
+    $where_clauses[] = "id IN (SELECT member_id FROM officers)";
+} elseif ($role === 'member') {
+    $where_clauses[] = "id NOT IN (SELECT member_id FROM officers)";
 }
 
-$where_sql = '';
-if (!empty($where)) {
-    $where_sql = ' WHERE ' . implode(' AND ', $where);
+// Date range filter
+if (!empty($date_from) && !empty($date_to)) {
+    $where_clauses[] = "DATE(created_at) BETWEEN ? AND ?";
+    $params[] = $date_from;
+    $params[] = $date_to;
+    $types .= 'ss';
+} elseif (!empty($date_from)) {
+    $where_clauses[] = "DATE(created_at) >= ?";
+    $params[] = $date_from;
+    $types .= 's';
+} elseif (!empty($date_to)) {
+    $where_clauses[] = "DATE(created_at) <= ?";
+    $params[] = $date_to;
+    $types .= 's';
 }
 
-$order_sql = ' ORDER BY r.role_name ASC';
-if ($sort === 'pos_desc') {
-    $order_sql = ' ORDER BY r.role_name DESC';
-} elseif ($sort === 'name_asc') {
-    $order_sql = ' ORDER BY m.name ASC';
-} elseif ($sort === 'name_desc') {
-    $order_sql = ' ORDER BY m.name DESC';
-} elseif ($sort === 'term_new') {
-    $order_sql = ' ORDER BY o.term_start DESC';
-} elseif ($sort === 'term_old') {
-    $order_sql = ' ORDER BY o.term_start ASC';
+// Build WHERE clause
+$where_sql = !empty($where_clauses) ? " WHERE " . implode(" AND ", $where_clauses) : "";
+
+// Sort order
+$order_sql = "ORDER BY name ASC";
+if ($sort === 'name_desc') {
+    $order_sql = "ORDER BY name DESC";
+} elseif ($sort === 'date_new') {
+    $order_sql = "ORDER BY created_at DESC";
+} elseif ($sort === 'date_old') {
+    $order_sql = "ORDER BY created_at ASC";
 }
 
-$sql = "
-    SELECT 
-        o.id,
-        m.name       AS member_name,
-        o.image      AS officer_image,
-        r.role_name  AS position,
-        o.term_start,
-        o.term_end,
-        o.description
-    FROM officers o
-    JOIN members m       ON o.member_id = m.id
-    JOIN officer_roles r ON o.role_id   = r.id
-    {$where_sql}
-    {$order_sql}
-";
+// Fetch all members (no pagination for PDF)
+$sql = "SELECT * FROM members {$where_sql} {$order_sql}";
 
 if (!empty($params)) {
     $stmt = $conn->prepare($sql);
@@ -101,19 +97,28 @@ function getInitials($name) {
     return strtoupper(substr($name, 0, 2));
 }
 
+// Check if member is an officer
+function getMemberRole($conn, $member_id) {
+    $stmt = $conn->prepare("SELECT COUNT(*) as count FROM officers WHERE member_id = ?");
+    $stmt->bind_param("i", $member_id);
+    $stmt->execute();
+    $result = $stmt->get_result()->fetch_assoc();
+    return ($result['count'] > 0) ? 'Officer' : 'Member';
+}
+
 // Load logo
 $basePath = realpath(__DIR__ . '/../..') . DIRECTORY_SEPARATOR;
 $logoPath = $basePath . 'images' . DIRECTORY_SEPARATOR . 'logo1.png';
 $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
 
-// Set headers for PDF-like download
+// Set headers
 header('Content-Type: text/html');
 ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Officers Export Report</title>
+    <title>Members Export Report</title>
     <style>
         * { box-sizing: border-box; }
         body {
@@ -162,9 +167,9 @@ header('Content-Type: text/html');
         }
         th, td {
             border: 1px solid #e5e7eb;
-            padding: 12px 10px;
+            padding: 10px;
             text-align: left;
-            font-size: 13px;
+            font-size: 12px;
         }
         th {
             background-color: #667eea;
@@ -180,9 +185,9 @@ header('Content-Type: text/html');
             width: 60px;
             text-align: center;
         }
-        .officer-photo {
-            width: 45px;
-            height: 45px;
+        .member-photo {
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             object-fit: cover;
             display: block;
@@ -190,8 +195,8 @@ header('Content-Type: text/html');
             border: 2px solid #e5e7eb;
         }
         .initials-circle {
-            width: 45px;
-            height: 45px;
+            width: 40px;
+            height: 40px;
             border-radius: 50%;
             background: linear-gradient(135deg, #667eea, #764ba2);
             color: white;
@@ -199,19 +204,37 @@ header('Content-Type: text/html');
             align-items: center;
             justify-content: center;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 12px;
             margin: 0 auto;
         }
         .name-cell {
             font-weight: 600;
             color: #1f2937;
         }
-        .position-cell {
+        .contact-cell {
             color: #6b7280;
+            font-size: 11px;
         }
-        .term-cell {
-            color: #374151;
+        .role-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .role-officer {
+            background-color: #dbeafe;
+            color: #1e40af;
+        }
+        .role-member {
+            background-color: #d1fae5;
+            color: #065f46;
+        }
+        .date-cell {
+            color: #6b7280;
             white-space: nowrap;
+            font-size: 11px;
         }
         .footer {
             margin-top: 30px;
@@ -235,7 +258,7 @@ header('Content-Type: text/html');
         <img src="data:image/png;base64,<?php echo $logoData; ?>" class="logo" alt="Logo">
         <?php endif; ?>
         <div class="header-text">
-            <h1>Officers Export Report</h1>
+            <h1>Members Export Report</h1>
             <p>Bankero and Fisherman Association</p>
             <p>Barangay Barretto, Olongapo City</p>
         </div>
@@ -243,39 +266,49 @@ header('Content-Type: text/html');
     
     <div class="meta-bar">
         <span>Generated on: <strong><?php echo $generatedAt; ?></strong></span>
-        <span>Total Officers: <strong><?php echo count($rows); ?></strong></span>
+        <span>Total Members: <strong><?php echo count($rows); ?></strong></span>
     </div>
     
     <table>
         <thead>
             <tr>
                 <th>Photo</th>
-                <th>Officer Name</th>
-                <th>Position</th>
-                <th>Term Start</th>
-                <th>Term End</th>
+                <th>Member Name</th>
+                <th>Contact</th>
+                <th>Role</th>
+                <th>Joined Date</th>
             </tr>
         </thead>
         <tbody>
-            <?php foreach ($rows as $row): ?>
+            <?php foreach ($rows as $row): 
+                $memberRole = getMemberRole($conn, $row['id']);
+                $roleClass = ($memberRole === 'Officer') ? 'role-officer' : 'role-member';
+            ?>
             <tr>
                 <td class="photo-cell">
                     <?php
-                    $photoPath = $basePath . 'uploads' . DIRECTORY_SEPARATOR . 'officers' . DIRECTORY_SEPARATOR . ($row['officer_image'] ?? '');
-                    if (!empty($row['officer_image']) && file_exists($photoPath)):
+                    $photoPath = $basePath . 'uploads' . DIRECTORY_SEPARATOR . 'members' . DIRECTORY_SEPARATOR . ($row['image'] ?? '');
+                    if (!empty($row['image']) && file_exists($photoPath) && !is_dir($photoPath)):
                         $photoData = base64_encode(file_get_contents($photoPath));
-                        $ext = pathinfo($row['officer_image'], PATHINFO_EXTENSION);
+                        $ext = pathinfo($row['image'], PATHINFO_EXTENSION);
                         $mime = in_array(strtolower($ext), ['png']) ? 'image/png' : 'image/jpeg';
                     ?>
-                        <img src="data:<?php echo $mime; ?>;base64,<?php echo $photoData; ?>" class="officer-photo" alt="Photo">
+                        <img src="data:<?php echo $mime; ?>;base64,<?php echo $photoData; ?>" class="member-photo" alt="Photo">
                     <?php else: ?>
-                        <div class="initials-circle"><?php echo getInitials($row['member_name']); ?></div>
+                        <div class="initials-circle"><?php echo getInitials($row['name']); ?></div>
                     <?php endif; ?>
                 </td>
-                <td class="name-cell"><?php echo htmlspecialchars($row['member_name']); ?></td>
-                <td class="position-cell"><?php echo htmlspecialchars($row['position']); ?></td>
-                <td class="term-cell"><?php echo !empty($row['term_start']) ? date('M d, Y', strtotime($row['term_start'])) : ''; ?></td>
-                <td class="term-cell"><?php echo !empty($row['term_end']) ? date('M d, Y', strtotime($row['term_end'])) : ''; ?></td>
+                <td class="name-cell"><?php echo htmlspecialchars($row['name']); ?></td>
+                <td class="contact-cell">
+                    <div><?php echo htmlspecialchars($row['phone'] ?? 'N/A'); ?></div>
+                    <div style="margin-top: 3px; color: #9ca3af;"><?php echo htmlspecialchars($row['email'] ?? 'N/A'); ?></div>
+                </td>
+                <td>
+                    <span class="role-badge <?php echo $roleClass; ?>"><?php echo $memberRole; ?></span>
+                </td>
+                <td class="date-cell">
+                    <?php echo !empty($row['created_at']) ? date('M d, Y', strtotime($row['created_at'])) : 'N/A'; ?>
+                </td>
             </tr>
             <?php endforeach; ?>
         </tbody>
