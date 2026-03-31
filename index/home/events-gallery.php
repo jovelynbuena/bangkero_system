@@ -138,6 +138,15 @@ $gallery_result = $conn->query($gallery_sql);
       color: #cbd5e1;
       margin-bottom: 24px;
     }
+    
+    /* Fix for modal carousel inheriting global carousel styles */
+    .modal .carousel-item {
+      height: auto;
+      min-height: auto;
+    }
+    .modal .carousel-item::before {
+      display: none;
+    }
   </style>
 </head>
 <body>

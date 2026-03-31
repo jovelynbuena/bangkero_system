@@ -135,16 +135,35 @@ if (isset($_GET['restore_assistance']) && $canEdit) {
         $stmt->close();
 
         if ($assistance) {
+            // Validate campaign_id still exists to avoid FK constraint failure
+            $campaignId = null;
+            if (!empty($assistance['campaign_id'])) {
+                $chk = $conn->prepare("SELECT id FROM transparency_campaigns WHERE id = ?");
+                $chk->bind_param('i', $assistance['campaign_id']);
+                $chk->execute();
+                $chk->store_result();
+                if ($chk->num_rows > 0) {
+                    $campaignId = (int)$assistance['campaign_id'];
+                }
+                $chk->close();
+            }
+            $aDonor   = (string)($assistance['donor_name'] ?? '');
+            $aType    = (string)($assistance['donor_type'] ?? '');
+            $aAmount  = (float)($assistance['amount'] ?? 0);
+            $aCurr    = (string)($assistance['currency'] ?? 'PHP');
+            $aDate    = $assistance['date_received'] ?? null;
+            $aPay     = (string)($assistance['payment_method'] ?? '');
+            $aRef     = (string)($assistance['reference_code'] ?? '');
+            $aStatus  = (string)($assistance['status'] ?? '');
+            $aRestr   = (int)($assistance['is_restricted'] ?? 0);
+            $aNotes   = (string)($assistance['notes'] ?? '');
             // Restore to main table
             $stmt = $conn->prepare("INSERT INTO transparency_donations 
                 (campaign_id, donor_name, donor_type, amount, currency, date_received, payment_method, reference_code, status, is_restricted, notes, created_at, updated_at) 
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW(), NOW())");
-            $stmt->bind_param('isssdsssiis',
-                $assistance['campaign_id'], $assistance['donor_name'],
-                $assistance['donor_type'], $assistance['amount'], $assistance['currency'],
-                $assistance['date_received'], $assistance['payment_method'],
-                $assistance['reference_code'], $assistance['status'],
-                $assistance['is_restricted'], $assistance['notes']
+            $stmt->bind_param('issdssssisi',
+                $campaignId, $aDonor, $aType, $aAmount, $aCurr,
+                $aDate, $aPay, $aRef, $aStatus, $aRestr, $aNotes
             );
             $stmt->execute();
             $stmt->close();
@@ -174,6 +193,8 @@ if (isset($_GET['delete_permanent']) && $canEdit) {
     try {
         if ($type === 'program') {
             $stmt = $conn->prepare("DELETE FROM transparency_campaigns_archive WHERE archive_id = ?");
+        } elseif ($type === 'beneficiary') {
+            $stmt = $conn->prepare("DELETE FROM transparency_beneficiaries_archive WHERE id = ?");
         } else {
             $stmt = $conn->prepare("DELETE FROM transparency_donations_archive WHERE archive_id = ?");
         }
@@ -186,6 +207,62 @@ if (isset($_GET['delete_permanent']) && $canEdit) {
     } catch (Exception $e) {
         $alertType = 'error';
         $alertMsg = 'Failed to delete: ' . $e->getMessage();
+    }
+}
+
+// Handle Restore Beneficiary
+if (isset($_GET['restore_beneficiary']) && $canEdit) {
+    $archiveId = (int)$_GET['restore_beneficiary'];
+    try {
+        $conn->begin_transaction();
+        $stmt = $conn->prepare("SELECT * FROM transparency_beneficiaries_archive WHERE id = ?");
+        $stmt->bind_param('i', $archiveId);
+        $stmt->execute();
+        $ben = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        if ($ben) {
+            // Validate program_id still exists to avoid FK constraint failure
+            $programId = null;
+            if (!empty($ben['program_id'])) {
+                $chk = $conn->prepare("SELECT id FROM transparency_programs WHERE id = ?");
+                $chk->bind_param('i', $ben['program_id']);
+                $chk->execute();
+                $chk->store_result();
+                if ($chk->num_rows > 0) {
+                    $programId = (int)$ben['program_id'];
+                }
+                $chk->close();
+            }
+            $bName       = (string)($ben['name'] ?? '');
+            $bAssist     = (string)($ben['assistance_type'] ?? '');
+            $bAmount     = (float)($ben['amount_value'] ?? 0);
+            $bQty        = (int)($ben['quantity'] ?? 0);
+            $bDate       = $ben['date_assisted'] ?? null;
+            $bBarangay   = (string)($ben['barangay'] ?? '');
+            $bStatus     = (string)($ben['status'] ?? '');
+            $bFeatured   = (int)($ben['featured'] ?? 0);
+            $bStory      = (string)($ben['short_story'] ?? '');
+            $stmtIns = $conn->prepare("INSERT INTO transparency_beneficiaries 
+                (name, program_id, assistance_type, amount_value, quantity, date_assisted, barangay, status, featured, short_story, created_at) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+            $stmtIns->bind_param('sisdisssis',
+                $bName, $programId, $bAssist,
+                $bAmount, $bQty, $bDate,
+                $bBarangay, $bStatus, $bFeatured, $bStory);
+            $stmtIns->execute();
+            $stmtIns->close();
+            $stmtDel = $conn->prepare("DELETE FROM transparency_beneficiaries_archive WHERE id = ?");
+            $stmtDel->bind_param('i', $archiveId);
+            $stmtDel->execute();
+            $stmtDel->close();
+            $conn->commit();
+            $alertType = 'success';
+            $alertMsg = 'Impact story restored successfully.';
+        }
+    } catch (Exception $e) {
+        $conn->rollback();
+        $alertType = 'error';
+        $alertMsg = 'Failed to restore: ' . $e->getMessage();
     }
 }
 
@@ -210,7 +287,18 @@ while ($res && $row = $res->fetch_assoc()) {
     $archivedAssistance[] = $row;
 }
 
-$totalArchived = count($archivedPrograms) + count($archivedAssistance);
+// Fetch archived beneficiaries
+$archivedBeneficiaries = [];
+$res = $conn->query("SELECT b.*, u.username as archived_by_name, p.name as program_name
+    FROM transparency_beneficiaries_archive b
+    LEFT JOIN users u ON b.archived_by = u.id
+    LEFT JOIN transparency_campaigns p ON b.program_id = p.id
+    ORDER BY b.archived_at DESC");
+while ($res && $row = $res->fetch_assoc()) {
+    $archivedBeneficiaries[] = $row;
+}
+
+$totalArchived = count($archivedPrograms) + count($archivedAssistance) + count($archivedBeneficiaries);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -279,7 +367,7 @@ $totalArchived = count($archivedPrograms) + count($archivedAssistance);
 
     <!-- Stats -->
     <div class="row g-3 mb-4">
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="archive-card">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -290,7 +378,7 @@ $totalArchived = count($archivedPrograms) + count($archivedAssistance);
                 </div>
             </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
             <div class="archive-card">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -298,6 +386,17 @@ $totalArchived = count($archivedPrograms) + count($archivedAssistance);
                         <h3 class="mb-0"><?= count($archivedAssistance) ?></h3>
                     </div>
                     <i class="bi bi-cash-stack text-warning" style="font-size: 2.5rem;"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="archive-card">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h5 class="mb-1">Archived Impact Stories</h5>
+                        <h3 class="mb-0"><?= count($archivedBeneficiaries) ?></h3>
+                    </div>
+                    <i class="bi bi-heart-pulse text-info" style="font-size: 2.5rem;"></i>
                 </div>
             </div>
         </div>
@@ -402,6 +501,65 @@ $totalArchived = count($archivedPrograms) + count($archivedAssistance);
         </div>
     </div>
     <?php endif; ?>
+
+    <?php if (!empty($archivedBeneficiaries)): ?>
+    <!-- Archived Impact Stories -->
+    <div class="archive-card">
+        <h5 class="mb-3"><i class="bi bi-heart-pulse text-info me-2"></i>Archived Impact Stories</h5>
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Beneficiary</th>
+                        <th>Assistance Type</th>
+                        <th>Amount/Qty</th>
+                        <th>Barangay</th>
+                        <th>Status</th>
+                        <th>Archived</th>
+                        <th>By</th>
+                        <?php if ($canEdit): ?><th>Actions</th><?php endif; ?>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php foreach ($archivedBeneficiaries as $b): ?>
+                    <tr>
+                        <td>
+                            <strong><?= e($b['name']) ?></strong>
+                            <?php if (!empty($b['short_story'])): ?>
+                            <br><small class="text-muted"><?= e(substr($b['short_story'], 0, 50)) ?><?= strlen($b['short_story']) > 50 ? '...' : '' ?></small>
+                            <?php endif; ?>
+                        </td>
+                        <td><?= e($b['assistance_type'] ?? '-') ?></td>
+                        <td>
+                            <?php if ($b['amount_value']): ?>
+                                <span class="text-success fw-bold">₱<?= number_format($b['amount_value'], 0) ?></span>
+                            <?php elseif ($b['quantity']): ?>
+                                <?= $b['quantity'] ?> items
+                            <?php else: ?>
+                                -
+                            <?php endif; ?>
+                        </td>
+                        <td><?= e($b['barangay'] ?? '-') ?></td>
+                        <td><span class="badge-archived"><?= ucfirst($b['status'] ?? '') ?></span></td>
+                        <td><?= $b['archived_at'] ? date('M d, Y', strtotime($b['archived_at'])) : '-' ?></td>
+                        <td><?= e($b['archived_by_name'] ?: 'System') ?></td>
+                        <?php if ($canEdit): ?>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="confirmRestoreBeneficiary(<?= $b['id'] ?>, '<?= addslashes($b['name']) ?>')" title="Restore">
+                                <i class="bi bi-arrow-counterclockwise"></i>
+                            </button>
+                            <button class="btn btn-sm btn-danger" onclick="confirmDeleteBeneficiary(<?= $b['id'] ?>, '<?= addslashes($b['name']) ?>')" title="Delete Permanent">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </td>
+                        <?php endif; ?>
+                    </tr>
+                    <?php endforeach; ?>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php endif; ?>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -470,9 +628,41 @@ function confirmDeleteAssistance(id, name) {
         }
     });
 }
+
+function confirmRestoreBeneficiary(id, name) {
+    Swal.fire({
+        title: 'Restore Impact Story?',
+        text: `Are you sure you want to restore "${name}"?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#22c55e',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Restore'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `?restore_beneficiary=${id}`;
+        }
+    });
+}
+
+function confirmDeleteBeneficiary(id, name) {
+    Swal.fire({
+        title: 'Delete Permanently?',
+        text: `This will permanently delete "${name}". This cannot be undone!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Delete'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = `?delete_permanent=${id}&type=beneficiary`;
+        }
+    });
+}
 </script>
 
-<?php if (isset($_GET['restore_program']) || isset($_GET['restore_assistance'])): ?>
+<?php if (isset($_GET['restore_program']) || isset($_GET['restore_assistance']) || isset($_GET['restore_beneficiary'])): ?>
 <script>
     Swal.fire({
         icon: 'success',

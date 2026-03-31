@@ -135,7 +135,19 @@ try {
 
         // Add/Edit Assistance
         elseif ($action === 'add_assistance' || $action === 'edit_assistance') {
-            $program_id = (int)($_POST['program_id'] ?? 0);
+            $rawProgramId = (int)($_POST['program_id'] ?? 0);
+            // Validate campaign exists to avoid FK constraint failure; use NULL if not found
+            $program_id = null;
+            if ($rawProgramId > 0) {
+                $chk = $conn->prepare("SELECT id FROM transparency_campaigns WHERE id = ?");
+                $chk->bind_param('i', $rawProgramId);
+                $chk->execute();
+                $chk->store_result();
+                if ($chk->num_rows > 0) {
+                    $program_id = $rawProgramId;
+                }
+                $chk->close();
+            }
             $source_name = trim($_POST['source_name'] ?? '');
             $source_type = trim($_POST['source_type'] ?? '');
             $amount = (float)($_POST['amount'] ?? 0);
@@ -264,6 +276,45 @@ try {
             $alertMsg = 'Impact metric deleted.';
         }
 
+        // Archive Program
+        elseif ($action === 'archive_program') {
+            $id = (int)($_POST['id'] ?? 0);
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            $conn->begin_transaction();
+            $stmtSel = $conn->prepare("SELECT * FROM transparency_campaigns WHERE id=?");
+            $stmtSel->bind_param('i', $id);
+            $stmtSel->execute();
+            $prog = $stmtSel->get_result()->fetch_assoc();
+            $stmtSel->close();
+            if ($prog) {
+                $pName       = (string)($prog['name'] ?? '');
+                $pSlug       = (string)($prog['slug'] ?? '');
+                $pDesc       = (string)($prog['description'] ?? '');
+                $pGoal       = (float)($prog['goal_amount'] ?? 0);
+                $pStatus     = (string)($prog['status'] ?? '');
+                $pStart      = $prog['start_date'] ?? null;
+                $pEnd        = $prog['end_date'] ?? null;
+                $pBanner     = (string)($prog['banner_image'] ?? '');
+                $stmtIns = $conn->prepare("INSERT INTO transparency_campaigns_archive 
+                    (name, slug, description, goal_amount, status, start_date, end_date, banner_image, archived_by, archived_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmtIns->bind_param('sssdssssi',
+                    $pName, $pSlug, $pDesc, $pGoal, $pStatus, $pStart, $pEnd, $pBanner, $userId);
+                $stmtIns->execute();
+                $stmtIns->close();
+                $stmtDel = $conn->prepare("DELETE FROM transparency_campaigns WHERE id=?");
+                $stmtDel->bind_param('i', $id);
+                $stmtDel->execute();
+                $stmtDel->close();
+                $conn->commit();
+                $alertType = 'success';
+                $alertMsg = 'Program archived successfully.';
+            } else {
+                $conn->rollback();
+                throw new Exception('Program not found.');
+            }
+        }
+
         // Delete Program
         elseif ($action === 'delete_program') {
             $id = (int)($_POST['id'] ?? 0);
@@ -291,6 +342,49 @@ try {
             $alertMsg = 'Program deleted.';
         }
 
+        // Archive Assistance
+        elseif ($action === 'archive_assistance') {
+            $id = (int)($_POST['id'] ?? 0);
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            $conn->begin_transaction();
+            $stmtSel = $conn->prepare("SELECT * FROM transparency_donations WHERE id=?");
+            $stmtSel->bind_param('i', $id);
+            $stmtSel->execute();
+            $don = $stmtSel->get_result()->fetch_assoc();
+            $stmtSel->close();
+            if ($don) {
+                $dCampaign    = (int)($don['campaign_id'] ?? 0);
+                $dDonor       = (string)($don['donor_name'] ?? '');
+                $dType        = (string)($don['donor_type'] ?? '');
+                $dAmount      = (float)($don['amount'] ?? 0);
+                $dCurrency    = (string)($don['currency'] ?? 'PHP');
+                $dDate        = $don['date_received'] ?? null;
+                $dPayMethod   = (string)($don['payment_method'] ?? '');
+                $dRef         = (string)($don['reference_code'] ?? '');
+                $dStatus      = (string)($don['status'] ?? '');
+                $dRestricted  = (int)($don['is_restricted'] ?? 0);
+                $dNotes       = (string)($don['notes'] ?? '');
+                $stmtIns = $conn->prepare("INSERT INTO transparency_donations_archive 
+                    (campaign_id, donor_name, donor_type, amount, currency, date_received, payment_method, reference_code, status, is_restricted, notes, archived_by, archived_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmtIns->bind_param('issdsssssisi',
+                    $dCampaign, $dDonor, $dType, $dAmount, $dCurrency,
+                    $dDate, $dPayMethod, $dRef, $dStatus, $dRestricted, $dNotes, $userId);
+                $stmtIns->execute();
+                $stmtIns->close();
+                $stmtDel = $conn->prepare("DELETE FROM transparency_donations WHERE id=?");
+                $stmtDel->bind_param('i', $id);
+                $stmtDel->execute();
+                $stmtDel->close();
+                $conn->commit();
+                $alertType = 'success';
+                $alertMsg = 'Assistance record archived successfully.';
+            } else {
+                $conn->rollback();
+                throw new Exception('Assistance record not found.');
+            }
+        }
+
         // Delete Assistance
         elseif ($action === 'delete_assistance') {
             $id = (int)($_POST['id'] ?? 0);
@@ -300,6 +394,52 @@ try {
             $stmt->close();
             $alertType = 'success';
             $alertMsg = 'Assistance record deleted.';
+        }
+
+        // Archive Beneficiary
+        elseif ($action === 'archive_beneficiary') {
+            $id = (int)($_POST['id'] ?? 0);
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            $conn->begin_transaction();
+            $stmtSel = $conn->prepare("SELECT * FROM transparency_beneficiaries WHERE id=?");
+            $stmtSel->bind_param('i', $id);
+            $stmtSel->execute();
+            $ben = $stmtSel->get_result()->fetch_assoc();
+            $stmtSel->close();
+            if ($ben) {
+                $bOrigId    = (int)($ben['id'] ?? 0);
+                $bProgId    = (int)($ben['program_id'] ?? 0);
+                $bName      = (string)($ben['name'] ?? '');
+                $bAsstType  = (string)($ben['assistance_type'] ?? '');
+                $bAmount    = (float)($ben['amount_value'] ?? 0);
+                $bQty       = (int)($ben['quantity'] ?? 0);
+                $bDate      = $ben['date_assisted'] ?? null;
+                $bStatus    = (string)($ben['status'] ?? '');
+                $bBarangay  = (string)($ben['barangay'] ?? '');
+                $bStory     = (string)($ben['short_story'] ?? '');
+                $bFeatured  = (int)($ben['featured'] ?? 0);
+                $bCreated   = (string)($ben['created_at'] ?? '');
+                $bUpdated   = $ben['updated_at'] ?? null;
+                $stmtIns = $conn->prepare("INSERT INTO transparency_beneficiaries_archive 
+                    (original_id, program_id, name, assistance_type, amount_value, quantity, date_assisted, status, barangay, short_story, featured, created_at, updated_at, archived_by, archived_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmtIns->bind_param('iissdissssissi',
+                    $bOrigId, $bProgId, $bName, $bAsstType, $bAmount, $bQty,
+                    $bDate, $bStatus, $bBarangay, $bStory, $bFeatured,
+                    $bCreated, $bUpdated, $userId);
+                $stmtIns->execute();
+                $stmtIns->close();
+                $stmtDel = $conn->prepare("DELETE FROM transparency_beneficiaries WHERE id=?");
+                $stmtDel->bind_param('i', $id);
+                $stmtDel->execute();
+                $stmtDel->close();
+                $conn->commit();
+                $alertType = 'success';
+                $alertMsg = 'Impact story archived successfully.';
+            } else {
+                $conn->rollback();
+                throw new Exception('Impact story not found.');
+            }
         }
     }
 } catch (Exception $ex) {
@@ -455,6 +595,8 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
                 <a href="transparency_reports.php" class="btn btn-light">
                     <i class="bi bi-file-earmark-text"></i> View Reports
                 </a>
+
+
             </div>
         </div>
     </div>
@@ -590,9 +732,14 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
                                 <td><span class="badge-status badge-<?= $p['status'] ?>"><?= ucfirst($p['status']) ?></span></td>
                                 <?php if ($canEdit): ?>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="editProgram(<?= htmlspecialchars(json_encode($p)) ?>)" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editProgram(<?= htmlspecialchars(json_encode($p)) ?>)" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning" onclick="confirmArchive('program', <?= $p['id'] ?>, '<?= addslashes($p['name']) ?>')" title="Archive">
+                                            <i class="bi bi-archive"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 <?php endif; ?>
                             </tr>
@@ -639,9 +786,14 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
                                 <td><?= $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '-' ?></td>
                                 <?php if ($canEdit): ?>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="editAssistance(<?= htmlspecialchars(json_encode($a)) ?>)" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editAssistance(<?= htmlspecialchars(json_encode($a)) ?>)" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning" onclick="confirmArchive('assistance', <?= $a['id'] ?>, '<?= addslashes($a['donor_name']) ?>')" title="Archive">
+                                            <i class="bi bi-archive"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 <?php endif; ?>
                             </tr>
@@ -756,9 +908,14 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
                                 </td>
                                 <?php if ($canEdit): ?>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="editBeneficiary(<?= htmlspecialchars(json_encode($b)) ?>)" title="Edit">
-                                        <i class="bi bi-pencil"></i>
-                                    </button>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editBeneficiary(<?= htmlspecialchars(json_encode($b)) ?>)" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-warning" onclick="confirmArchive('beneficiary', <?= $b['id'] ?>, '<?= addslashes($b['name']) ?>')" title="Archive">
+                                            <i class="bi bi-archive"></i>
+                                        </button>
+                                    </div>
                                 </td>
                                 <?php endif; ?>
                             </tr>
@@ -785,6 +942,7 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                 <input type="hidden" name="action" id="programAction" value="add_program">
                 <input type="hidden" name="id" id="programId">
+                <input type="hidden" name="active_tab" value="programs">
                 <div class="modal-header">
                     <h5 class="modal-title" id="programModalTitle">Add Program</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -840,6 +998,7 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                 <input type="hidden" name="action" id="assistanceAction" value="add_assistance">
                 <input type="hidden" name="id" id="assistanceId">
+                <input type="hidden" name="active_tab" value="assistance">
                 <div class="modal-header">
                     <h5 class="modal-title" id="assistanceModalTitle">Record Assistance</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -902,6 +1061,7 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                 <input type="hidden" name="action" id="beneficiaryAction" value="add_beneficiary">
                 <input type="hidden" name="b_id" id="beneficiaryId">
+                <input type="hidden" name="active_tab" value="impact">
                 <div class="modal-header">
                     <h5 class="modal-title" id="beneficiaryModalTitle">Add Impact Story</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -1058,13 +1218,75 @@ function editBeneficiary(data) {
     new bootstrap.Modal(document.getElementById('beneficiaryModal')).show();
 }
 
+function confirmArchive(type, id, name) {
+    Swal.fire({
+        title: 'Archive this record?',
+        text: `"${name}" will be moved to the archive. You can restore it later.`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#f59e0b',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Archive'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            const tabMap = { program: 'programs', assistance: 'assistance', beneficiary: 'impact' };
+            document.getElementById('archiveType').value = 'archive_' + type;
+            document.getElementById('archiveId').value = id;
+            document.getElementById('archiveTab').value = tabMap[type] || 'programs';
+            document.getElementById('archiveForm').submit();
+        }
+    });
+}
+
+function confirmDelete(type, id, name) {
+    Swal.fire({
+        title: 'Delete permanently?',
+        text: `"${name}" will be permanently deleted and cannot be recovered!`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#ef4444',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Delete'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('deleteType').value = 'delete_' + type;
+            document.getElementById('deleteId').value = id;
+            document.getElementById('deleteForm').submit();
+        }
+    });
+}
+
+
 
 </script>
 <?php else: ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php endif; ?>
 
+<!-- Hidden forms for archive/delete actions -->
+<form id="archiveForm" method="POST" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+    <input type="hidden" name="action" id="archiveType">
+    <input type="hidden" name="id" id="archiveId">
+    <input type="hidden" name="active_tab" id="archiveTab">
+</form>
+<form id="deleteForm" method="POST" style="display:none;">
+    <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+    <input type="hidden" name="action" id="deleteType">
+    <input type="hidden" name="id" id="deleteId">
+    <input type="hidden" name="active_tab" id="deleteTab">
+</form>
 
+<script>
+// Restore active tab after form submission
+(function () {
+    const tab = <?= json_encode($_POST['active_tab'] ?? '') ?>;
+    if (tab) {
+        const tabEl = document.querySelector('#' + tab + '-tab');
+        if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show();
+    }
+})();
+</script>
 
 </body>
 </html>

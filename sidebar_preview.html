@@ -1,0 +1,586 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Sidebar Preview</title>
+<link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+<link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  background: #f0f2f5;
+  display: flex;
+  min-height: 100vh;
+}
+
+/* ========== SIDEBAR ========== */
+.sidebar {
+  width: 260px;
+  min-width: 260px;
+  height: 100vh;
+  position: fixed;
+  top: 0; left: 0;
+  background: #ffffff;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid #e8ecf0;
+  box-shadow: 4px 0 24px rgba(0,0,0,0.06);
+  overflow: hidden;
+  transition: width 0.3s ease;
+  z-index: 1000;
+}
+
+.sidebar.collapsed {
+  width: 68px;
+}
+
+/* ========== SIDEBAR HEADER ========== */
+.sidebar-brand {
+  padding: 20px 16px;
+  background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+
+.brand-logo {
+  width: 36px;
+  height: 36px;
+  background: rgba(255,255,255,0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+  color: white;
+  backdrop-filter: blur(10px);
+}
+
+.brand-text {
+  overflow: hidden;
+  transition: opacity 0.2s ease, width 0.3s ease;
+}
+
+.brand-text h6 {
+  color: white;
+  font-family: 'Poppins', sans-serif;
+  font-size: 0.82rem;
+  font-weight: 700;
+  margin: 0;
+  line-height: 1.3;
+  white-space: nowrap;
+}
+
+.brand-text span {
+  color: rgba(255,255,255,0.7);
+  font-size: 0.7rem;
+  white-space: nowrap;
+}
+
+.sidebar.collapsed .brand-text {
+  opacity: 0;
+  width: 0;
+}
+
+/* ========== SCROLL AREA ========== */
+.sidebar-scroll {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px 0 8px;
+}
+
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+.sidebar-scroll::-webkit-scrollbar-thumb {
+  background: #e2e8f0;
+  border-radius: 4px;
+}
+
+/* ========== SECTION LABELS ========== */
+.nav-section-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: #94a3b8;
+  padding: 16px 20px 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar.collapsed .nav-section-label {
+  opacity: 0;
+}
+
+/* ========== NAV ITEMS ========== */
+.nav-item-wrap {
+  padding: 2px 10px;
+  position: relative;
+}
+
+.nav-link-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #64748b;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 500;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  position: relative;
+}
+
+.nav-link-item:hover {
+  background: #f1f5f9;
+  color: #6366f1;
+}
+
+.nav-link-item.active {
+  background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
+  color: #6366f1;
+  font-weight: 600;
+  border-left: 3px solid #6366f1;
+  padding-left: 9px;
+}
+
+.nav-link-item .nav-icon {
+  font-size: 1.05rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+  transition: color 0.2s ease;
+}
+
+.nav-link-item:hover .nav-icon,
+.nav-link-item.active .nav-icon {
+  color: #6366f1;
+}
+
+.nav-link-item .nav-label {
+  flex: 1;
+  transition: opacity 0.2s ease;
+}
+
+.sidebar.collapsed .nav-label,
+.sidebar.collapsed .caret-icon {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ========== DROPDOWN ========== */
+.caret-icon {
+  font-size: 0.7rem;
+  transition: transform 0.25s ease, opacity 0.2s ease;
+  color: #94a3b8;
+  flex-shrink: 0;
+}
+
+.nav-link-item[aria-expanded="true"] .caret-icon {
+  transform: rotate(180deg);
+}
+
+.sub-menu {
+  padding: 2px 0 4px;
+}
+
+.sub-menu .nav-item-wrap {
+  padding: 1px 10px 1px 22px;
+}
+
+.sub-menu .nav-link-item {
+  font-size: 0.84rem;
+  padding: 8px 12px;
+  color: #78909c;
+}
+
+.sub-menu .nav-link-item:hover {
+  background: #f8faff;
+  color: #6366f1;
+}
+
+.sub-menu .nav-link-item.active {
+  background: #eef2ff;
+  color: #6366f1;
+  font-weight: 600;
+  border-left: 3px solid #6366f1;
+  padding-left: 9px;
+}
+
+/* ========== TOOLTIP (collapsed state) ========== */
+.sidebar.collapsed .nav-item-wrap [data-tooltip] {
+  position: relative;
+}
+
+.sidebar.collapsed .nav-item-wrap [data-tooltip]:hover::after {
+  content: attr(data-tooltip);
+  position: absolute;
+  left: 52px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: #1e293b;
+  color: white;
+  font-size: 0.78rem;
+  padding: 6px 10px;
+  border-radius: 8px;
+  white-space: nowrap;
+  z-index: 9999;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* ========== DIVIDER ========== */
+.sidebar-divider {
+  height: 1px;
+  background: #f1f5f9;
+  margin: 8px 16px;
+}
+
+/* ========== LOGOUT ========== */
+.sidebar-footer {
+  padding: 10px 10px 16px;
+  flex-shrink: 0;
+  border-top: 1px solid #f1f5f9;
+}
+
+.logout-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  color: #ef4444;
+  text-decoration: none;
+  font-size: 0.875rem;
+  font-weight: 600;
+  background: #fef2f2;
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.logout-btn:hover {
+  background: #ef4444;
+  color: white;
+}
+
+.logout-btn .nav-icon {
+  font-size: 1.05rem;
+  width: 20px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+/* ========== TOGGLE BUTTON ========== */
+.toggle-btn {
+  position: absolute;
+  top: 22px;
+  right: -14px;
+  width: 28px;
+  height: 28px;
+  background: white;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 1001;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  transition: all 0.2s ease;
+  font-size: 0.75rem;
+  color: #6366f1;
+}
+
+.toggle-btn:hover {
+  background: #6366f1;
+  color: white;
+  border-color: #6366f1;
+}
+
+/* ========== MAIN CONTENT ========== */
+.main-content {
+  margin-left: 260px;
+  flex: 1;
+  padding: 32px;
+  transition: margin-left 0.3s ease;
+}
+
+.sidebar.collapsed ~ .main-content {
+  margin-left: 68px;
+}
+
+.demo-card {
+  background: white;
+  border-radius: 16px;
+  padding: 32px;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+  border: 1px solid #e8ecf0;
+}
+</style>
+</head>
+<body>
+
+<!-- SIDEBAR -->
+<div class="sidebar" id="sidebar">
+  <button class="toggle-btn" id="toggleBtn" title="Toggle Sidebar">
+    <i class="bi bi-chevron-left" id="toggleIcon"></i>
+  </button>
+
+  <!-- Brand Header -->
+  <div class="sidebar-brand">
+    <div class="brand-logo">
+      <i class="bi bi-compass"></i>
+    </div>
+    <div class="brand-text">
+      <h6>Bangkero & Fishermen</h6>
+      <span>Association MIS</span>
+    </div>
+  </div>
+
+  <!-- Scrollable Nav -->
+  <div class="sidebar-scroll">
+
+    <!-- MAIN -->
+    <div class="nav-section-label">Main</div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item active" data-tooltip="Dashboard">
+        <i class="bi bi-grid-1x2 nav-icon"></i>
+        <span class="nav-label">Dashboard</span>
+      </a>
+    </div>
+
+    <!-- MANAGEMENT -->
+    <div class="nav-section-label">Management</div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Member List">
+        <i class="bi bi-people nav-icon"></i>
+        <span class="nav-label">Members</span>
+      </a>
+    </div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Officers List">
+        <i class="bi bi-person-badge nav-icon"></i>
+        <span class="nav-label">Officers</span>
+      </a>
+    </div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Manage Roles">
+        <i class="bi bi-shield-check nav-icon"></i>
+        <span class="nav-label">Roles</span>
+      </a>
+    </div>
+
+    <!-- ACTIVITIES -->
+    <div class="nav-section-label">Activities</div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="All Events">
+        <i class="bi bi-calendar-event nav-icon"></i>
+        <span class="nav-label">Events</span>
+      </a>
+    </div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Attendance Reports">
+        <i class="bi bi-clipboard-data nav-icon"></i>
+        <span class="nav-label">Attendance Reports</span>
+      </a>
+    </div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Galleries">
+        <i class="bi bi-images nav-icon"></i>
+        <span class="nav-label">Galleries</span>
+      </a>
+    </div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Announcements">
+        <i class="bi bi-megaphone nav-icon"></i>
+        <span class="nav-label">Announcements</span>
+      </a>
+    </div>
+
+    <!-- COMMUNICATION -->
+    <div class="nav-section-label">Communication</div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Contact Messages">
+        <i class="bi bi-envelope nav-icon"></i>
+        <span class="nav-label">Contact Messages</span>
+        <span class="badge bg-danger ms-auto" style="font-size:0.65rem; padding: 3px 7px; border-radius: 20px;">3</span>
+      </a>
+    </div>
+
+    <!-- TRANSPARENCY -->
+    <div class="nav-section-label">Transparency</div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Transparency">
+        <i class="bi bi-eye nav-icon"></i>
+        <span class="nav-label">Transparency</span>
+      </a>
+    </div>
+
+    <!-- SYSTEM -->
+    <div class="nav-section-label">System</div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Backup">
+        <i class="bi bi-cloud-arrow-up nav-icon"></i>
+        <span class="nav-label">Backup</span>
+      </a>
+    </div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Logs">
+        <i class="bi bi-journal-text nav-icon"></i>
+        <span class="nav-label">Logs</span>
+      </a>
+    </div>
+    <div class="nav-item-wrap">
+      <a href="#" class="nav-link-item" data-tooltip="Settings">
+        <i class="bi bi-gear nav-icon"></i>
+        <span class="nav-label">Settings</span>
+      </a>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- ARCHIVE (Collapsible) -->
+    <div class="nav-item-wrap">
+      <a class="nav-link-item" href="#archiveMenu" data-bs-toggle="collapse"
+         aria-expanded="false" aria-controls="archiveMenu" data-tooltip="Archives">
+        <i class="bi bi-archive nav-icon"></i>
+        <span class="nav-label">Archives</span>
+        <i class="bi bi-chevron-down caret-icon ms-auto"></i>
+      </a>
+    </div>
+    <div class="collapse sub-menu" id="archiveMenu">
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-people nav-icon"></i><span class="nav-label">Members</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-person-badge nav-icon"></i><span class="nav-label">Officers</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-calendar-x nav-icon"></i><span class="nav-label">Events</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-trophy nav-icon"></i><span class="nav-label">Awards</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-images nav-icon"></i><span class="nav-label">Galleries</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-envelope nav-icon"></i><span class="nav-label">Messages</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-shield-check nav-icon"></i><span class="nav-label">Roles</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-person-lock nav-icon"></i><span class="nav-label">Accounts</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-megaphone nav-icon"></i><span class="nav-label">Announcements</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-file-text nav-icon"></i><span class="nav-label">Website Content</span></a>
+      </div>
+      <div class="nav-item-wrap">
+        <a href="#" class="nav-link-item"><i class="bi bi-eye-slash nav-icon"></i><span class="nav-label">Transparency</span></a>
+      </div>
+    </div>
+
+  </div><!-- end sidebar-scroll -->
+
+  <!-- Footer / Logout -->
+  <div class="sidebar-footer">
+    <a href="#" class="logout-btn">
+      <i class="bi bi-box-arrow-right nav-icon"></i>
+      <span class="nav-label">Logout</span>
+    </a>
+  </div>
+</div>
+
+<!-- MAIN CONTENT (demo) -->
+<div class="main-content" id="mainContent">
+  <div class="demo-card">
+    <h4 style="font-family:'Poppins',sans-serif; color:#1e293b; font-weight:700;">Dashboard Preview</h4>
+    <p class="text-muted mt-2" style="font-size:0.9rem;">This is a preview of the new sidebar design. Try clicking the toggle button (◀) on the sidebar edge to collapse it into icon-only mode.</p>
+    <hr class="my-3">
+    <div class="row g-3 mt-1">
+      <div class="col-md-3">
+        <div style="background:#f0f2ff; border-radius:12px; padding:20px; border-left:4px solid #6366f1;">
+          <div style="font-size:1.5rem; color:#6366f1;"><i class="bi bi-people-fill"></i></div>
+          <div style="font-size:1.4rem; font-weight:700; color:#1e293b; margin-top:6px;">128</div>
+          <div style="font-size:0.8rem; color:#64748b;">Total Members</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div style="background:#f0fdf4; border-radius:12px; padding:20px; border-left:4px solid #22c55e;">
+          <div style="font-size:1.5rem; color:#22c55e;"><i class="bi bi-calendar-check"></i></div>
+          <div style="font-size:1.4rem; font-weight:700; color:#1e293b; margin-top:6px;">14</div>
+          <div style="font-size:0.8rem; color:#64748b;">Upcoming Events</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div style="background:#fff7ed; border-radius:12px; padding:20px; border-left:4px solid #f97316;">
+          <div style="font-size:1.5rem; color:#f97316;"><i class="bi bi-envelope-fill"></i></div>
+          <div style="font-size:1.4rem; font-weight:700; color:#1e293b; margin-top:6px;">3</div>
+          <div style="font-size:0.8rem; color:#64748b;">New Messages</div>
+        </div>
+      </div>
+      <div class="col-md-3">
+        <div style="background:#fdf4ff; border-radius:12px; padding:20px; border-left:4px solid #a855f7;">
+          <div style="font-size:1.5rem; color:#a855f7;"><i class="bi bi-trophy-fill"></i></div>
+          <div style="font-size:1.4rem; font-weight:700; color:#1e293b; margin-top:6px;">8</div>
+          <div style="font-size:0.8rem; color:#64748b;">Awards Given</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+const sidebar = document.getElementById('sidebar');
+const mainContent = document.getElementById('mainContent');
+const toggleBtn = document.getElementById('toggleBtn');
+const toggleIcon = document.getElementById('toggleIcon');
+
+toggleBtn.addEventListener('click', () => {
+  sidebar.classList.toggle('collapsed');
+  if (sidebar.classList.contains('collapsed')) {
+    toggleIcon.className = 'bi bi-chevron-right';
+    mainContent.style.marginLeft = '68px';
+  } else {
+    toggleIcon.className = 'bi bi-chevron-left';
+    mainContent.style.marginLeft = '260px';
+  }
+});
+
+// Active link highlight
+document.querySelectorAll('.nav-link-item').forEach(link => {
+  link.addEventListener('click', function(e) {
+    if (this.getAttribute('data-bs-toggle') === 'collapse') return;
+    document.querySelectorAll('.nav-link-item').forEach(l => l.classList.remove('active'));
+    this.classList.add('active');
+  });
+});
+
+// Caret rotation sync
+document.querySelectorAll('[data-bs-toggle="collapse"]').forEach(toggle => {
+  const target = document.querySelector(toggle.getAttribute('href'));
+  if (!target) return;
+  target.addEventListener('shown.bs.collapse', () => toggle.setAttribute('aria-expanded','true'));
+  target.addEventListener('hidden.bs.collapse', () => toggle.setAttribute('aria-expanded','false'));
+});
+</script>
+</body>
+</html>
