@@ -1,7 +1,8 @@
 <?php
+ob_start();
+mysqli_report(MYSQLI_REPORT_OFF); // keep off globally to avoid HTML exceptions
 session_start();
 require_once('../../config/db_connect.php');
-mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
 // ========================================
 // SECURITY CHECK
@@ -20,27 +21,28 @@ if (!in_array($role, ['admin', 'officer'])) {
 $successMsg = $errorMsg = "";
 
 // ========================================
-// MARK AS READ ACTION (SECURE)
+// MARK AS READ ACTION (AJAX - single ID only)
 // ========================================
-if (isset($_GET['action']) && $_GET['action'] == 'mark_read' && isset($_GET['id'])) {
-    $id = intval($_GET['id']);
-    
+if (isset($_GET['action']) && $_GET['action'] == 'mark_read') {
+    ob_end_clean();
+    header('Content-Type: application/json');
+
+    $id = intval($_GET['id'] ?? 0);
     if ($id <= 0) {
-        $errorMsg = "Invalid message ID!";
-    } else {
-        $stmt = $conn->prepare("UPDATE contact_messages SET status='read' WHERE id=?");
-        $stmt->bind_param("i", $id);
-        
-        if ($stmt->execute()) {
-            $successMsg = "Message marked as read!";
-        } else {
-            $errorMsg = "Error marking message as read!";
-        }
-        $stmt->close();
+        echo json_encode(['success' => false, 'message' => 'Invalid message ID']);
+        exit;
     }
-    
-    $_SESSION['swal'] = ['type' => ($successMsg ? 'success' : 'error'), 'message' => ($successMsg ?: $errorMsg)];
-    header("Location: contact_messages.php");
+
+    $stmt = $conn->prepare("UPDATE contact_messages SET status='read' WHERE id=?");
+    if (!$stmt) {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+        exit;
+    }
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $stmt->close();
+
+    echo json_encode(['success' => true]);
     exit;
 }
 
@@ -95,7 +97,7 @@ $readMessages = $totalMessages - $unreadMessages;
 // ========================================
 // FETCH ALL MESSAGES
 // ========================================
-$result = $conn->query("SELECT * FROM contact_messages ORDER BY 
+$msgResult = $conn->query("SELECT id, name, email, message, status, created_at FROM contact_messages ORDER BY 
     CASE WHEN status='unread' THEN 0 ELSE 1 END, created_at DESC");
 ?>
 
@@ -411,7 +413,7 @@ $result = $conn->query("SELECT * FROM contact_messages ORDER BY
                     <i class="bi bi-inbox-fill"></i>
                 </div>
                 <div>
-                    <h3><?= $totalMessages ?></h3>
+                    <h3 id="stat-total"><?= $totalMessages ?></h3>
                     <p>Total Messages</p>
                 </div>
             </div>
@@ -422,7 +424,7 @@ $result = $conn->query("SELECT * FROM contact_messages ORDER BY
                     <i class="bi bi-envelope-exclamation-fill"></i>
                 </div>
                 <div>
-                    <h3><?= $unreadMessages ?></h3>
+                    <h3 id="stat-unread"><?= $unreadMessages ?></h3>
                     <p>Unread Messages</p>
                 </div>
             </div>
@@ -433,7 +435,7 @@ $result = $conn->query("SELECT * FROM contact_messages ORDER BY
                     <i class="bi bi-envelope-check-fill"></i>
                 </div>
                 <div>
-                    <h3><?= $readMessages ?></h3>
+                    <h3 id="stat-read"><?= $readMessages ?></h3>
                     <p>Read Messages</p>
                 </div>
             </div>
@@ -490,28 +492,28 @@ $result = $conn->query("SELECT * FROM contact_messages ORDER BY
                     </tr>
                 </thead>
                 <tbody id="tableBody">
-                    <?php if ($result->num_rows > 0): ?>
-                        <?php while ($row = $result->fetch_assoc()): ?>
-                            <tr data-status="<?= htmlspecialchars($row['status']) ?>">
-                                <td style="font-weight: 600;"><?= htmlspecialchars($row['id']) ?></td>
-                                <td style="font-weight: 600;"><?= htmlspecialchars($row['name']) ?></td>
-                                <td><?= htmlspecialchars($row['email']) ?></td>
-                                <td class="message-text"><?= nl2br(htmlspecialchars($row['message'])) ?></td>
+                    <?php if ($msgResult && $msgResult->num_rows > 0): ?>
+                        <?php while ($msgRow = $msgResult->fetch_assoc()): ?>
+                            <tr data-status="<?= htmlspecialchars($msgRow['status']) ?>">
+                                <td style="font-weight: 600;"><?= htmlspecialchars($msgRow['id']) ?></td>
+                                <td style="font-weight: 600;"><?= htmlspecialchars($msgRow['name']) ?></td>
+                                <td><?= htmlspecialchars($msgRow['email']) ?></td>
+                                <td class="message-text"><?= nl2br(htmlspecialchars($msgRow['message'])) ?></td>
                                 <td>
-                                    <?php if ($row['status'] == 'read'): ?>
+                                    <?php if ($msgRow['status'] == 'read'): ?>
                                         <span class="badge badge-read"><i class="bi bi-check-circle me-1"></i>Read</span>
                                     <?php else: ?>
                                         <span class="badge badge-unread"><i class="bi bi-exclamation-circle me-1"></i>Unread</span>
                                     <?php endif; ?>
                                 </td>
-                                <td style="font-size: 12px;"><?= date('M d, Y', strtotime($row['created_at'])) ?></td>
+                                <td style="font-size: 12px;"><?= date('M d, Y', strtotime($msgRow['created_at'])) ?></td>
                                 <td>
-                                    <?php if ($row['status'] == 'unread'): ?>
-                                        <button class="btn btn-success btn-sm mark-read" data-id="<?= $row['id'] ?>" title="Mark as Read">
+                                    <?php if ($msgRow['status'] == 'unread'): ?>
+                                        <button class="btn btn-success btn-sm mark-read" data-id="<?= (int)$msgRow['id'] ?>" title="Mark as Read">
                                             <i class="bi bi-envelope-open"></i>
                                         </button>
                                     <?php endif; ?>
-                                    <button class="btn btn-warning btn-sm archive-message" data-id="<?= $row['id'] ?>" title="Archive Message">
+                                    <button class="btn btn-warning btn-sm archive-message" data-id="<?= (int)$msgRow['id'] ?>" title="Archive Message">
                                         <i class="bi bi-archive"></i>
                                     </button>
                                 </td>
@@ -686,20 +688,37 @@ document.querySelectorAll('.archive-message').forEach(btn => {
 document.querySelectorAll('.mark-read').forEach(btn => {
     btn.addEventListener('click', function() {
         const id = this.getAttribute('data-id');
-        Swal.fire({
-            title: 'Mark as Read?',
-            text: "This message will be marked as read.",
-            icon: 'question',
-            showCancelButton: true,
-            confirmButtonColor: '#10b981',
-            cancelButtonColor: '#6b7280',
-            confirmButtonText: '<i class="bi bi-check-circle me-2"></i>Mark as Read',
-            cancelButtonText: 'Cancel'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                window.location.href = "?action=mark_read&id=" + id;
-            }
-        });
+        const row = this.closest('tr');
+        const self = this;
+
+        // Directly call fetch — no Swal confirm to avoid CSP eval issues
+        fetch('/bangkero_system/index/management/mark_read_ajax.php?id=' + id)
+            .then(r => r.text())
+            .then(raw => {
+                let data;
+                try { data = JSON.parse(raw); } catch(e) {
+                    console.error('Non-JSON response:', raw);
+                    alert('Error: Server returned unexpected response.');
+                    return;
+                }
+                if (data.success) {
+                    const badgeCell = row.querySelector('td:nth-child(5)');
+                    if (badgeCell) badgeCell.innerHTML = '<span class="badge badge-read"><i class="bi bi-check-circle me-1"></i>Read</span>';
+                    row.dataset.status = 'read';
+                    self.remove();
+                    const unreadEl = document.getElementById('stat-unread');
+                    const readEl   = document.getElementById('stat-read');
+                    if (unreadEl) unreadEl.textContent = Math.max(0, parseInt(unreadEl.textContent) - 1);
+                    if (readEl)   readEl.textContent   = parseInt(readEl.textContent) + 1;
+                    Swal.fire({ icon: 'success', title: 'Marked as Read!', showConfirmButton: false, timer: 1500 });
+                } else {
+                    alert('Failed: ' + (data.message || 'Unknown error'));
+                }
+            })
+            .catch(err => {
+                console.error('Fetch error:', err);
+                alert('Network error: ' + err.message);
+            });
     });
 });
 

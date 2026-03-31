@@ -1670,7 +1670,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
 <!-- Association Highlights (Gallery Teaser) -->
 <section class="gallery-section">
   <div class="container">
-    <h2>📸 Association Highlights</h2>
+    <h2>Association Highlights</h2>
     <p class="text-center text-muted mb-4" style="font-size: 1.05rem;">Photos & Memories from Our Community</p>
     
     <?php if (!empty($galleryImages)): ?>
@@ -1719,7 +1719,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
         <div class="row g-3 align-items-stretch">
             <!-- Event Card (Left Side - 7 columns) -->
             <div class="col-lg-7">
-                <h2 class="mb-3">📅 Upcoming Event</h2>
+                <h2 class="mb-3">Upcoming Event</h2>
                 <?php if ($nextEvent): ?>
                 <div class="card event-card border-0">
                     <!-- Event Poster -->
@@ -1791,7 +1791,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
             <!-- Awards & Recognition (Right Side - 5 columns) -->
             <div class="col-lg-5 d-flex">
                 <div class="w-100">
-                    <h2 class="mb-3">🏆 Awards & Recognition</h2>
+                    <h2 class="mb-3">Awards &amp; Recognition</h2>
                     <div class="awards-widget">
                         <!-- Header -->
                         <div class="awards-header">
@@ -1863,7 +1863,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
 <!-- Featured Programs Section -->
 <section class="programs-section">
   <div class="container">
-    <h2>🌟 FEATURED PROGRAMS</h2>
+    <h2>FEATURED PROGRAMS</h2>
     <p class="subtitle">Our Key Initiatives for Community Development</p>
     
     <?php if (!empty($featuredPrograms)): ?>
@@ -2006,7 +2006,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
 <section class="container my-5">
    <section class="announcements-section">
     <div class="container">
-        <h2 class="text-center">📢 Latest Announcements</h2>
+        <h2 class="text-center">Latest Announcements</h2>
         
         <div class="row justify-content-center">
             <?php while ($row = $latestAnnouncements->fetch_assoc()): ?>
@@ -2320,7 +2320,7 @@ document.addEventListener('DOMContentLoaded', () => {
 <section class="partnerships py-5" style="background: linear-gradient(135deg, #ecf0f1 0%, #ffffff 100%);">
   <div class="container">
     <div class="text-center mb-5">
-      <h2 class="section-title">🤝 Our Partners &amp; Sponsors</h2>
+      <h2 class="section-title">Our Partners &amp; Sponsors</h2>
       <p class="text-muted" style="font-size: 1.1rem; max-width: 700px; margin: 0 auto;">
         We are grateful to our partner institutions and generous sponsors who continuously support
         our programs for local bangkeros and fisherfolk. Through their assistance, we are able to

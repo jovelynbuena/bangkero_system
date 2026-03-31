@@ -1,6 +1,12 @@
 <?php
 session_start();
 
+// Clear caches for development
+clearstatcache();
+if (function_exists('opcache_invalidate')) {
+    opcache_invalidate(__FILE__, true);
+}
+
 if (!isset($_SESSION['username'])) {
     header('location: login.php');
     exit;
@@ -183,9 +189,14 @@ foreach ($typeCandidates as $c) {
 $memberMonthLabels = [];
 $memberMonthIndex = [];
 for ($i = 5; $i >= 0; $i--) {
-    $ym = date('Y-m', strtotime("-$i month"));
+    // Start from the first day of the CURRENT month, then subtract $i months
+    // This perfectly prevents 28/29/30/31 day overflows
+    $dateObj = new DateTime("first day of this month");
+    $dateObj->modify("-$i month");
+    
+    $ym = $dateObj->format('Y-m');
     $memberMonthIndex[$ym] = 0;
-    $memberMonthLabels[] = date('M Y', strtotime($ym . '-01'));
+    $memberMonthLabels[] = $dateObj->format('M Y');
 }
 
 $monthlyNewData = array_values($memberMonthIndex);
@@ -220,8 +231,10 @@ if ($dateCol) {
                     $isActive = in_array($ls, ['active', 'a', 'yes', 'y', 'true', '1']);
                 }
                 if ($isActive) {
+                    if (!isset($activeTrendActive[$idx])) { $activeTrendActive[$idx] = 0; }
                     $activeTrendActive[$idx] = (int)$activeTrendActive[$idx] + (int)$val;
                 } else {
+                    if (!isset($activeTrendInactive[$idx])) { $activeTrendInactive[$idx] = 0; }
                     $activeTrendInactive[$idx] = (int)$activeTrendInactive[$idx] + (int)$val;
                 }
             }
@@ -290,9 +303,12 @@ foreach ($eventTypeCandidates as $c) {
 $eventMonthLabels = [];
 $eventMonthIndex = [];
 for ($i = 5; $i >= 0; $i--) {
-    $ym = date('Y-m', strtotime("-$i month"));
+    $dateObj = new DateTime("first day of this month");
+    $dateObj->modify("-$i month");
+    
+    $ym = $dateObj->format('Y-m');
     $eventMonthIndex[$ym] = 0;
-    $eventMonthLabels[] = date('M Y', strtotime($ym . '-01'));
+    $eventMonthLabels[] = $dateObj->format('M Y');
 }
 $eventMonthData = array_values($eventMonthIndex);
 
@@ -358,53 +374,64 @@ if ($totalEvents > 0) {
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
 
 <style>
+/* ===== GLOBAL SENIOR-FRIENDLY BASE ===== */
 body {
-    font-family: 'Segoe UI', sans-serif;
-    background: #f9f9f9;
+    font-family: 'Inter', 'Segoe UI', sans-serif;
+    background: #f0f2f5;
     margin: 0;
+    font-size: 16px;
+    line-height: 1.6;
 }
 
+h1, h2 { font-size: calc(1.375rem + 0.4vw); }
+h3 { font-size: 1.6rem; }
+h4 { font-size: 1.35rem; }
+h5 { font-size: 1.18rem; }
+h6 { font-size: 1.05rem; }
+
 .main-content {
-    margin-left: 250px;
-    padding: 32px;
+    margin-left: 260px;
+    padding: 28px 32px 40px;
     min-height: 100vh;
     box-sizing: border-box;
     overflow-x: hidden;
+    padding-top: 86px;
 }
 
-/* Greeting Banner */
+/* ===== GREETING BANNER ===== */
 .greeting-banner {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
     color: white;
-    padding: 28px 32px;
-    border-radius: 16px;
-    box-shadow: 0 8px 24px rgba(102, 126, 234, 0.25);
+    padding: 32px 36px;
+    border-radius: 18px;
+    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.28);
     animation: fadeInDown 0.5s ease-out;
     margin-bottom: 2rem;
 }
 .greeting-banner h3 {
-    font-weight: 700;
+    font-weight: 800;
     margin: 0;
-    font-size: 1.75rem;
+    font-size: 1.9rem;
     letter-spacing: -0.5px;
 }
 .greeting-banner p {
-    margin: 0;
-    opacity: 0.95;
+    margin: 6px 0 0;
+    opacity: 0.92;
     font-size: 1.05rem;
 }
 .greeting-banner .btn-light {
-    background: rgba(255,255,255,0.25);
-    border: 1px solid rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.22);
+    border: 1.5px solid rgba(255,255,255,0.45);
     color: white;
     font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 8px;
-    transition: all 0.3s ease;
+    font-size: 1rem;
+    padding: 11px 22px;
+    border-radius: 10px;
+    min-height: 48px;
+    transition: all 0.25s ease;
 }
 .greeting-banner .btn-light:hover {
     background: rgba(255,255,255,0.35);
-    border-color: rgba(255,255,255,0.6);
     transform: translateY(-2px);
     box-shadow: 0 4px 12px rgba(0,0,0,0.15);
 }
@@ -412,9 +439,11 @@ body {
     background: linear-gradient(135deg, #ffd93d 0%, #ffb347 100%);
     border: none;
     color: #333;
-    font-weight: 600;
-    padding: 8px 16px;
-    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 11px 22px;
+    min-height: 48px;
+    border-radius: 10px;
     animation: pulse 2s infinite;
     box-shadow: 0 4px 12px rgba(255, 179, 71, 0.4);
 }
@@ -424,170 +453,167 @@ body {
 }
 
 @keyframes fadeInDown {
-    from {
-        opacity: 0;
-        transform: translateY(-20px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
+    from { opacity: 0; transform: translateY(-20px); }
+    to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes pulse {
-    0%, 100% {
-        transform: scale(1);
-    }
-    50% {
-        transform: scale(1.05);
-    }
+    0%, 100% { transform: scale(1); }
+    50%       { transform: scale(1.04); }
 }
 
+/* ===== DASHBOARD STAT CARDS ===== */
 .dashboard-card {
-    border-radius: 16px;
-    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid #E8E8E8;
+    border-radius: 18px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
+    transition: transform 0.22s ease, box-shadow 0.22s ease;
+    border: 1px solid #e8ecf0;
     background: #FFFFFF;
     overflow: hidden;
     position: relative;
 }
-
 .dashboard-card:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 12px 32px rgba(0, 0, 0, 0.12);
-    border-color: #D0D0D0;
+    transform: translateY(-5px);
+    box-shadow: 0 14px 36px rgba(0,0,0,0.11);
 }
-
 .dashboard-card .card-body {
+    padding: 26px 24px;
     position: relative;
     z-index: 1;
 }
-
+.dashboard-card .card-title {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #64748b;
+    margin-bottom: 6px;
+    letter-spacing: 0.2px;
+}
+.dashboard-card .stat-number {
+    font-size: 2.2rem;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 1;
+    margin-bottom: 4px;
+}
 .dashboard-card:hover .card-hover-info {
     opacity: 1;
     transform: translateY(0);
 }
-
 .card-hover-info {
     position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.95) 0%, rgba(118, 75, 162, 0.95) 100%);
+    bottom: 0; left: 0; right: 0;
+    background: linear-gradient(135deg, rgba(99,102,241,0.95), rgba(139,92,246,0.95));
     color: white;
-    padding: 10px;
+    padding: 11px;
     text-align: center;
     opacity: 0;
     transform: translateY(100%);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    font-size: 0.875rem;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
     font-weight: 500;
     z-index: 2;
 }
 
-/* Trend Indicators */
+/* ===== TREND INDICATORS ===== */
 .trend-indicator {
-    font-size: 0.8rem;
+    font-size: 0.88rem;
     font-weight: 700;
     margin-top: 8px;
     display: flex;
     align-items: center;
     gap: 5px;
 }
-.trend-indicator.trend-up {
-    color: #10b981;
-}
-.trend-indicator.trend-down {
-    color: #ef4444;
-}
-.trend-indicator.trend-same {
-    color: #8b5cf6;
-}
-.trend-indicator i {
-    font-size: 1rem;
-    font-weight: bold;
-}
+.trend-indicator.trend-up   { color: #10b981; }
+.trend-indicator.trend-down { color: #ef4444; }
+.trend-indicator.trend-same { color: #8b5cf6; }
+.trend-indicator i { font-size: 1rem; }
 
+/* ===== ICON BOX ===== */
 .icon-box {
-    border-radius: 8px;
+    border-radius: 14px;
     color: #fff;
-    padding: 14px;
+    width: 62px;
+    height: 62px;
+    min-width: 62px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 2rem;
+    font-size: 1.7rem;
+    flex-shrink: 0;
 }
 
+/* ===== ANALYTICS / EVENT CARDS ===== */
 .event-card {
-    border-radius: 8px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-    border: 1px solid #E0E0E0;
+    border-radius: 14px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.07);
+    border: 1px solid #e8ecf0;
     background: #FFFFFF;
     color: #2C3E50;
     transition: box-shadow 0.2s, transform 0.2s;
 }
-
 .event-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.1);
 }
-
 .event-card img {
-    border-top-left-radius: 18px;
-    border-top-right-radius: 18px;
+    border-top-left-radius: 14px;
+    border-top-right-radius: 14px;
     max-height: 180px;
     object-fit: cover;
 }
-
 .card-text {
     overflow: hidden;
     text-overflow: ellipsis;
     display: block;
-    line-height: 1.2em;
-    max-height: 3.6em;
+    line-height: 1.4em;
+    max-height: 4.2em;
+    font-size: 1rem;
 }
 
+/* ===== BUTTONS ===== */
+.btn {
+    font-size: 1rem;
+    min-height: 44px;
+    padding: 10px 20px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+.btn-sm {
+    font-size: 0.9rem;
+    min-height: 40px;
+    padding: 8px 16px;
+}
 .btn-primary {
-    background-color: #5B6B7A;
-    border-color: #5B6B7A;
+    background-color: #6366f1;
+    border-color: #6366f1;
 }
-
 .btn-primary:hover {
-    background-color: #3E4A54;
-    border-color: #3E4A54;
+    background-color: #4f46e5;
+    border-color: #4f46e5;
 }
 
-#calendar-container {
-    display: none;
-}
-
-.calendar-header {
-    display: none;
-}
+/* ===== CHART CONTAINERS ===== */
+#calendar-container { display: none; }
+.calendar-header    { display: none; }
 
 .chart-fixed {
-    height: 220px;
-    max-height: 320px;
+    height: 320px;
+    max-height: 400px;
 }
-
 .chart-fixed-sm {
-    height: 160px;
-    max-height: 220px;
+    height: 220px;
+    max-height: 280px;
 }
-
-.chart-fixed .chart-canvas {
+.chart-fixed .chart-canvas,
+.chart-fixed-sm .chart-canvas {
     height: 100% !important;
     width: 100% !important;
 }
-
 .small-chart {
-    height: 100px;
-    max-height: 130px;
+    height: 120px;
+    max-height: 160px;
     margin-bottom: 16px;
     padding: 8px 0;
 }
-
 .small-chart .chart-canvas {
     height: 100% !important;
     width: 100% !important;
@@ -595,7 +621,8 @@ body {
 
     /* FullCalendar customization */
     .fc {
-        font-family: 'Segoe UI', sans-serif;
+        font-family: 'Inter', 'Segoe UI', sans-serif;
+        font-size: 1rem;
         background: #FFFFFF !important;
     }
 
@@ -722,23 +749,23 @@ body {
         background: #FFFFFF !important;
         border-color: #E0E0E0;
         color: #2C3E50;
-        font-weight: 600;
-        padding: 12px 0 !important;
-        font-size: 0.9rem;
+        font-weight: 700;
+        padding: 14px 0 !important;
+        font-size: 1rem;
         text-transform: uppercase;
     }
 
     .fc-daygrid-day {
         border-color: #E0E0E0;
-        min-height: 100px;
+        min-height: 110px;
         background: #FFFFFF !important;
     }
 
     .fc-daygrid-day-number {
-        padding: 8px;
+        padding: 10px;
         color: #2C3E50;
-        font-weight: 600;
-        font-size: 0.95rem;
+        font-weight: 700;
+        font-size: 1rem;
     }
 
     .fc-daygrid-day.fc-day-other {

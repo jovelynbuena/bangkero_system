@@ -9,25 +9,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $password = trim($_POST["password"]);
     $confirm_password = trim($_POST["confirm_password"]);
 
+    // Helper to redirect with error but keep input values
+    function redirectWithError($msg, $username, $email) {
+        $params = http_build_query([
+            'status'   => 'error',
+            'message'  => $msg,
+            'username' => $username,
+            'email'    => $email,
+        ]);
+        header("Location: register.php?" . $params);
+        exit();
+    }
+
     // Server-side validation
     if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
-        header("Location: register.php?status=error&message=All fields are required");
-        exit();
+        redirectWithError('All fields are required', $username, $email);
     }
 
     if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-        header("Location: register.php?status=error&message=Invalid email address");
-        exit();
+        redirectWithError('Invalid email address', $username, $email);
     }
 
     if (strlen($password) < 6) {
-        header("Location: register.php?status=error&message=Password must be at least 6 characters");
-        exit();
+        redirectWithError('Password must be at least 6 characters', $username, $email);
     }
 
     if ($password !== $confirm_password) {
-        header("Location: register.php?status=error&message=Passwords do not match");
-        exit();
+        redirectWithError('Passwords do not match', $username, $email);
     }
 
     // Check if username or email already exists
@@ -38,8 +46,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     if ($stmt->num_rows > 0) {
         $stmt->close();
-        header("Location: register.php?status=error&message=Username or email already exists");
-        exit();
+        redirectWithError('Username or email already exists', $username, $email);
     }
 
     $stmt->close();
@@ -59,8 +66,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         exit();
     } else {
         $insert->close();
-        header("Location: register.php?status=error&message=Registration failed. Please try again");
-        exit();
+        redirectWithError('Registration failed. Please try again', $username, $email);
     }
 }
 ?>
@@ -435,14 +441,16 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             <div class="mb-3">
                 <label for="username" class="form-label">Username</label>
                 <input id="username" type="text" name="username" class="form-control" 
-                       placeholder="Choose a username" required>
+                       placeholder="Choose a username" required
+                       value="<?= htmlspecialchars($_GET['username'] ?? '') ?>">
                 <div class="feedback-text" id="usernameFeedback"></div>
             </div>
             
             <div class="mb-3">
                 <label for="email" class="form-label">Email Address</label>
                 <input id="email" type="email" name="email" class="form-control" 
-                       placeholder="your.email@example.com" required>
+                       placeholder="your.email@example.com" required
+                       value="<?= htmlspecialchars($_GET['email'] ?? '') ?>">
                 <div class="feedback-text" id="emailFeedback"></div>
             </div>
             
@@ -533,6 +541,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     setupPasswordToggle('password', 'togglePass1', 'togglePassIcon1');
     setupPasswordToggle('confirm_password', 'togglePass2', 'togglePassIcon2');
+
+    // Trigger validation feedback for pre-filled fields (after error redirect)
+    if (username.value.trim().length > 0) username.dispatchEvent(new Event('input'));
+    if (email.value.trim().length > 0) email.dispatchEvent(new Event('input'));
 
     // Username validation
     username.addEventListener('input', function() {

@@ -7,10 +7,11 @@
 /* ==================== MAIN CONTENT LAYOUT ==================== */
 .main-content,
 .content-wrapper {
-    margin-left: 270px;
+    margin-left: 280px;
     padding: 32px;
+    padding-top: 66px;
     min-height: 100vh;
-    transition: margin-left 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: margin-left 0.3s ease;
 }
 
 /* ==================== RESPONSIVE ADJUSTMENTS ==================== */
@@ -19,8 +20,9 @@
 @media (min-width: 992px) {
     .main-content,
     .content-wrapper {
-        margin-left: 270px !important;
+        margin-left: 280px;
         padding: 32px;
+        padding-top: 66px;
     }
 }
 
@@ -30,6 +32,7 @@
     .content-wrapper {
         margin-left: 0 !important;
         padding: 20px !important;
+        padding-top: 66px !important;
     }
 }
 
@@ -38,6 +41,7 @@
     .main-content,
     .content-wrapper {
         padding: 16px !important;
+        padding-top: 66px !important;
     }
     
     /* Adjust page headers on mobile */
