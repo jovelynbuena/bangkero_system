@@ -166,11 +166,16 @@ $conn->query("CREATE TABLE IF NOT EXISTS downloadable_resources_archive (
     title VARCHAR(255) NOT NULL,
     icon_class VARCHAR(100) DEFAULT NULL,
     color_hex VARCHAR(20) DEFAULT '#0d6efd',
+    file_path VARCHAR(500) DEFAULT NULL,
     sort_order INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     original_created_at DATETIME NULL,
     archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+// Add file_path column if it doesn't exist (for existing tables)
+$conn->query("ALTER TABLE downloadable_resources_archive ADD COLUMN IF NOT EXISTS file_path VARCHAR(500) DEFAULT NULL AFTER color_hex");
+// Add file_path to main table too if missing
+$conn->query("ALTER TABLE downloadable_resources ADD COLUMN IF NOT EXISTS file_path VARCHAR(500) DEFAULT NULL AFTER color_hex");
 
 
 $who_error = '';
@@ -826,74 +831,131 @@ if (!empty($carousel_slides)) {
 
 // Handle Resources (downloadable resources for Resources page)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['resources_action'])) {
-    $r_action = $_POST['resources_action'];
-    $r_id = isset($_POST['resources_id']) ? (int)$_POST['resources_id'] : 0;
-    $r_title = trim($_POST['resources_title'] ?? '');
-    $r_file_key = trim($_POST['resources_file_key'] ?? '');
+    $r_action     = $_POST['resources_action'];
+    $r_id         = isset($_POST['resources_id']) ? (int)$_POST['resources_id'] : 0;
+    $r_title      = trim($_POST['resources_title'] ?? '');
+    $r_file_key   = trim($_POST['resources_file_key'] ?? '');
     $r_icon_class = trim($_POST['resources_icon_class'] ?? '');
-    $r_color_hex = trim($_POST['resources_color_hex'] ?? '#0d6efd');
+    $r_color_hex  = trim($_POST['resources_color_hex'] ?? '#0d6efd');
     $r_sort_order = isset($_POST['resources_sort_order']) ? (int)$_POST['resources_sort_order'] : 1;
-    $r_is_active = isset($_POST['resources_is_active']) ? 1 : 0;
+    $r_is_active  = isset($_POST['resources_is_active']) ? 1 : 0;
 
-    if ($r_sort_order < 1) {
-        $r_sort_order = 1;
+    if ($r_sort_order < 1) $r_sort_order = 1;
+
+    // ── Handle uploaded PDF file ──────────────────────────────────────
+    $r_file_path = null; // will only be set when a new file is uploaded
+
+    if ($r_action !== 'delete' && isset($_FILES['resources_pdf']) && $_FILES['resources_pdf']['error'] === UPLOAD_ERR_OK) {
+        $uploadedTmp  = $_FILES['resources_pdf']['tmp_name'];
+        $uploadedName = $_FILES['resources_pdf']['name'];
+        $uploadedMime = mime_content_type($uploadedTmp);
+
+        if ($uploadedMime !== 'application/pdf') {
+            $resources_error = 'Only PDF files are allowed.';
+        } elseif ($_FILES['resources_pdf']['size'] > 10 * 1024 * 1024) {
+            $resources_error = 'File size must not exceed 10 MB.';
+        } else {
+            $resourcesUploadDir = dirname(__DIR__, 2) . '/uploads/resources/';
+            if (!is_dir($resourcesUploadDir)) mkdir($resourcesUploadDir, 0755, true);
+
+            $safeTitle   = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $r_title ?: 'resource');
+            $newFileName = time() . '_' . $safeTitle . '.pdf';
+            $destPath    = $resourcesUploadDir . $newFileName;
+
+            if (move_uploaded_file($uploadedTmp, $destPath)) {
+                $r_file_path = 'uploads/resources/' . $newFileName;
+            } else {
+                $resources_error = 'Failed to save uploaded file.';
+            }
+        }
     }
 
-    if ($r_action !== 'delete' && ($r_title === '' || $r_file_key === '')) {
-        $resources_error = 'Title and File Key are required for each resource.';
-    } else {
-        if ($r_action === 'add') {
-            $stmt = $conn->prepare("INSERT INTO downloadable_resources (file_key, title, icon_class, color_hex, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?)");
-            $stmt->bind_param('ssssii', $r_file_key, $r_title, $r_icon_class, $r_color_hex, $r_sort_order, $r_is_active);
-            if ($stmt->execute()) {
-                $resources_success = 'Resource added successfully.';
-            } else {
-                $resources_error = 'Failed to add resource.';
-            }
-            $stmt->close();
-        } elseif ($r_action === 'edit' && $r_id > 0) {
-            $stmt = $conn->prepare("UPDATE downloadable_resources SET file_key = ?, title = ?, icon_class = ?, color_hex = ?, sort_order = ?, is_active = ? WHERE id = ?");
-            // file_key (s), title (s), icon_class (s), color_hex (s), sort_order (i), is_active (i), id (i)
-            $stmt->bind_param('ssssiii', $r_file_key, $r_title, $r_icon_class, $r_color_hex, $r_sort_order, $r_is_active, $r_id);
-            if ($stmt->execute()) {
-                $resources_success = 'Resource updated successfully.';
-            } else {
-                $resources_error = 'Failed to update resource.';
-            }
-            $stmt->close();
-        } elseif ($r_action === 'delete' && $r_id > 0) {
-            // Archive instead of hard delete
-            $stmtSel = $conn->prepare("SELECT file_key, title, icon_class, color_hex, sort_order, is_active, created_at FROM downloadable_resources WHERE id = ?");
-            $stmtSel->bind_param('i', $r_id);
-            if ($stmtSel->execute()) {
-                $resultSel = $stmtSel->get_result();
-                if ($row = $resultSel->fetch_assoc()) {
-                    $stmtArch = $conn->prepare("INSERT INTO downloadable_resources_archive (original_id, file_key, title, icon_class, color_hex, sort_order, is_active, original_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-                    $origCreated = $row['created_at'] ?? null;
-                    $stmtArch->bind_param('issssiis', $r_id, $row['file_key'], $row['title'], $row['icon_class'], $row['color_hex'], $row['sort_order'], $row['is_active'], $origCreated);
-                    if ($stmtArch->execute()) {
-                        $stmtDel = $conn->prepare("DELETE FROM downloadable_resources WHERE id = ?");
-                        $stmtDel->bind_param('i', $r_id);
-                        if ($stmtDel->execute()) {
-                            $resources_success = 'Resource archived successfully.';
-                        } else {
-                            $resources_error = 'Failed to remove resource after archiving.';
-                        }
-                        $stmtDel->close();
-                    } else {
-                        $resources_error = 'Failed to archive resource.';
-                    }
-                    $stmtArch->close();
+    // Only proceed if no upload error occurred
+    if (empty($resources_error)) {
+        if ($r_action !== 'delete' && ($r_title === '' || $r_file_key === '')) {
+            $resources_error = 'Title and File Key are required for each resource.';
+        } else {
+            if ($r_action === 'add') {
+                $stmt = $conn->prepare("INSERT INTO downloadable_resources (file_key, title, icon_class, color_hex, file_path, sort_order, is_active) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param('sssssii', $r_file_key, $r_title, $r_icon_class, $r_color_hex, $r_file_path, $r_sort_order, $r_is_active);
+                if ($stmt->execute()) {
+                    $resources_success = 'Resource added successfully.';
                 } else {
-                    $resources_error = 'Resource not found for archiving.';
+                    $resources_error = 'Failed to add resource.';
                 }
-            } else {
-                $resources_error = 'Failed to load resource for archiving.';
+                $stmt->close();
+
+            } elseif ($r_action === 'edit' && $r_id > 0) {
+                if ($r_file_path !== null) {
+                    // New file uploaded — update file_path too, delete old file
+                    $stmtOld = $conn->prepare("SELECT file_path FROM downloadable_resources WHERE id = ?");
+                    $stmtOld->bind_param('i', $r_id);
+                    $stmtOld->execute();
+                    $oldRow = $stmtOld->get_result()->fetch_assoc();
+                    $stmtOld->close();
+                    if (!empty($oldRow['file_path'])) {
+                        $oldFull = dirname(__DIR__, 2) . '/' . $oldRow['file_path'];
+                        if (file_exists($oldFull)) @unlink($oldFull);
+                    }
+                    $stmt = $conn->prepare("UPDATE downloadable_resources SET file_key=?, title=?, icon_class=?, color_hex=?, file_path=?, sort_order=?, is_active=? WHERE id=?");
+                    $stmt->bind_param('ssssssiii', $r_file_key, $r_title, $r_icon_class, $r_color_hex, $r_file_path, $r_sort_order, $r_is_active, $r_id);
+                } else {
+                    // No new file — keep existing file_path
+                    $stmt = $conn->prepare("UPDATE downloadable_resources SET file_key=?, title=?, icon_class=?, color_hex=?, sort_order=?, is_active=? WHERE id=?");
+                    $stmt->bind_param('sssssiii', $r_file_key, $r_title, $r_icon_class, $r_color_hex, $r_sort_order, $r_is_active, $r_id);
+                }
+                if ($stmt->execute()) {
+                    $resources_success = 'Resource updated successfully.';
+                } else {
+                    $resources_error = 'Failed to update resource.';
+                }
+                $stmt->close();
+
+            } elseif ($r_action === 'delete' && $r_id > 0) {
+                // Archive instead of hard delete, also delete uploaded file
+                $stmtSel = $conn->prepare("SELECT file_key, title, icon_class, color_hex, file_path, sort_order, is_active, created_at FROM downloadable_resources WHERE id = ?");
+                if (!$stmtSel) {
+                    $resources_error = 'Prepare SELECT failed: ' . $conn->error;
+                } else {
+                $stmtSel->bind_param('i', $r_id);
+                if ($stmtSel->execute()) {
+                    $resultSel = $stmtSel->get_result();
+                    if ($row = $resultSel->fetch_assoc()) {
+                        $stmtArch = $conn->prepare("INSERT INTO downloadable_resources_archive (original_id, file_key, title, icon_class, color_hex, file_path, sort_order, is_active, original_created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        if (!$stmtArch) {
+                            $resources_error = 'Prepare INSERT archive failed: ' . $conn->error;
+                        } else {
+                        $origCreated = $row['created_at'] ?? null;
+                        $stmtArch->bind_param('isssssiis', $r_id, $row['file_key'], $row['title'], $row['icon_class'], $row['color_hex'], $row['file_path'], $row['sort_order'], $row['is_active'], $origCreated);
+                        if ($stmtArch->execute()) {
+                            // Delete uploaded file if present
+                            if (!empty($row['file_path'])) {
+                                $fileFull = dirname(__DIR__, 2) . '/' . $row['file_path'];
+                                if (file_exists($fileFull)) @unlink($fileFull);
+                            }
+                            $stmtDel = $conn->prepare("DELETE FROM downloadable_resources WHERE id = ?");
+                            $stmtDel->bind_param('i', $r_id);
+                            if ($stmtDel->execute()) {
+                                $resources_success = 'Resource archived successfully.';
+                            } else {
+                                $resources_error = 'Failed to remove resource after archiving: ' . $stmtDel->error;
+                            }
+                            $stmtDel->close();
+                        } else {
+                            $resources_error = 'Failed to archive resource: ' . $stmtArch->error;
+                        }
+                        $stmtArch->close();
+                        }
+                    } else {
+                        $resources_error = 'Resource not found for archiving.';
+                    }
+                } else {
+                    $resources_error = 'Failed to load resource for archiving: ' . $stmtSel->error;
+                }
+                $stmtSel->close();
+                }
             }
-            $stmtSel->close();
         }
-
-
     }
 }
 
@@ -1173,10 +1235,11 @@ body {
                                                         onclick="startWhoEdit(<?= (int)$entry['id'] ?>, '<?= htmlspecialchars($entry['title'], ENT_QUOTES) ?>', '<?= htmlspecialchars($entry['content'], ENT_QUOTES) ?>')">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <form method="POST" class="d-inline-block" onsubmit="return confirm('Delete this entry?');">
+                                                <form method="POST" class="d-inline-block" id="del-who-<?= (int)$entry['id'] ?>">
                                                     <input type="hidden" name="who_action" value="delete">
                                                     <input type="hidden" name="id" value="<?= (int)$entry['id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('del-who-<?= (int)$entry['id'] ?>', 'entry')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
@@ -1305,10 +1368,11 @@ body {
                                                             <?= (int)$value['sort_order'] ?>)">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <form method="POST" class="d-inline-block" onsubmit="return confirm('Delete this core value?');">
+                                                <form method="POST" class="d-inline-block" id="del-value-<?= (int)$value['id'] ?>">
                                                     <input type="hidden" name="values_action" value="delete">
                                                     <input type="hidden" name="values_id" value="<?= (int)$value['id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('del-value-<?= (int)$value['id'] ?>', 'core value')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
@@ -1487,10 +1551,11 @@ body {
                                                             <?= (int)$program['sort_order'] ?>)">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <form method="POST" class="d-inline-block" onsubmit="return confirm('Delete this program?');">
+                                                <form method="POST" class="d-inline-block" id="del-prog-<?= (int)$program['id'] ?>">
                                                     <input type="hidden" name="program_action" value="delete">
                                                     <input type="hidden" name="program_id" value="<?= (int)$program['id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('del-prog-<?= (int)$program['id'] ?>', 'program')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
@@ -1633,10 +1698,11 @@ body {
                                                             <?= (int)$slide['sort_order'] ?>)">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <form method="POST" class="d-inline-block" onsubmit="return confirm('Delete this slide?');">
+                                                <form method="POST" class="d-inline-block" id="del-slide-<?= (int)$slide['id'] ?>">
                                                     <input type="hidden" name="carousel_action" value="delete">
                                                     <input type="hidden" name="carousel_id" value="<?= (int)$slide['id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('del-slide-<?= (int)$slide['id'] ?>', 'slide')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
@@ -1759,10 +1825,11 @@ body {
                                                             <?= (int)$ps['sort_order'] ?>)">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <form method="POST" class="d-inline-block" onsubmit="return confirm('Delete this partner / sponsor?');">
+                                                <form method="POST" class="d-inline-block" id="del-ps-<?= (int)$ps['id'] ?>">
                                                     <input type="hidden" name="partners_action" value="delete">
                                                     <input type="hidden" name="partners_id" value="<?= (int)$ps['id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('del-ps-<?= (int)$ps['id'] ?>', 'partner / sponsor')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
@@ -1793,7 +1860,7 @@ body {
                         </div>
                     <?php endif; ?>
 
-                    <form method="POST" class="mb-4" id="resourcesForm">
+                    <form method="POST" enctype="multipart/form-data" class="mb-4" id="resourcesForm">
                         <input type="hidden" name="resources_action" id="resources_action" value="add">
                         <input type="hidden" name="resources_id" id="resources_id" value="0">
 
@@ -1803,15 +1870,16 @@ body {
                                 <input type="text" name="resources_title" id="resources_title" class="form-control" placeholder="e.g. Membership Form">
                             </div>
                             <div class="col-md-4">
-                                <label class="form-label">Resource Type</label>
+                                <label class="form-label">Resource Type <span class="text-muted small">(for generated PDFs)</span></label>
                                 <select name="resources_file_key" id="resources_file_key" class="form-control">
                                     <option value="">Select resource type...</option>
                                     <option value="membership_form">Membership Form</option>
                                     <option value="event_guidelines">Event Guidelines</option>
                                     <option value="attendance_sheet">Attendance Sheet</option>
                                     <option value="officers_list">Officers List</option>
+                                    <option value="uploaded_pdf">Uploaded PDF</option>
                                 </select>
-                                <small class="text-muted" style="font-size:0.8rem;">Piliin lang kung anong klaseng form ito.</small>
+                                <small class="text-muted" style="font-size:0.8rem;">Piliin ang "Uploaded PDF" kung mag-a-upload ka ng sariling file.</small>
                             </div>
                             <div class="col-md-2">
                                 <label class="form-label">Sort Order</label>
@@ -1827,15 +1895,22 @@ body {
                             </div>
                         </div>
 
-                        <div class="row g-3 mt-3 d-none">
-                            <div class="col-md-4">
-                                <label class="form-label">Icon Class (Bootstrap Icons)</label>
-                                <input type="text" name="resources_icon_class" id="resources_icon_class" class="form-control" placeholder="e.g. bi-file-earmark-person">
-                                <small class="text-muted" style="font-size:0.8rem;">Leave blank for default icon.</small>
-                            </div>
-                            <div class="col-md-4">
-                                <label class="form-label">Color Hex</label>
-                                <input type="text" name="resources_color_hex" id="resources_color_hex" class="form-control" value="#0d6efd" placeholder="#0d6efd">
+                        <!-- PDF Upload Field -->
+                        <div class="row g-3 mt-2">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold">
+                                    <i class="bi bi-file-earmark-pdf text-danger me-1"></i>
+                                    Upload PDF File <span class="text-muted small fw-normal">(max 10 MB — optional if using generated type)</span>
+                                </label>
+                                <input type="file" name="resources_pdf" id="resources_pdf" class="form-control" accept=".pdf,application/pdf">
+                                <small class="text-muted" style="font-size:0.8rem;">
+                                    Kung mag-u-upload ng sariling PDF, piliin ang "Uploaded PDF" sa Resource Type at lagyan ng pangalan.
+                                    Kapag nag-edit, mag-upload lang kung gusto mong palitan ang lumang file.
+                                </small>
+                                <div id="currentFileInfo" class="mt-1 d-none">
+                                    <span class="badge bg-secondary"><i class="bi bi-paperclip me-1"></i><span id="currentFileName"></span></span>
+                                    <span class="text-muted small ms-1">— kasalukuyang file (mananatili kung walang bagong i-upload)</span>
+                                </div>
                             </div>
                         </div>
 
@@ -1853,13 +1928,13 @@ body {
                             <table class="table align-middle">
                                 <thead>
                                     <tr>
-                                        <th style="width:5%;">#</th>
-                                        <th style="width:20%;">Title</th>
-                                        <th style="width:15%;">File Key</th>
-                                        <th style="width:20%;">Icon</th>
-                                        <th style="width:10%;">Color</th>
-                                        <th style="width:10%;">Order</th>
-                                        <th style="width:10%;">Active</th>
+                                        <th style="width:4%;">#</th>
+                                        <th style="width:18%;">Title</th>
+                                        <th style="width:13%;">File Key</th>
+                                        <th style="width:18%;">Uploaded PDF</th>
+                                        <th style="width:10%;">Icon</th>
+                                        <th style="width:8%;">Order</th>
+                                        <th style="width:8%;">Active</th>
                                         <th style="width:10%;" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
@@ -1870,15 +1945,20 @@ body {
                                             <td><?= htmlspecialchars($res['title']) ?></td>
                                             <td><code class="small"><?= htmlspecialchars($res['file_key']) ?></code></td>
                                             <td>
+                                                <?php if (!empty($res['file_path'])): ?>
+                                                    <a href="<?= htmlspecialchars('../../' . $res['file_path']) ?>" target="_blank" class="text-success small">
+                                                        <i class="bi bi-file-earmark-pdf me-1"></i><?= htmlspecialchars(basename($res['file_path'])) ?>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="text-muted small"><i class="bi bi-gear me-1"></i>Generated</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
                                                 <?php if (!empty($res['icon_class'])): ?>
                                                     <code class="small"><?= htmlspecialchars($res['icon_class']) ?></code>
                                                 <?php else: ?>
                                                     <span class="text-muted small">Default</span>
                                                 <?php endif; ?>
-                                            </td>
-                                            <td>
-                                                <span class="badge" style="background: <?= htmlspecialchars($res['color_hex']) ?>;">&nbsp;</span>
-                                                <span class="small text-muted ms-1"><?= htmlspecialchars($res['color_hex']) ?></span>
                                             </td>
                                             <td><?= (int)$res['sort_order'] ?></td>
                                             <td>
@@ -1896,13 +1976,15 @@ body {
                                                         '<?= htmlspecialchars($res['icon_class'], ENT_QUOTES) ?>',
                                                         '<?= htmlspecialchars($res['color_hex'], ENT_QUOTES) ?>',
                                                         <?= (int)$res['sort_order'] ?>,
-                                                        <?= (int)$res['is_active'] ?>)">
+                                                        <?= (int)$res['is_active'] ?>,
+                                                        '<?= htmlspecialchars(basename($res['file_path'] ?? ''), ENT_QUOTES) ?>')">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
-                                                <form method="POST" class="d-inline-block" onsubmit="return confirm('Delete this resource?');">
+                                                <form method="POST" class="d-inline-block" id="del-res-<?= (int)$res['id'] ?>">
                                                     <input type="hidden" name="resources_action" value="delete">
                                                     <input type="hidden" name="resources_id" value="<?= (int)$res['id'] ?>">
-                                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                                    <button type="button" class="btn btn-sm btn-outline-danger"
+                                                        onclick="confirmDelete('del-res-<?= (int)$res['id'] ?>', 'resource')">
                                                         <i class="bi bi-trash"></i>
                                                     </button>
                                                 </form>
@@ -1926,7 +2008,26 @@ body {
 
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script>
+// SweetAlert2 delete confirmation helper
+function confirmDelete(formId, itemName) {
+    Swal.fire({
+        title: 'Delete this ' + itemName + '?',
+        text: 'This action cannot be undone.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#d33',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, delete it!',
+        cancelButtonText: 'Cancel'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById(formId).submit();
+        }
+    });
+}
+
 function startWhoEdit(id, title, content) {
     const actionInput = document.getElementById('who_action');
     const idInput = document.getElementById('who_id');
@@ -2127,7 +2228,7 @@ function resetPartnersForm() {
     }
 }
 
-function startResourcesEdit(id, title, fileKey, iconClass, colorHex, sortOrder, isActive) {
+function startResourcesEdit(id, title, fileKey, iconClass, colorHex, sortOrder, isActive, existingFile) {
     const actionInput = document.getElementById('resources_action');
     const idInput = document.getElementById('resources_id');
     const titleInput = document.getElementById('resources_title');
@@ -2139,6 +2240,8 @@ function startResourcesEdit(id, title, fileKey, iconClass, colorHex, sortOrder, 
     const submitBtn = document.getElementById('resources_submit_btn');
     const submitText = document.getElementById('resources_submit_text');
     const cancelBtn = document.getElementById('resources_cancel_btn');
+    const fileInfo = document.getElementById('currentFileInfo');
+    const fileNameSpan = document.getElementById('currentFileName');
 
     if (!actionInput || !idInput || !titleInput || !fileKeyInput || !orderInput || !activeInput) return;
 
@@ -2146,10 +2249,20 @@ function startResourcesEdit(id, title, fileKey, iconClass, colorHex, sortOrder, 
     idInput.value = id;
     titleInput.value = title;
     fileKeyInput.value = fileKey;
-    iconInput.value = iconClass;
-    colorInput.value = colorHex;
+    if (iconInput) iconInput.value = iconClass;
+    if (colorInput) colorInput.value = colorHex;
     orderInput.value = sortOrder;
     activeInput.checked = (parseInt(isActive, 10) === 1);
+
+    // Show existing uploaded file info
+    if (fileInfo && fileNameSpan) {
+        if (existingFile && existingFile.trim() !== '') {
+            fileNameSpan.textContent = existingFile;
+            fileInfo.classList.remove('d-none');
+        } else {
+            fileInfo.classList.add('d-none');
+        }
+    }
 
     submitBtn.classList.remove('btn-primary');
     submitBtn.classList.add('btn-warning');
@@ -2173,11 +2286,13 @@ function resetResourcesForm() {
     const submitBtn = document.getElementById('resources_submit_btn');
     const submitText = document.getElementById('resources_submit_text');
     const cancelBtn = document.getElementById('resources_cancel_btn');
+    const fileInfo = document.getElementById('currentFileInfo');
 
     submitBtn.classList.remove('btn-warning');
     submitBtn.classList.add('btn-primary');
     submitText.textContent = 'Add Resource';
     cancelBtn.classList.add('d-none');
+    if (fileInfo) fileInfo.classList.add('d-none');
 
     const activeInput = document.getElementById('resources_is_active');
     if (activeInput) {

@@ -70,11 +70,16 @@ if ($member) {
 
 // Image handling
 $serverPath = __DIR__ . '/uploads/members/'; // Server path for file_exists
-$defaultImage = '../uploads/members/default_member.png'; // Browser path for default image
-$imgFile = $defaultImage;
+$imgFile = '/bangkero_system/index/uploads/members/default_member.png'; // fallback default
 
 if ($member && !empty($member['image']) && file_exists($serverPath . $member['image'])) {
-    $imgFile = '../uploads/members/' . $member['image']; // Browser path for member image
+    $imgFile = '/bangkero_system/index/uploads/members/' . $member['image'];
+} elseif ($member && !empty($member['image'])) {
+    // Try alternate path (root uploads)
+    $altServerPath = dirname(__DIR__) . '/uploads/members/';
+    if (file_exists($altServerPath . $member['image'])) {
+        $imgFile = '/bangkero_system/uploads/members/' . $member['image'];
+    }
 }
 
 ?>
@@ -140,7 +145,9 @@ if ($member && !empty($member['image']) && file_exists($serverPath . $member['im
 
     <div class="section">
         <div class="photo-box">
-            <img src="<?= htmlspecialchars($imgFile) ?>" width="120" class="rounded shadow">
+            <img src="<?= htmlspecialchars($imgFile) ?>"
+                 onerror="this.onerror=null; this.src='https://ui-avatars.com/api/?name=<?= urlencode($member['name'] ?? 'Member') ?>&size=150&background=6366f1&color=fff&bold=true';"
+                 alt="Member Photo" style="width:100%;height:100%;object-fit:cover;">
         </div>
 
         <div class="section-title">Personal Information</div>

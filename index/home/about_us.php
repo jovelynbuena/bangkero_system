@@ -71,17 +71,23 @@ if ($glanceResult && $glanceResult->num_rows > 0) {
 $query = "
     SELECT 
         officers.id,
-        officer_roles.role_name AS position,
+        COALESCE(NULLIF(officer_roles.role_name,''), NULLIF(officers.position,''), 'Officer') AS position,
         officers.term_start,
         officers.term_end,
         officers.image,
         officers.description,
-        members.name AS member_name
+        COALESCE(NULLIF(members.name,''), 'Unknown') AS member_name
     FROM officers
-    JOIN members ON officers.member_id = members.id
-    JOIN officer_roles ON officers.role_id = officer_roles.id
+    LEFT JOIN members ON officers.member_id = members.id
+    LEFT JOIN officer_roles ON officers.role_id = officer_roles.id
     WHERE officers.term_end >= CURDATE()
-    ORDER BY FIELD(officer_roles.role_name, 'President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor', 'Pro') ASC
+      AND officers.member_id IS NOT NULL
+      AND members.id IS NOT NULL
+      AND NULLIF(TRIM(members.name), '') IS NOT NULL
+    ORDER BY FIELD(
+        COALESCE(NULLIF(officer_roles.role_name,''), NULLIF(officers.position,'')),
+        'President', 'Vice President', 'Secretary', 'Treasurer', 'Auditor', 'Pro'
+    ) ASC, officers.id ASC
 ";
 
 $result = $conn->query($query);
@@ -206,107 +212,183 @@ while ($row = $result->fetch_assoc()) {
       margin: 1rem auto 1.5rem auto;
     }
     
-    /* Officer Section */
+    /* ===== Officer Section ===== */
     .officer-section-title {
       font-family: 'Poppins', sans-serif;
       color: var(--dark);
       font-weight: 800;
-      margin-top: 2.5rem;
-      margin-bottom: 1.5rem;
+      margin-top: 3rem;
+      margin-bottom: 0.5rem;
       text-align: center;
       font-size: 2.2rem;
       letter-spacing: -0.5px;
     }
+    .officer-section-desc {
+      max-width: 720px;
+      margin: 0 auto 2.5rem auto;
+      text-align: center;
+      color: #64748b;
+      font-size: 1rem;
+      line-height: 1.7;
+    }
+
+    /* All officer cards base */
     .officer-card {
       background: #fff;
       border-radius: 20px;
-      box-shadow: 0 6px 24px rgba(44, 62, 80, 0.1);
-      padding: 25px 18px 20px 18px;
-      margin-bottom: 24px;
+      box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+      padding: 28px 20px 22px;
       text-align: center;
-      transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-      min-height: 320px;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #e8edf3;
+      cursor: pointer;
       position: relative;
+      overflow: hidden;
+      height: 100%;
     }
-    .officer-card::before {
+    .officer-card::after {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
+      bottom: 0; left: 0; right: 0;
       height: 3px;
-      background: linear-gradient(90deg, var(--primary), var(--secondary), var(--accent));
-      opacity: 0;
-      transition: opacity 0.4s ease;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transform: scaleX(0);
+      transition: transform 0.3s ease;
+      transform-origin: left;
     }
-    .officer-card:hover::before {
-      opacity: 1;
-    }
+    .officer-card:hover::after { transform: scaleX(1); }
     .officer-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 16px 48px rgba(44, 62, 80, 0.15);
+      transform: translateY(-6px);
+      box-shadow: 0 14px 40px rgba(44, 62, 80, 0.14);
     }
+
+    /* President card — special highlight */
+    .officer-card.president-card {
+      border: 2px solid #2c3e50;
+      box-shadow: 0 8px 32px rgba(44, 62, 80, 0.14);
+      padding: 32px 24px 28px;
+    }
+    .officer-card.president-card::after {
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary), #5a6c7d, var(--accent));
+      transform: scaleX(1);
+    }
+    .president-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: linear-gradient(135deg, var(--primary), var(--secondary));
+      color: #fff;
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      padding: 4px 14px;
+      border-radius: 20px;
+      margin-bottom: 14px;
+    }
+
+    /* Image frame */
     .officer-frame {
-      width: 130px;
-      height: 130px;
+      width: 120px;
+      height: 120px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 50%, var(--accent) 100%);
+      padding: 4px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow: 0 4px 16px rgba(44, 62, 80, 0.18);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 16px;
-      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.2);
-      position: relative;
+      margin-bottom: 14px;
+      transition: box-shadow 0.3s ease;
     }
-    .officer-frame::after {
-      content: '';
-      position: absolute;
-      inset: -3px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, var(--primary), var(--secondary), var(--accent));
-      filter: blur(8px);
-      opacity: 0;
-      transition: opacity 0.4s ease;
-      z-index: -1;
-    }
-    .officer-card:hover .officer-frame::after {
-      opacity: 0.6;
+    .officer-card:hover .officer-frame {
+      box-shadow: 0 8px 28px rgba(44, 62, 80, 0.28);
     }
     .officer-frame img {
-      width: 112px;
-      height: 112px;
+      width: 110px;
+      height: 110px;
       object-fit: cover;
       border-radius: 50%;
-      border: 4px solid #fff;
+      border: 3px solid #fff;
       background: #fff;
+      display: block;
     }
+    .officer-card.president-card .officer-frame {
+      width: 138px;
+      height: 138px;
+    }
+    .officer-card.president-card .officer-frame img {
+      width: 128px;
+      height: 128px;
+    }
+
+    /* Text inside cards */
     .officer-card h5 {
       font-family: 'Poppins', sans-serif;
       color: var(--dark);
       font-weight: 700;
-      font-size: 1.15rem;
-      margin-bottom: 0.3rem;
-      margin-top: 0.5rem;
+      font-size: 1.08rem;
+      margin: 6px 0 2px;
+      line-height: 1.3;
     }
-    .officer-card p {
-      color: var(--primary);
-      font-weight: 600;
-      margin-bottom: 0.5rem;
-      font-size: 0.95rem;
-      letter-spacing: 0.5px;
+    .officer-card.president-card h5 {
+      font-size: 1.18rem;
+    }
+    .officer-card .role-label {
+      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      letter-spacing: 1.3px;
       text-transform: uppercase;
+      color: var(--accent);
+      background: #f1f5f9;
+      border-radius: 12px;
+      padding: 3px 12px;
+      margin: 6px 0 10px;
+    }
+    .officer-card.president-card .role-label {
+      color: var(--primary);
+      background: #eef2f7;
     }
     .officer-card .desc {
-      font-size: 0.92rem;
+      font-size: 0.875rem;
       color: #64748b;
-      margin-top: 0.5rem;
-      line-height: 1.6;
-      min-height: 40px;
+      line-height: 1.65;
+      margin-top: 4px;
+      display: -webkit-box;
+      -webkit-line-clamp: 3;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+    .officer-card.president-card .desc {
+      -webkit-line-clamp: 4;
+    }
+
+    /* Connector line between president and others */
+    .officers-connector {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      margin: 4px 0 24px;
+      gap: 0;
+    }
+    .officers-connector .line {
+      width: 2px;
+      height: 32px;
+      background: linear-gradient(to bottom, var(--primary), #b0bec5);
+      border-radius: 2px;
+    }
+    .officers-connector .dot {
+      width: 10px;
+      height: 10px;
+      background: var(--primary);
+      border-radius: 50%;
+      border: 2px solid #fff;
+      box-shadow: 0 0 0 2px var(--primary);
     }
     
     /* Stats Section */
@@ -555,17 +637,21 @@ while ($row = $result->fetch_assoc()) {
     }
     
     @media (max-width: 991.98px) {
-      .officer-frame { width: 110px; height: 110px; }
-      .officer-frame img { width: 92px; height: 92px; }
-      .officer-card { min-height: 0; }
+      .officer-frame { width: 100px; height: 100px; }
+      .officer-frame img { width: 90px; height: 90px; }
+      .officer-card.president-card .officer-frame { width: 116px; height: 116px; }
+      .officer-card.president-card .officer-frame img { width: 106px; height: 106px; }
     }
     @media (max-width: 767.98px) {
       .about-content { padding: 30px 20px; }
       .hero-section h1 { font-size: 2.2rem; }
-      .officer-frame { width: 95px; height: 95px; }
-      .officer-frame img { width: 77px; height: 77px; }
+      .officer-frame { width: 90px; height: 90px; }
+      .officer-frame img { width: 80px; height: 80px; }
+      .officer-card.president-card .officer-frame { width: 106px; height: 106px; }
+      .officer-card.president-card .officer-frame img { width: 96px; height: 96px; }
       .cta-section h2 { font-size: 2rem; }
       .mv-card, .value-card { margin-bottom: 20px; }
+      .officers-connector { display: none; }
     }
   </style>
 </head>
@@ -787,70 +873,69 @@ while ($row = $result->fetch_assoc()) {
   <!-- Officers Intro Section -->
   <h2 class="officer-section-title">Board of Officers</h2>
   <div class="divider"></div>
-  <p class="text-center mb-5" style="max-width:800px; margin:auto;">
-    The Bankero & Fishermen Association ensures that its organizational structure is guided 
-    by strong leadership and clear responsibilities. Our Board of Officers is tasked with 
-    leading programs, projects, and initiatives that uphold the welfare of our members and 
-    strengthen the community. Each officer plays a vital role in fostering collaboration, 
-    transparency, and commitment to our shared mission.
+  <p class="officer-section-desc">
+    Guided by strong leadership and clear responsibilities, our Board of Officers leads programs and initiatives that uphold the welfare of our members and strengthen the community.
   </p>
 
   <!-- Officers Hierarchy Section -->
-  <div class="container mb-5 px-0">
-    <!-- President at the top, centered -->
-    <div class="row justify-content-center mb-4">
-      <?php
-      if (!empty($officers_by_position['president'])):
-        foreach ($officers_by_position['president'] as $row):
-      ?>
-        <div class="col-12 col-md-4 col-lg-3">
-          <div class="officer-card">
-            <div class="officer-frame mx-auto mb-3">
-              <?php if (!empty($row['image']) && file_exists(__DIR__ . "/../../uploads/officers/" . $row['image'])): ?>
-                <img src="../../uploads/officers/<?= htmlspecialchars($row['image']) ?>" alt="Officer">
-              <?php else: ?>
-                <img src="https://via.placeholder.com/150?text=No+Image" alt="No Image">
-              <?php endif; ?>
-            </div>
-            <h5><?= htmlspecialchars($row['member_name']) ?></h5>
-            <p><?= htmlspecialchars($row['position']) ?></p>
-            <?php if (!empty($row['description'])): ?>
-              <div class="desc"><?= nl2br(htmlspecialchars($row['description'])) ?></div>
+  <div class="container mb-5 px-2">
+
+    <!-- President — centered, highlighted -->
+    <?php if (!empty($officers_by_position['president'])): ?>
+    <div class="row justify-content-center mb-2">
+      <?php foreach ($officers_by_position['president'] as $row): ?>
+      <div class="col-12 col-sm-8 col-md-5 col-lg-4">
+        <div class="officer-card president-card">
+          <span class="president-badge"><i class="bi bi-star-fill" style="font-size:0.65rem;"></i> Head Officer</span>
+          <div class="officer-frame">
+            <?php if (!empty($row['image']) && file_exists(__DIR__ . "/../../uploads/officers/" . $row['image'])): ?>
+              <img src="../../uploads/officers/<?= htmlspecialchars($row['image']) ?>" alt="President">
+            <?php else: ?>
+              <img src="https://ui-avatars.com/api/?name=<?= urlencode($row['member_name']) ?>&size=128&background=2c3e50&color=fff&bold=true" alt="President">
             <?php endif; ?>
           </div>
+          <h5><?= htmlspecialchars($row['member_name']) ?></h5>
+          <span class="role-label"><?= htmlspecialchars($row['position']) ?></span>
+          <?php if (!empty($row['description'])): ?>
+            <div class="desc"><?= nl2br(htmlspecialchars($row['description'])) ?></div>
+          <?php endif; ?>
         </div>
+      </div>
+      <?php endforeach; ?>
+    </div>
+
+    <!-- Connector line -->
+    <div class="officers-connector">
+      <div class="dot"></div>
+      <div class="line"></div>
+    </div>
+    <?php endif; ?>
+
+    <!-- Other officers -->
+    <div class="row justify-content-center g-3">
+      <?php
+      foreach ($officers_by_position as $pos_key => $officers_in_pos):
+        if ($pos_key === 'president') continue;
+        foreach ($officers_in_pos as $row):
+      ?>
+      <div class="col-12 col-sm-6 col-md-4 col-lg-3">
+        <div class="officer-card">
+          <div class="officer-frame">
+            <?php if (!empty($row['image']) && file_exists(__DIR__ . "/../../uploads/officers/" . $row['image'])): ?>
+              <img src="../../uploads/officers/<?= htmlspecialchars($row['image']) ?>" alt="Officer">
+            <?php else: ?>
+              <img src="https://ui-avatars.com/api/?name=<?= urlencode($row['member_name']) ?>&size=110&background=5a6c7d&color=fff&bold=true" alt="Officer">
+            <?php endif; ?>
+          </div>
+          <h5><?= htmlspecialchars($row['member_name']) ?></h5>
+          <span class="role-label"><?= htmlspecialchars($row['position']) ?></span>
+          <?php if (!empty($row['description'])): ?>
+            <div class="desc"><?= nl2br(htmlspecialchars($row['description'])) ?></div>
+          <?php endif; ?>
+        </div>
+      </div>
       <?php
         endforeach;
-      endif;
-      ?>
-    </div>
-    <!-- Other officers in a row below -->
-    <div class="row justify-content-center">
-      <?php
-      $other_positions = ['vice president','secretary','treasurer','auditor','pro','member'];
-      foreach ($other_positions as $pos_key):
-        if (!empty($officers_by_position[$pos_key])):
-          foreach ($officers_by_position[$pos_key] as $row):
-      ?>
-        <div class="col-12 col-sm-6 col-md-4 col-lg-3 mb-4">
-          <div class="officer-card">
-            <div class="officer-frame mx-auto mb-3">
-              <?php if (!empty($row['image']) && file_exists(__DIR__ . "/../../uploads/officers/" . $row['image'])): ?>
-                <img src="../../uploads/officers/<?= htmlspecialchars($row['image']) ?>" alt="Officer">
-              <?php else: ?>
-                <img src="https://via.placeholder.com/150?text=No+Image" alt="No Image">
-              <?php endif; ?>
-            </div>
-            <h5><?= htmlspecialchars($row['member_name']) ?></h5>
-            <p><?= htmlspecialchars($row['position']) ?></p>
-            <?php if (!empty($row['description'])): ?>
-              <div class="desc"><?= nl2br(htmlspecialchars($row['description'])) ?></div>
-            <?php endif; ?>
-          </div>
-        </div>
-      <?php
-          endforeach;
-        endif;
       endforeach;
       ?>
     </div>

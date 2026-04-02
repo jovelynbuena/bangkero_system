@@ -313,6 +313,18 @@ while ($row = $occupiedQuery->fetch_assoc()) {
     $occupiedPositions[$row['role_id']] = $row['member_name'];
 }
 
+// Get members who are already active officers (for disabling in member dropdown)
+$occupiedMembers = []; // [member_id => role_name]
+$occupiedMembersQuery = $conn->query("
+    SELECT o.member_id, COALESCE(NULLIF(r.role_name,''), NULLIF(o.position,''), 'Officer') AS role_name
+    FROM officers o
+    LEFT JOIN officer_roles r ON o.role_id = r.id
+    WHERE o.term_end >= CURDATE()
+");
+while ($row = $occupiedMembersQuery->fetch_assoc()) {
+    $occupiedMembers[$row['member_id']] = $row['role_name'];
+}
+
 // Get search and filter parameters
 $search = trim($_GET['search'] ?? '');
 $role_filter = $_GET['role_filter'] ?? '';
@@ -1042,10 +1054,16 @@ $officers_count = $current_count + $previous_count;
               <label class="form-label"><i class="bi bi-person-circle me-2"></i>Select Member *</label>
               <select name="member_id" class="form-select" required>
                 <option value="">-- Choose a member --</option>
-                <?php $membersResult->data_seek(0); while ($m = $membersResult->fetch_assoc()): ?>
-                  <option value="<?= $m['id'] ?>"><?= htmlspecialchars($m['name']) ?></option>
+                <?php $membersResult->data_seek(0); while ($m = $membersResult->fetch_assoc()):
+                  $isMemberOccupied = isset($occupiedMembers[$m['id']]);
+                ?>
+                  <option value="<?= $m['id'] ?>"
+                    <?= $isMemberOccupied ? 'disabled style="background-color:#e9ecef;color:#6c757d;"' : '' ?>>
+                    <?= htmlspecialchars($m['name']) ?><?= $isMemberOccupied ? ' (' . htmlspecialchars($occupiedMembers[$m['id']]) . ' - Occupied)' : '' ?>
+                  </option>
                 <?php endwhile; ?>
               </select>
+              <small class="text-muted">Greyed out members already have an active position</small>
             </div>
 
             <div class="col-md-6">
