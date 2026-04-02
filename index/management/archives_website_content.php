@@ -28,11 +28,11 @@ if (isset($_GET['restore_who'])) {
             $stmtDel->close();
 
             $conn->commit();
-            header('Location: archives_website_content.php?restored_who=1');
+            header('Location: archives_website_content.php?restored_who=1#sec-who');
             exit;
         } catch (Exception $e) {
             $conn->rollback();
-            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()));
+            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()) . '#sec-who');
             exit;
         }
     }
@@ -57,11 +57,11 @@ if (isset($_GET['restore_program'])) {
             $stmtDel->close();
 
             $conn->commit();
-            header('Location: archives_website_content.php?restored_program=1');
+            header('Location: archives_website_content.php?restored_program=1#sec-programs');
             exit;
         } catch (Exception $e) {
             $conn->rollback();
-            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()));
+            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()) . '#sec-programs');
             exit;
         }
     }
@@ -86,11 +86,11 @@ if (isset($_GET['restore_value'])) {
             $stmtDel->close();
 
             $conn->commit();
-            header('Location: archives_website_content.php?restored_value=1');
+            header('Location: archives_website_content.php?restored_value=1#sec-values');
             exit;
         } catch (Exception $e) {
             $conn->rollback();
-            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()));
+            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()) . '#sec-values');
             exit;
         }
     }
@@ -115,11 +115,11 @@ if (isset($_GET['restore_partner'])) {
             $stmtDel->close();
 
             $conn->commit();
-            header('Location: archives_website_content.php?restored_partner=1');
+            header('Location: archives_website_content.php?restored_partner=1#sec-partners');
             exit;
         } catch (Exception $e) {
             $conn->rollback();
-            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()));
+            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()) . '#sec-partners');
             exit;
         }
     }
@@ -144,11 +144,11 @@ if (isset($_GET['restore_carousel'])) {
             $stmtDel->close();
 
             $conn->commit();
-            header('Location: archives_website_content.php?restored_carousel=1');
+            header('Location: archives_website_content.php?restored_carousel=1#sec-carousel');
             exit;
         } catch (Exception $e) {
             $conn->rollback();
-            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()));
+            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()) . '#sec-carousel');
             exit;
         }
     }
@@ -173,11 +173,11 @@ if (isset($_GET['restore_resource'])) {
             $stmtDel->close();
 
             $conn->commit();
-            header('Location: archives_website_content.php?restored_resource=1');
+            header('Location: archives_website_content.php?restored_resource=1#sec-resources');
             exit;
         } catch (Exception $e) {
             $conn->rollback();
-            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()));
+            header('Location: archives_website_content.php?error=' . urlencode($e->getMessage()) . '#sec-resources');
             exit;
         }
     }
@@ -219,12 +219,12 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
 <div class="main-content">
     <div class="page-header">
         <h2><i class="bi bi-archive me-2"></i>Archived Website Content</h2>
-        <p class="mb-0">Lahat ng dating "deleted" sa About the Association, naka-save dito para hindi tuluyang mawala.</p>
+        <p class="mb-0">All previously deleted items from the About the Association section are saved here and can be restored anytime.</p>
     </div>
 
     <?php if (isset($_GET['restored_who']) || isset($_GET['restored_program']) || isset($_GET['restored_value']) || isset($_GET['restored_partner']) || isset($_GET['restored_carousel']) || isset($_GET['restored_resource'])): ?>
         <div class="alert alert-success alert-dismissible fade show" role="alert">
-            <strong>Na-restore na!</strong> Balik na sa active list yung napili mong item.
+            <strong>Restored!</strong> The selected item has been moved back to the active list.
             <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
     <?php elseif (isset($_GET['error'])): ?>
@@ -235,8 +235,7 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
     <?php endif; ?>
 
 
-    <div class="section-card">
-        <h5 class="mb-3"><i class="bi bi-people me-2"></i>Who We Are (History Section)</h5>
+    <div class="section-card" id="sec-who">
         <div class="table-responsive">
             <table class="table table-hover align-middle text-center">
                 <thead>
@@ -264,14 +263,14 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
 
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="3" class="text-muted py-3">Wala pang naka-archive na Who We Are entry.</td></tr>
+                    <tr><td colspan="3" class="text-muted py-3">No archived Who We Are entries found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="section-card">
+    <div class="section-card" id="sec-programs">
         <h5 class="mb-3"><i class="bi bi-stars me-2"></i>Featured Programs</h5>
         <div class="table-responsive">
             <table class="table table-hover align-middle text-center">
@@ -296,14 +295,14 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
                         </tr>
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="4" class="text-muted py-3">Wala pang naka-archive na Featured Programs.</td></tr>
+                    <tr><td colspan="4" class="text-muted py-3">No archived Featured Programs found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="section-card">
+    <div class="section-card" id="sec-values">
         <h5 class="mb-3"><i class="bi bi-heart me-2"></i>Core Values</h5>
         <div class="table-responsive">
             <table class="table table-hover align-middle text-center">
@@ -332,14 +331,14 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
 
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="3" class="text-muted py-3">Wala pang naka-archive na Core Values.</td></tr>
+                    <tr><td colspan="3" class="text-muted py-3">No archived Core Values found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="section-card">
+    <div class="section-card" id="sec-partners">
         <h5 class="mb-3"><i class="bi bi-people-fill me-2"></i>Partners & Sponsors</h5>
         <div class="table-responsive">
             <table class="table table-hover align-middle text-center">
@@ -370,14 +369,14 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
 
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="4" class="text-muted py-3">Wala pang naka-archive na Partners / Sponsors.</td></tr>
+                    <tr><td colspan="4" class="text-muted py-3">No archived Partners / Sponsors found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="section-card">
+    <div class="section-card" id="sec-carousel">
         <h5 class="mb-3"><i class="bi bi-images me-2"></i>Homepage Carousel Slides</h5>
         <div class="table-responsive">
             <table class="table table-hover align-middle text-center">
@@ -408,14 +407,14 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
 
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="4" class="text-muted py-3">Wala pang naka-archive na Carousel slides.</td></tr>
+                    <tr><td colspan="4" class="text-muted py-3">No archived Carousel Slides found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="section-card mb-5">
+    <div class="section-card mb-5" id="sec-resources">
         <h5 class="mb-3"><i class="bi bi-file-earmark-arrow-down me-2"></i>Downloadable Resources</h5>
         <div class="table-responsive">
             <table class="table table-hover align-middle text-center">
@@ -452,7 +451,7 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
 
                     <?php endwhile; ?>
                 <?php else: ?>
-                    <tr><td colspan="4" class="text-muted py-3">Wala pang naka-archive na Resources.</td></tr>
+                    <tr><td colspan="4" class="text-muted py-3">No archived Downloadable Resources found.</td></tr>
                 <?php endif; ?>
                 </tbody>
             </table>
@@ -460,5 +459,15 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
     </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+// Auto-scroll to the section after restore
+if (window.location.hash) {
+    const el = document.querySelector(window.location.hash);
+    if (el) {
+        setTimeout(() => el.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
+    }
+}
+</script>
 </body>
 </html>

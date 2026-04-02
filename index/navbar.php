@@ -217,7 +217,7 @@ body {
 
 /* ========== SIDEBAR BRAND ========== */
 .sidebar-brand {
-  padding: 20px 16px;
+  padding: 22px 16px;
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
   display: flex;
   align-items: center;
@@ -228,9 +228,9 @@ body {
 }
 
 .brand-logo-img {
-  width: 44px;
-  height: 44px;
-  border-radius: 11px;
+  width: 52px;
+  height: 52px;
+  border-radius: 12px;
   object-fit: cover;
   background: rgba(255,255,255,0.2);
   flex-shrink: 0;
@@ -245,7 +245,7 @@ body {
 .brand-text h6 {
   color: white;
   font-family: 'Poppins', sans-serif;
-  font-size: 0.82rem;
+  font-size: 0.95rem;
   font-weight: 700;
   margin: 0;
   line-height: 1.3;
@@ -256,8 +256,8 @@ body {
 }
 
 .brand-text span {
-  color: rgba(255,255,255,0.8);
-  font-size: 0.76rem;
+  color: rgba(255,255,255,0.85);
+  font-size: 0.85rem;
   white-space: nowrap;
 }
 
@@ -330,7 +330,7 @@ body.sidebar-icon-only .sidebar-toggle-btn {
 
 /* ========== SECTION LABELS ========== */
 .nav-section-label {
-  font-size: 0.68rem;
+  font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 1.4px;
   text-transform: uppercase;
@@ -357,18 +357,18 @@ body.sidebar-icon-only .sidebar-toggle-btn {
   display: flex;
   align-items: center;
   gap: 13px;
-  padding: 12px 13px;
+  padding: 13px 13px;
   border-radius: 10px;
   color: #475569;
   text-decoration: none;
-  font-size: 1rem;
+  font-size: 1.02rem;
   font-weight: 500;
   transition: all 0.2s ease;
   cursor: pointer;
   white-space: nowrap;
   overflow: hidden;
   position: relative;
-  min-height: 48px;
+  min-height: 52px;
 }
 
 .nav-link-item:hover {
@@ -388,8 +388,8 @@ body.sidebar-icon-only .sidebar-toggle-btn {
 
 /* ========== ICONS ========== */
 .nav-icon {
-  font-size: 1.25rem;
-  width: 26px;
+  font-size: 1.3rem;
+  width: 28px;
   text-align: center;
   flex-shrink: 0;
   transition: color 0.2s ease;
@@ -623,8 +623,8 @@ body.sidebar-icon-only .sidebar-toggle-btn {
   display: block;
 }
 .user-info-text { line-height: 1.3; }
-.user-info-text .u-name { font-size: 0.95rem; font-weight: 700; color: #1e293b; }
-.user-info-text .u-role { font-size: 0.78rem; color: #94a3b8; font-weight: 500; }
+.user-info-text .u-name { font-size: 1rem; font-weight: 700; color: #1e293b; }
+.user-info-text .u-role { font-size: 0.82rem; color: #94a3b8; font-weight: 500; }
 
 /* ========== OVERLAY ========== */
 .sidebar-overlay {
@@ -1052,6 +1052,18 @@ body.sidebar-open { overflow: hidden; }
     document.addEventListener('DOMContentLoaded', restoreSidebarState);
   } else {
     restoreSidebarState();
+  }
+
+  // ── Preserve sidebar scroll position ─────────────────────────────────────
+  const sidebarScroll = document.querySelector('.sidebar-scroll');
+  if (sidebarScroll) {
+    const savedScrollTop = localStorage.getItem('sidebarScrollTop');
+    if (savedScrollTop !== null) {
+      sidebarScroll.scrollTop = parseInt(savedScrollTop, 10);
+    }
+    sidebarScroll.addEventListener('scroll', function () {
+      localStorage.setItem('sidebarScrollTop', sidebarScroll.scrollTop);
+    });
   }
 
   // ── Mobile hamburger ─────────────────────────────────────────────────────

@@ -13,35 +13,88 @@ $userId = $_SESSION['user_id'] ?? 0;
 // Handle restore from archive
 if (isset($_GET['restore'])) {
     $aid = intval($_GET['restore']);
-    if ($aid > 0) {
-        try {
-            $conn->begin_transaction();
-            
-            // Restore message
+
+    // Must be a positive integer — 0 is not a valid archive_id
+    if ($aid <= 0) {
+        header('Location: archives_contact_messages.php?error=' . urlencode('Invalid restore ID.'));
+        exit();
+    }
+
+    try {
+        $conn->begin_transaction();
+
+        // Fetch the specific archive row
+        $stmt_fetch = $conn->prepare("SELECT * FROM contact_messages_archive WHERE archive_id = ? LIMIT 1");
+        $stmt_fetch->bind_param("i", $aid);
+        $stmt_fetch->execute();
+        $archiveRow = $stmt_fetch->get_result()->fetch_assoc();
+        $stmt_fetch->close();
+
+        if (!$archiveRow) {
+            throw new Exception("Archive record not found (ID: $aid).");
+        }
+
+        // Check if original_id already exists in contact_messages
+        $exists = false;
+        if (!empty($archiveRow['original_id'])) {
+            $chk = $conn->prepare("SELECT id FROM contact_messages WHERE id = ? LIMIT 1");
+            $chk->bind_param("i", $archiveRow['original_id']);
+            $chk->execute();
+            $chk->store_result();
+            $exists = ($chk->num_rows > 0);
+            $chk->close();
+        }
+
+        if ($exists || empty($archiveRow['original_id'])) {
+            // Insert without specifying id — let MySQL auto-assign
+            $stmt_insert = $conn->prepare("
+                INSERT INTO contact_messages (name, email, message, status, created_at)
+                VALUES (?, ?, ?, ?, ?)
+            ");
+            $stmt_insert->bind_param("sssss",
+                $archiveRow['name'],
+                $archiveRow['email'],
+                $archiveRow['message'],
+                $archiveRow['status'],
+                $archiveRow['created_at']
+            );
+        } else {
+            // Restore with original id
             $stmt_insert = $conn->prepare("
                 INSERT INTO contact_messages (id, name, email, message, status, created_at)
-                SELECT original_id, name, email, message, status, created_at
-                FROM contact_messages_archive
-                WHERE archive_id = ?
+                VALUES (?, ?, ?, ?, ?, ?)
             ");
-            $stmt_insert->bind_param("i", $aid);
-            $stmt_insert->execute();
-            $stmt_insert->close();
-
-            // Delete from archive
-            $stmt_delete = $conn->prepare("DELETE FROM contact_messages_archive WHERE archive_id = ?");
-            $stmt_delete->bind_param("i", $aid);
-            $stmt_delete->execute();
-            $stmt_delete->close();
-
-            $conn->commit();
-            header('Location: archives_contact_messages.php?restored=1');
-            exit();
-        } catch (Exception $e) {
-            $conn->rollback();
-            header('Location: archives_contact_messages.php?error=' . urlencode($e->getMessage()));
-            exit();
+            $stmt_insert->bind_param("isssss",
+                $archiveRow['original_id'],
+                $archiveRow['name'],
+                $archiveRow['email'],
+                $archiveRow['message'],
+                $archiveRow['status'],
+                $archiveRow['created_at']
+            );
         }
+
+        $stmt_insert->execute();
+        $stmt_insert->close();
+
+        // Delete ONLY this specific archive row using archive_id
+        $stmt_delete = $conn->prepare("DELETE FROM contact_messages_archive WHERE archive_id = ? LIMIT 1");
+        $stmt_delete->bind_param("i", $aid);
+        $stmt_delete->execute();
+
+        if ($stmt_delete->affected_rows !== 1) {
+            $stmt_delete->close();
+            throw new Exception("Failed to remove archive record after restore.");
+        }
+        $stmt_delete->close();
+
+        $conn->commit();
+        header('Location: archives_contact_messages.php?restored=1');
+        exit();
+    } catch (Exception $e) {
+        $conn->rollback();
+        header('Location: archives_contact_messages.php?error=' . urlencode($e->getMessage()));
+        exit();
     }
 }
 
@@ -192,6 +245,10 @@ function confirmDelete(id, name) {
 
 <?php if (isset($_GET['deleted'])): ?>
     Swal.fire({ icon: 'success', title: 'Deleted!', text: 'Message permanently removed.', timer: 2000, showConfirmButton: false });
+<?php endif; ?>
+
+<?php if (isset($_GET['error'])): ?>
+    Swal.fire({ icon: 'error', title: 'Error', text: <?= json_encode(urldecode($_GET['error'])) ?> });
 <?php endif; ?>
 </script>
 </body>

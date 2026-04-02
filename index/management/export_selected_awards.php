@@ -115,7 +115,7 @@ if ($format === 'pdf' || $format === 'print') {
     <html lang="en">
     <head>
         <meta charset="UTF-8">
-        <title>Awards Export</title>
+        <title>Awards &amp; Recognition Record</title>
         <style>
             body { font-family: "Inter", sans-serif; padding: 40px; color: #333; }
             .header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 15px; }
@@ -134,8 +134,8 @@ if ($format === 'pdf' || $format === 'print') {
         <div class="header">
             ' . ($logoData ? '<img src="data:image/png;base64,' . $logoData . '" class="logo" alt="Logo">' : '') . '
             <div class="header-text">
-                <h1>Awards Export</h1>
-                <p>Bankero and Fisherman Association</p>
+                <h1>Awards &amp; Recognition Record</h1>
+                <p>Bankero and Fishermen Association</p>
                 <p>Generated: ' . date('F d, Y h:i A') . '</p>
             </div>
         </div>
