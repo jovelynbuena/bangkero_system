@@ -190,8 +190,6 @@ $totalArchived = $totalArchivedQuery->fetch_assoc()['total'];
 $thisMonthQuery = $conn->query("SELECT COUNT(*) as total FROM member_archive WHERE MONTH(archived_at) = MONTH(CURRENT_DATE()) AND YEAR(archived_at) = YEAR(CURRENT_DATE())");
 $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
 ?>
-<?php include('../navbar.php'); ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -503,6 +501,8 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
     </style>
 </head>
 <body>
+
+<?php include('../navbar.php'); ?>
 
 <div class="main-content">
     <!-- Page Header -->

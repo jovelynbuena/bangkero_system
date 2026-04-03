@@ -396,6 +396,90 @@ try {
             $alertMsg = 'Assistance record deleted.';
         }
 
+        // ── Community Achievements ──────────────────────────────────────
+        elseif ($action === 'add_achievement' || $action === 'edit_achievement') {
+            $ach_title = trim($_POST['ach_title'] ?? '');
+            $ach_caption = trim($_POST['ach_caption'] ?? '');
+            $ach_tag = trim($_POST['ach_tag'] ?? '');
+            $ach_sort = (int)($_POST['ach_sort'] ?? 0);
+            $ach_id = (int)($_POST['ach_id'] ?? 0);
+
+            if ($ach_title === '') throw new Exception('Title is required.');
+
+            // Handle image upload
+            $ach_image = trim($_POST['ach_image_existing'] ?? '');
+            if (!empty($_FILES['ach_image']['name'])) {
+                $uploadDir = '../../uploads/achievements/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                $ext = strtolower(pathinfo($_FILES['ach_image']['name'], PATHINFO_EXTENSION));
+                $allowed = ['jpg','jpeg','jfif','png','webp','gif','bmp','tiff','tif','heic','heif','avif'];
+                $allowedMimes = ['image/jpeg','image/png','image/webp','image/gif','image/bmp','image/tiff','image/heic','image/heif','image/avif'];
+                $detectedMime = mime_content_type($_FILES['ach_image']['tmp_name']);
+                if (!in_array($ext, $allowed) && !in_array($detectedMime, $allowedMimes)) {
+                    throw new Exception('Invalid image type. Allowed: JPG, PNG, WEBP, GIF, BMP, HEIC.');
+                }
+                // Normalize jfif/heic/etc to a web-safe extension
+                if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
+                if ($ext === 'avif') $ext = 'webp';
+                $fileName = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                if (!move_uploaded_file($_FILES['ach_image']['tmp_name'], $uploadDir . $fileName)) {
+                    throw new Exception('Failed to upload image.');
+                }
+                // Delete old image if editing
+                if ($action === 'edit_achievement' && $ach_image && file_exists('../../' . $ach_image)) {
+                    @unlink('../../' . $ach_image);
+                }
+                $ach_image = 'uploads/achievements/' . $fileName;
+            }
+
+            if ($ach_image === '' && $action === 'add_achievement') {
+                throw new Exception('An image is required.');
+            }
+
+            if ($action === 'add_achievement') {
+                $stmt = $conn->prepare("INSERT INTO community_achievements (title, caption, tag, image_path, sort_order) VALUES (?, ?, ?, ?, ?)");
+                $stmt->bind_param('ssssi', $ach_title, $ach_caption, $ach_tag, $ach_image, $ach_sort);
+                $stmt->execute(); $stmt->close();
+                $alertType = 'success'; $alertMsg = 'Achievement added successfully.';
+            } else {
+                if ($ach_image === '') {
+                    $stmt = $conn->prepare("UPDATE community_achievements SET title=?, caption=?, tag=?, sort_order=? WHERE id=?");
+                    $stmt->bind_param('sssii', $ach_title, $ach_caption, $ach_tag, $ach_sort, $ach_id);
+                } else {
+                    $stmt = $conn->prepare("UPDATE community_achievements SET title=?, caption=?, tag=?, image_path=?, sort_order=? WHERE id=?");
+                    $stmt->bind_param('ssssii', $ach_title, $ach_caption, $ach_tag, $ach_image, $ach_sort, $ach_id);
+                }
+                $stmt->execute(); $stmt->close();
+                $alertType = 'success'; $alertMsg = 'Achievement updated successfully.';
+            }
+        }
+
+        elseif ($action === 'delete_achievement') {
+            $id = (int)($_POST['id'] ?? 0);
+            $userId = (int)($_SESSION['user_id'] ?? 0);
+            // Fetch achievement to archive
+            $stmtSel = $conn->prepare("SELECT * FROM community_achievements WHERE id=?");
+            $stmtSel->bind_param('i', $id);
+            $stmtSel->execute();
+            $achRow = $stmtSel->get_result()->fetch_assoc();
+            $stmtSel->close();
+            if ($achRow) {
+                $aTitle  = (string)($achRow['title'] ?? '');
+                $aCapt   = (string)($achRow['caption'] ?? '');
+                $aTag    = (string)($achRow['tag'] ?? '');
+                $aImg    = (string)($achRow['image_path'] ?? '');
+                $aSort   = (int)($achRow['sort_order'] ?? 0);
+                $aOrig   = (int)($achRow['id']);
+                $stmtIns = $conn->prepare("INSERT INTO community_achievements_archive (original_id, title, caption, tag, image_path, sort_order, archived_by) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $stmtIns->bind_param('issssii', $aOrig, $aTitle, $aCapt, $aTag, $aImg, $aSort, $userId);
+                $stmtIns->execute(); $stmtIns->close();
+                $stmtDel = $conn->prepare("DELETE FROM community_achievements WHERE id=?");
+                $stmtDel->bind_param('i', $id);
+                $stmtDel->execute(); $stmtDel->close();
+            }
+            $alertType = 'success'; $alertMsg = 'Achievement archived.';
+        }
+
         // Archive Beneficiary
         elseif ($action === 'archive_beneficiary') {
             $id = (int)($_POST['id'] ?? 0);
@@ -516,6 +600,38 @@ while ($res && $row = $res->fetch_assoc()) {
 $sourceTypes = ['DOLE', 'LGU', 'NGO', 'Private', 'Membership', 'Others'];
 $assistanceTypes = ['Livelihood', 'Relief Goods', 'Training', 'Equipment', 'Financial', 'Medical', 'Educational', 'Other'];
 $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
+
+// Ensure community_achievements table exists
+$conn->query("CREATE TABLE IF NOT EXISTS community_achievements (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    title VARCHAR(255) NOT NULL,
+    caption TEXT DEFAULT NULL,
+    tag VARCHAR(100) DEFAULT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    is_active TINYINT(1) NOT NULL DEFAULT 1,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Ensure community_achievements_archive table exists
+$conn->query("CREATE TABLE IF NOT EXISTS community_achievements_archive (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT DEFAULT NULL,
+    title VARCHAR(255) NOT NULL,
+    caption TEXT DEFAULT NULL,
+    tag VARCHAR(100) DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    archived_by INT DEFAULT NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Fetch achievements for admin table
+$achievements = [];
+$res = $conn->query("SELECT * FROM community_achievements ORDER BY sort_order ASC, created_at DESC");
+while ($res && $row = $res->fetch_assoc()) {
+    $achievements[] = $row;
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -681,8 +797,8 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
             </button>
         </li>
         <li class="nav-item" role="presentation">
-            <button class="nav-link" id="impact-tab" data-bs-toggle="tab" data-bs-target="#impact" type="button">
-                <i class="bi bi-heart-pulse me-1"></i> Impact Stories
+            <button class="nav-link" id="achievements-tab" data-bs-toggle="tab" data-bs-target="#achievements" type="button">
+                <i class="bi bi-image me-1"></i> Community Achievements
             </button>
         </li>
     </ul>
@@ -807,125 +923,60 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
             </div>
         </div>
 
-        <!-- Impact Stories Tab (Combined Beneficiaries + Impact) -->
-        <div class="tab-pane fade" id="impact" role="tabpanel">
-            <!-- Impact Summary Cards -->
-            <?php
-            // Calculate impact stats from beneficiaries
-            $impactStats = [
-                'total_beneficiaries' => $stats['beneficiaries'],
-                'total_amount' => 0,
-                'featured_stories' => $stats['featured'],
-                'barangays_reached' => 0
-            ];
-            $barangays = [];
-            foreach ($beneficiaries as $b) {
-                $impactStats['total_amount'] += (float)($b['amount_value'] ?? 0);
-                if (!empty($b['barangay'])) {
-                    $barangays[$b['barangay']] = true;
-                }
-            }
-            $impactStats['barangays_reached'] = count($barangays);
-            ?>
-            <div class="row g-3 mb-4">
-                <div class="col-md-3">
-                    <div class="metric-card">
-                        <div class="metric-value"><?= number_format($impactStats['total_beneficiaries']) ?></div>
-                        <div class="metric-label"><i class="bi bi-people me-1"></i> Beneficiaries</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="metric-card" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-                        <div class="metric-value">₱<?= number_format($impactStats['total_amount'], 0) ?></div>
-                        <div class="metric-label"><i class="bi bi-cash me-1"></i> Total Impact Value</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="metric-card" style="background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);">
-                        <div class="metric-value"><?= number_format($impactStats['barangays_reached']) ?></div>
-                        <div class="metric-label"><i class="bi bi-geo-alt me-1"></i> Barangays Reached</div>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="metric-card" style="background: linear-gradient(135deg, #ec4899 0%, #db2777 100%);">
-                        <div class="metric-value"><?= number_format($impactStats['featured_stories']) ?></div>
-                        <div class="metric-label"><i class="bi bi-star me-1"></i> Featured Stories</div>
-                    </div>
-                </div>
-            </div>
-
+        <!-- ── Community Achievements Tab ── -->
+        <div class="tab-pane fade" id="achievements" role="tabpanel">
             <div class="table-container">
                 <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0"><i class="bi bi-heart-pulse me-2"></i>Impact Stories (Beneficiaries)</h5>
+                    <div>
+                        <h5 class="mb-0"><i class="bi bi-image me-2"></i>Community Achievements</h5>
+                        <small class="text-muted">Photo gallery of products, outcomes, and community milestones shown on the public page.</small>
+                    </div>
                     <?php if ($canEdit): ?>
-                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#beneficiaryModal" onclick="resetBeneficiaryForm()">
-                        <i class="bi bi-plus"></i> Add Impact Story
+                    <button class="btn btn-success btn-sm" data-bs-toggle="modal" data-bs-target="#achievementModal" onclick="resetAchievementForm()">
+                        <i class="bi bi-plus"></i> Add Photo
                     </button>
                     <?php endif; ?>
                 </div>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Beneficiary</th>
-                                <th>Assistance Type</th>
-                                <th>Amount/Qty</th>
-                                <th>Barangay</th>
-                                <th>Date</th>
-                                <th>Status</th>
-                                <th>Featured</th>
-                                <?php if ($canEdit): ?><th>Actions</th><?php endif; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($beneficiaries as $b): ?>
-                            <tr>
-                                <td>
-                                    <strong><?= e($b['name']) ?></strong>
-                                    <?php if (!empty($b['short_story'])): ?>
-                                    <br><small class="text-muted"><?= e(substr($b['short_story'], 0, 50)) ?><?= strlen($b['short_story']) > 50 ? '...' : '' ?></small>
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= e($b['assistance_type'] ?? '-') ?></td>
-                                <td>
-                                    <?php if ($b['amount_value']): ?>
-                                        <span class="text-success fw-bold">₱<?= number_format($b['amount_value'], 0) ?></span>
-                                    <?php elseif ($b['quantity']): ?>
-                                        <?= $b['quantity'] ?> items
-                                    <?php else: ?>
-                                        -
-                                    <?php endif; ?>
-                                </td>
-                                <td><?= e($b['barangay'] ?? '-') ?></td>
-                                <td><?= $b['date_assisted'] ? date('M d, Y', strtotime($b['date_assisted'])) : '-' ?></td>
-                                <td><span class="badge-status badge-<?= $b['status'] ?>"><?= ucfirst($b['status']) ?></span></td>
-                                <td>
-                                    <?php if ($b['featured']): ?>
-                                        <i class="bi bi-star-fill featured-star"></i>
-                                    <?php else: ?>
-                                        <i class="bi bi-star text-muted"></i>
-                                    <?php endif; ?>
-                                </td>
-                                <?php if ($canEdit): ?>
-                                <td>
-                                    <div class="d-flex gap-1">
-                                        <button class="btn btn-sm btn-outline-primary" onclick="editBeneficiary(<?= htmlspecialchars(json_encode($b)) ?>)" title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-warning" onclick="confirmArchive('beneficiary', <?= $b['id'] ?>, '<?= addslashes($b['name']) ?>')" title="Archive">
-                                            <i class="bi bi-archive"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                                <?php endif; ?>
-                            </tr>
-                            <?php endforeach; ?>
-                            <?php if (empty($beneficiaries)): ?>
-                            <tr><td colspan="<?= $canEdit ? 8 : 7 ?>" class="text-center text-muted py-4">No impact stories yet. Add beneficiaries to see impact statistics.</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
+
+                <?php if (empty($achievements)): ?>
+                <div class="text-center text-muted py-5">
+                    <i class="bi bi-images fs-1 opacity-25 d-block mb-2"></i>
+                    No achievements yet. Click "Add Photo" to upload the first one.
                 </div>
+                <?php else: ?>
+                <div class="row g-3">
+                    <?php foreach ($achievements as $ach): ?>
+                    <div class="col-sm-6 col-md-4 col-lg-3">
+                        <div class="card h-100 border-0 shadow-sm">
+                            <img src="../../<?= e($ach['image_path']) ?>"
+                                 class="card-img-top"
+                                 style="height:160px; object-fit:cover;"
+                                 alt="<?= e($ach['title']) ?>"
+                                 onerror="this.src='https://placehold.co/400x200?text=No+Image'">
+                            <div class="card-body p-2">
+                                <?php if (!empty($ach['tag'])): ?>
+                                <span class="badge bg-success bg-opacity-10 text-success mb-1" style="font-size:.7rem;"><?= e($ach['tag']) ?></span>
+                                <?php endif; ?>
+                                <p class="fw-semibold mb-0" style="font-size:.85rem;"><?= e($ach['title']) ?></p>
+                                <?php if (!empty($ach['caption'])): ?>
+                                <p class="text-muted mb-0" style="font-size:.75rem;"><?= e(substr($ach['caption'],0,60)) ?><?= strlen($ach['caption'])>60?'…':'' ?></p>
+                                <?php endif; ?>
+                            </div>
+                            <?php if ($canEdit): ?>
+                            <div class="card-footer p-1 d-flex gap-1 justify-content-end bg-transparent border-0">
+                                <button class="btn btn-sm btn-outline-primary" onclick="editAchievement(<?= htmlspecialchars(json_encode($ach)) ?>)" title="Edit">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-sm btn-outline-warning" onclick="confirmDelete('achievement', <?= $ach['id'] ?>, '<?= addslashes($ach['title']) ?>')" title="Archive">
+                                    <i class="bi bi-archive"></i>
+                                </button>
+                            </div>
+                            <?php endif; ?>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+                <?php endif; ?>
             </div>
         </div>
 
@@ -1053,77 +1104,50 @@ $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
     </div>
 </div>
 
-<!-- Beneficiary Modal -->
-<div class="modal fade" id="beneficiaryModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+<!-- Achievement Modal -->
+<div class="modal fade" id="achievementModal" tabindex="-1">
+    <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                <input type="hidden" name="action" id="beneficiaryAction" value="add_beneficiary">
-                <input type="hidden" name="b_id" id="beneficiaryId">
-                <input type="hidden" name="active_tab" value="impact">
+                <input type="hidden" name="action" id="achAction" value="add_achievement">
+                <input type="hidden" name="ach_id" id="achId">
+                <input type="hidden" name="ach_image_existing" id="achImageExisting">
+                <input type="hidden" name="active_tab" value="achievements">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="beneficiaryModalTitle">Add Impact Story</h5>
+                    <h5 class="modal-title" id="achModalTitle">Add Community Achievement</h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Beneficiary Name *</label>
-                            <input type="text" name="b_name" id="beneficiaryName" class="form-control" placeholder="Full name of beneficiary" required>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Assistance Type</label>
-                            <select name="b_assistance_type" id="beneficiaryAssistanceType" class="form-select">
-                                <option value="">-- Select --</option>
-                                <?php foreach ($assistanceTypes as $type): ?>
-                                <option value="<?= $type ?>"><?= $type ?></option>
-                                <?php endforeach; ?>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Amount Value</label>
-                            <input type="number" name="b_amount" id="beneficiaryAmount" class="form-control" min="0" step="0.01" placeholder="e.g., 5000">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Quantity (if items)</label>
-                            <input type="number" name="b_quantity" id="beneficiaryQuantity" class="form-control" min="0" placeholder="e.g., 5 kits">
-                        </div>
-                        <div class="col-md-4 mb-3">
-                            <label class="form-label">Date Assisted</label>
-                            <input type="date" name="b_date" id="beneficiaryDate" class="form-control">
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Barangay</label>
-                            <input type="text" name="b_barangay" id="beneficiaryBarangay" class="form-control" placeholder="e.g., Barretto">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Status</label>
-                            <select name="b_status" id="beneficiaryStatus" class="form-select">
-                                <?php foreach ($beneficiaryStatuses as $status): ?>
-                                <option value="<?= $status ?>"><?= ucfirst($status) ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Photo / Image *</label>
+                        <input type="file" name="ach_image" id="achImageInput" class="form-control" accept="image/*">
+                        <div id="achImagePreviewWrap" class="mt-2" style="display:none;">
+                            <img id="achImagePreview" src="" class="rounded" style="max-height:160px; object-fit:cover; width:100%;">
                         </div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Impact Story / Notes</label>
-                        <textarea name="b_story" id="beneficiaryStory" class="form-control" rows="3" placeholder="Brief story about the impact of assistance..."></textarea>
+                        <label class="form-label fw-semibold">Title *</label>
+                        <input type="text" name="ach_title" id="achTitle" class="form-control" placeholder="e.g., Dried Fish Products — Barangay Barretto" required>
                     </div>
-                    <div class="form-check">
-                        <input type="checkbox" name="b_featured" id="beneficiaryFeatured" class="form-check-input" value="1">
-                        <label class="form-check-label" for="beneficiaryFeatured">
-                            <i class="bi bi-star-fill text-warning"></i> Featured Story (show on public transparency page)
-                        </label>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold">Caption</label>
+                        <textarea name="ach_caption" id="achCaption" class="form-control" rows="2" placeholder="Short description of the achievement..."></textarea>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label fw-semibold">Tag / Label</label>
+                            <input type="text" name="ach_tag" id="achTag" class="form-control" placeholder="e.g., Livelihood Program, Fish Processing">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label fw-semibold">Sort Order</label>
+                            <input type="number" name="ach_sort" id="achSort" class="form-control" value="0" min="0">
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-success">Save Impact Story</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-check-lg me-1"></i>Save</button>
                 </div>
             </form>
         </div>
@@ -1186,38 +1210,6 @@ function editAssistance(data) {
     new bootstrap.Modal(document.getElementById('assistanceModal')).show();
 }
 
-// Beneficiary / Impact Story functions
-function resetBeneficiaryForm() {
-    document.getElementById('beneficiaryAction').value = 'add_beneficiary';
-    document.getElementById('beneficiaryId').value = '';
-    document.getElementById('beneficiaryModalTitle').textContent = 'Add Impact Story';
-    document.getElementById('beneficiaryName').value = '';
-    document.getElementById('beneficiaryAssistanceType').value = '';
-    document.getElementById('beneficiaryAmount').value = '';
-    document.getElementById('beneficiaryQuantity').value = '';
-    document.getElementById('beneficiaryDate').value = new Date().toISOString().split('T')[0];
-    document.getElementById('beneficiaryBarangay').value = '';
-    document.getElementById('beneficiaryStatus').value = 'served';
-    document.getElementById('beneficiaryStory').value = '';
-    document.getElementById('beneficiaryFeatured').checked = false;
-}
-
-function editBeneficiary(data) {
-    document.getElementById('beneficiaryAction').value = 'edit_beneficiary';
-    document.getElementById('beneficiaryId').value = data.id;
-    document.getElementById('beneficiaryModalTitle').textContent = 'Edit Impact Story';
-    document.getElementById('beneficiaryName').value = data.name;
-    document.getElementById('beneficiaryAssistanceType').value = data.assistance_type || '';
-    document.getElementById('beneficiaryAmount').value = data.amount_value || '';
-    document.getElementById('beneficiaryQuantity').value = data.quantity || '';
-    document.getElementById('beneficiaryDate').value = data.date_assisted || '';
-    document.getElementById('beneficiaryBarangay').value = data.barangay || '';
-    document.getElementById('beneficiaryStatus').value = data.status || 'served';
-    document.getElementById('beneficiaryStory').value = data.short_story || '';
-    document.getElementById('beneficiaryFeatured').checked = data.featured == 1;
-    new bootstrap.Modal(document.getElementById('beneficiaryModal')).show();
-}
-
 function confirmArchive(type, id, name) {
     Swal.fire({
         title: 'Archive this record?',
@@ -1240,13 +1232,13 @@ function confirmArchive(type, id, name) {
 
 function confirmDelete(type, id, name) {
     Swal.fire({
-        title: 'Delete permanently?',
-        text: `"${name}" will be permanently deleted and cannot be recovered!`,
-        icon: 'warning',
+        title: 'Archive this achievement?',
+        text: `"${name}" will be moved to the archive. You can restore it later.`,
+        icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#ef4444',
+        confirmButtonColor: '#f59e0b',
         cancelButtonColor: '#6c757d',
-        confirmButtonText: 'Yes, Delete'
+        confirmButtonText: 'Yes, Archive'
     }).then((result) => {
         if (result.isConfirmed) {
             document.getElementById('deleteType').value = 'delete_' + type;
@@ -1255,6 +1247,57 @@ function confirmDelete(type, id, name) {
         }
     });
 }
+
+// Achievement functions
+function resetAchievementForm() {
+    document.getElementById('achAction').value = 'add_achievement';
+    document.getElementById('achId').value = '';
+    document.getElementById('achImageExisting').value = '';
+    document.getElementById('achModalTitle').textContent = 'Add Community Achievement';
+    document.getElementById('achTitle').value = '';
+    document.getElementById('achCaption').value = '';
+    document.getElementById('achTag').value = '';
+    document.getElementById('achSort').value = '0';
+    document.getElementById('achImageInput').value = '';
+    document.getElementById('achImagePreviewWrap').style.display = 'none';
+    document.getElementById('achImagePreview').src = '';
+}
+
+function editAchievement(data) {
+    document.getElementById('achAction').value = 'edit_achievement';
+    document.getElementById('achId').value = data.id;
+    document.getElementById('achImageExisting').value = data.image_path || '';
+    document.getElementById('achModalTitle').textContent = 'Edit Achievement';
+    document.getElementById('achTitle').value = data.title || '';
+    document.getElementById('achCaption').value = data.caption || '';
+    document.getElementById('achTag').value = data.tag || '';
+    document.getElementById('achSort').value = data.sort_order || 0;
+    document.getElementById('achImageInput').value = '';
+    if (data.image_path) {
+        document.getElementById('achImagePreview').src = '../../' + data.image_path;
+        document.getElementById('achImagePreviewWrap').style.display = 'block';
+    } else {
+        document.getElementById('achImagePreviewWrap').style.display = 'none';
+    }
+    new bootstrap.Modal(document.getElementById('achievementModal')).show();
+}
+
+// Live image preview
+document.addEventListener('DOMContentLoaded', function() {
+    const achInput = document.getElementById('achImageInput');
+    if (achInput) {
+        achInput.addEventListener('change', function() {
+            if (this.files && this.files[0]) {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    document.getElementById('achImagePreview').src = e.target.result;
+                    document.getElementById('achImagePreviewWrap').style.display = 'block';
+                };
+                reader.readAsDataURL(this.files[0]);
+            }
+        });
+    }
+});
 
 
 

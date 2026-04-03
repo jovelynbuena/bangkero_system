@@ -146,8 +146,14 @@ if (isset($_POST['ajax_action'])) {
                 $admin_check = $conn->query("SELECT COUNT(*) as admin_count FROM users WHERE role IN ('officer', 'admin') AND is_admin=1");
                 $admin_row = $admin_check->fetch_assoc();
                 
-                $officer_check = $conn->query("SELECT is_admin FROM users WHERE id=$officer_id");
+                $officer_check = $conn->query("SELECT is_admin, status FROM users WHERE id=$officer_id");
                 $officer_data = $officer_check->fetch_assoc();
+
+                // Block archiving if account is approved/active
+                if ($officer_data && strtolower(trim($officer_data['status'])) === 'approved') {
+                    $response['message'] = 'Cannot archive an officer with an active (approved) account. Please deactivate or reject their account first before archiving.';
+                    break;
+                }
                 
                 if ($officer_data['is_admin'] == 1 && $admin_row['admin_count'] <= 1) {
                     $response['message'] = 'Cannot archive the last admin account!';
@@ -943,7 +949,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
                                             </button>
                                         <?php endif; ?>
 
-                                        <button class="btn-icon btn-icon-archive actionBtn" data-action="archive" data-id="<?= $row['id'] ?>" data-bs-toggle="tooltip" title="Archive Officer">
+                                        <button class="btn-icon btn-icon-archive actionBtn" data-action="archive" data-id="<?= $row['id'] ?>" data-status="<?= htmlspecialchars($row['status']) ?>" data-bs-toggle="tooltip" title="Archive Officer">
                                             <i class="bi bi-archive"></i>
                                         </button>
                                     </div>
@@ -1070,8 +1076,21 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
         
         const action = this.dataset.action;
         const id = this.dataset.id;
+        const status = this.dataset.status || '';
         const row = this.closest('tr');
         const username = row.querySelector('td:nth-child(2)').textContent;
+
+        // Block archive if account is approved/active
+        if (action === 'archive' && status.toLowerCase() === 'approved') {
+            Swal.fire({
+                icon: 'error',
+                title: 'Cannot Archive Active Account',
+                html: `<strong>${username.trim()}</strong> has an <span class="text-success fw-bold">approved/active</span> account.<br><br>Please <strong>reject</strong> their account first before archiving.`,
+                confirmButtonColor: '#667eea',
+                confirmButtonText: 'Understood'
+            });
+            return;
+        }
         
         let title = '';
         let text = '';
