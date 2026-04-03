@@ -64,8 +64,11 @@ $conn->query("CREATE TABLE IF NOT EXISTS partners_sponsors (
     logo_path VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL DEFAULT 'partner',
     sort_order INT NOT NULL DEFAULT 0,
+    website_url VARCHAR(500) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+// Add website_url column if it doesn't exist yet (for existing installations)
+$conn->query("ALTER TABLE partners_sponsors ADD COLUMN IF NOT EXISTS website_url VARCHAR(500) DEFAULT NULL");
 
 // Ensure home_carousel_slides table exists
 $conn->query("CREATE TABLE IF NOT EXISTS home_carousel_slides (
@@ -542,6 +545,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['partners_action'])) {
     $ps_logo = trim($_POST['partners_logo_path'] ?? '');
     $ps_type = trim($_POST['partners_type'] ?? 'partner');
     $ps_sort_order = isset($_POST['partners_sort_order']) ? (int)$_POST['partners_sort_order'] : 1;
+    $ps_url = trim($_POST['partners_website_url'] ?? '');
     if ($ps_sort_order < 1) {
         $ps_sort_order = 1;
     }
@@ -572,8 +576,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['partners_action'])) {
         }
 
         if ($ps_action === 'add') {
-            $stmt = $conn->prepare("INSERT INTO partners_sponsors (name, logo_path, type, sort_order) VALUES (?, ?, ?, ?)");
-            $stmt->bind_param('sssi', $ps_name, $ps_logo, $ps_type, $ps_sort_order);
+            $stmt = $conn->prepare("INSERT INTO partners_sponsors (name, logo_path, type, sort_order, website_url) VALUES (?, ?, ?, ?, ?)");
+            $stmt->bind_param('sssis', $ps_name, $ps_logo, $ps_type, $ps_sort_order, $ps_url);
             if ($stmt->execute()) {
                 $partners_success = 'Partner / sponsor added successfully.';
             } else {
@@ -581,8 +585,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['partners_action'])) {
             }
             $stmt->close();
         } elseif ($ps_action === 'edit' && $ps_id > 0) {
-            $stmt = $conn->prepare("UPDATE partners_sponsors SET name = ?, logo_path = ?, type = ?, sort_order = ? WHERE id = ?");
-            $stmt->bind_param('sssii', $ps_name, $ps_logo, $ps_type, $ps_sort_order, $ps_id);
+            $stmt = $conn->prepare("UPDATE partners_sponsors SET name = ?, logo_path = ?, type = ?, sort_order = ?, website_url = ? WHERE id = ?");
+            $stmt->bind_param('sssisi', $ps_name, $ps_logo, $ps_type, $ps_sort_order, $ps_url, $ps_id);
             if ($stmt->execute()) {
                 $partners_success = 'Partner / sponsor updated successfully.';
             } else {
@@ -1755,6 +1759,10 @@ body {
                                 <label class="form-label">Sort Order</label>
                                 <input type="number" name="partners_sort_order" id="partners_sort_order" class="form-control" min="1" value="<?= (int)$next_partners_order ?>">
                             </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Website URL <small class="text-muted">(optional)</small></label>
+                                <input type="url" name="partners_website_url" id="partners_website_url" class="form-control" placeholder="https://example.com">
+                            </div>
                         </div>
 
                         <div class="row g-3 mt-3">
@@ -1785,10 +1793,11 @@ body {
                                 <thead>
                                     <tr>
                                         <th style="width: 5%;">#</th>
-                                        <th style="width: 20%;">Name</th>
-                                        <th style="width: 15%;">Type</th>
-                                        <th style="width: 25%;">Logo</th>
-                                        <th style="width: 10%;">Order</th>
+                                        <th style="width: 18%;">Name</th>
+                                        <th style="width: 12%;">Type</th>
+                                        <th style="width: 22%;">Logo</th>
+                                        <th style="width: 18%;">Website URL</th>
+                                        <th style="width: 8%;">Order</th>
                                         <th style="width: 15%;" class="text-center">Actions</th>
                                     </tr>
                                 </thead>
@@ -1815,6 +1824,16 @@ body {
                                                 </div>
                                             </td>
                                             <td><?= (int)$ps['sort_order'] ?></td>
+                                            <td>
+                                                <?php if (!empty($ps['website_url'])): ?>
+                                                    <a href="<?= htmlspecialchars($ps['website_url']) ?>" target="_blank" class="small text-truncate d-inline-block text-primary" style="max-width:160px;" title="<?= htmlspecialchars($ps['website_url']) ?>">
+                                                        <i class="bi bi-link-45deg"></i> <?= htmlspecialchars($ps['website_url']) ?>
+                                                    </a>
+                                                <?php else: ?>
+                                                    <span class="text-muted small">—</span>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td><?= (int)$ps['sort_order'] ?></td>
                                             <td class="text-center">
                                                 <button type="button"
                                                         class="btn btn-sm btn-outline-primary me-1"
@@ -1822,7 +1841,8 @@ body {
                                                             '<?= htmlspecialchars($ps['name'], ENT_QUOTES) ?>',
                                                             '<?= htmlspecialchars($ps['logo_path'], ENT_QUOTES) ?>',
                                                             '<?= htmlspecialchars($ps['type'], ENT_QUOTES) ?>',
-                                                            <?= (int)$ps['sort_order'] ?>)">
+                                                            <?= (int)$ps['sort_order'] ?>,
+                                                            '<?= htmlspecialchars($ps['website_url'] ?? '', ENT_QUOTES) ?>')">
                                                     <i class="bi bi-pencil-square"></i>
                                                 </button>
                                                 <form method="POST" class="d-inline-block" id="del-ps-<?= (int)$ps['id'] ?>">
@@ -2173,13 +2193,14 @@ function resetValuesForm() {
     cancelBtn.classList.add('d-none');
 }
 
-function startPartnersEdit(id, name, logoPath, type, sortOrder) {
+function startPartnersEdit(id, name, logoPath, type, sortOrder, websiteUrl) {
     const actionInput = document.getElementById('partners_action');
     const idInput = document.getElementById('partners_id');
     const nameInput = document.getElementById('partners_name');
     const logoInput = document.getElementById('partners_logo_path');
     const typeInput = document.getElementById('partners_type');
     const orderInput = document.getElementById('partners_sort_order');
+    const urlInput = document.getElementById('partners_website_url');
     const submitBtn = document.getElementById('partners_submit_btn');
     const submitText = document.getElementById('partners_submit_text');
     const cancelBtn = document.getElementById('partners_cancel_btn');
@@ -2192,6 +2213,7 @@ function startPartnersEdit(id, name, logoPath, type, sortOrder) {
     logoInput.value = logoPath;
     typeInput.value = type;
     orderInput.value = sortOrder;
+    if (urlInput) urlInput.value = websiteUrl || '';
 
     submitBtn.classList.remove('btn-primary');
     submitBtn.classList.add('btn-warning');
@@ -2211,6 +2233,8 @@ function resetPartnersForm() {
     form.reset();
     document.getElementById('partners_action').value = 'add';
     document.getElementById('partners_id').value = '0';
+    const urlInput = document.getElementById('partners_website_url');
+    if (urlInput) urlInput.value = '';
 
     const submitBtn = document.getElementById('partners_submit_btn');
     const submitText = document.getElementById('partners_submit_text');

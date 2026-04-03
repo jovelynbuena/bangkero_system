@@ -193,8 +193,17 @@ if (isset($_GET['delete_permanent']) && $canEdit) {
     try {
         if ($type === 'program') {
             $stmt = $conn->prepare("DELETE FROM transparency_campaigns_archive WHERE archive_id = ?");
-        } elseif ($type === 'beneficiary') {
-            $stmt = $conn->prepare("DELETE FROM transparency_beneficiaries_archive WHERE id = ?");
+        } elseif ($type === 'achievement') {
+            // Also delete image file
+            $stmtSel = $conn->prepare("SELECT image_path FROM community_achievements_archive WHERE id = ?");
+            $stmtSel->bind_param('i', $id);
+            $stmtSel->execute();
+            $achRow = $stmtSel->get_result()->fetch_assoc();
+            $stmtSel->close();
+            if ($achRow && !empty($achRow['image_path']) && file_exists('../../' . $achRow['image_path'])) {
+                @unlink('../../' . $achRow['image_path']);
+            }
+            $stmt = $conn->prepare("DELETE FROM community_achievements_archive WHERE id = ?");
         } else {
             $stmt = $conn->prepare("DELETE FROM transparency_donations_archive WHERE archive_id = ?");
         }
@@ -210,54 +219,28 @@ if (isset($_GET['delete_permanent']) && $canEdit) {
     }
 }
 
-// Handle Restore Beneficiary
-if (isset($_GET['restore_beneficiary']) && $canEdit) {
-    $archiveId = (int)$_GET['restore_beneficiary'];
+// Handle Restore Achievement
+if (isset($_GET['restore_achievement']) && $canEdit) {
+    $archiveId = (int)$_GET['restore_achievement'];
     try {
         $conn->begin_transaction();
-        $stmt = $conn->prepare("SELECT * FROM transparency_beneficiaries_archive WHERE id = ?");
+        $stmt = $conn->prepare("SELECT * FROM community_achievements_archive WHERE id = ?");
         $stmt->bind_param('i', $archiveId);
         $stmt->execute();
-        $ben = $stmt->get_result()->fetch_assoc();
+        $ach = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if ($ben) {
-            // Validate program_id still exists to avoid FK constraint failure
-            $programId = null;
-            if (!empty($ben['program_id'])) {
-                $chk = $conn->prepare("SELECT id FROM transparency_programs WHERE id = ?");
-                $chk->bind_param('i', $ben['program_id']);
-                $chk->execute();
-                $chk->store_result();
-                if ($chk->num_rows > 0) {
-                    $programId = (int)$ben['program_id'];
-                }
-                $chk->close();
-            }
-            $bName       = (string)($ben['name'] ?? '');
-            $bAssist     = (string)($ben['assistance_type'] ?? '');
-            $bAmount     = (float)($ben['amount_value'] ?? 0);
-            $bQty        = (int)($ben['quantity'] ?? 0);
-            $bDate       = $ben['date_assisted'] ?? null;
-            $bBarangay   = (string)($ben['barangay'] ?? '');
-            $bStatus     = (string)($ben['status'] ?? '');
-            $bFeatured   = (int)($ben['featured'] ?? 0);
-            $bStory      = (string)($ben['short_story'] ?? '');
-            $stmtIns = $conn->prepare("INSERT INTO transparency_beneficiaries 
-                (name, program_id, assistance_type, amount_value, quantity, date_assisted, barangay, status, featured, short_story, created_at) 
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())");
-            $stmtIns->bind_param('sisdisssis',
-                $bName, $programId, $bAssist,
-                $bAmount, $bQty, $bDate,
-                $bBarangay, $bStatus, $bFeatured, $bStory);
+        if ($ach) {
+            $stmtIns = $conn->prepare("INSERT INTO community_achievements (title, caption, tag, image_path, sort_order) VALUES (?, ?, ?, ?, ?)");
+            $stmtIns->bind_param('ssssi', $ach['title'], $ach['caption'], $ach['tag'], $ach['image_path'], $ach['sort_order']);
             $stmtIns->execute();
             $stmtIns->close();
-            $stmtDel = $conn->prepare("DELETE FROM transparency_beneficiaries_archive WHERE id = ?");
+            $stmtDel = $conn->prepare("DELETE FROM community_achievements_archive WHERE id = ?");
             $stmtDel->bind_param('i', $archiveId);
             $stmtDel->execute();
             $stmtDel->close();
             $conn->commit();
             $alertType = 'success';
-            $alertMsg = 'Impact story restored successfully.';
+            $alertMsg = 'Achievement restored successfully.';
         }
     } catch (Exception $e) {
         $conn->rollback();
@@ -287,18 +270,40 @@ while ($res && $row = $res->fetch_assoc()) {
     $archivedAssistance[] = $row;
 }
 
-// Fetch archived beneficiaries
+// Fetch archived beneficiaries (kept for legacy data, not shown in UI)
 $archivedBeneficiaries = [];
-$res = $conn->query("SELECT b.*, u.username as archived_by_name, p.name as program_name
-    FROM transparency_beneficiaries_archive b
-    LEFT JOIN users u ON b.archived_by = u.id
-    LEFT JOIN transparency_campaigns p ON b.program_id = p.id
-    ORDER BY b.archived_at DESC");
-while ($res && $row = $res->fetch_assoc()) {
-    $archivedBeneficiaries[] = $row;
+$res = $conn->query("SELECT COUNT(*) as c FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = 'transparency_beneficiaries_archive'");
+if ($res && $row = $res->fetch_assoc() and $row['c'] > 0) {
+    $res2 = $conn->query("SELECT COUNT(*) as c FROM transparency_beneficiaries_archive");
+    if ($res2 && $r2 = $res2->fetch_assoc()) {
+        // legacy count only, not displayed
+    }
 }
 
-$totalArchived = count($archivedPrograms) + count($archivedAssistance) + count($archivedBeneficiaries);
+// Ensure community_achievements_archive table exists
+$conn->query("CREATE TABLE IF NOT EXISTS community_achievements_archive (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    original_id INT DEFAULT NULL,
+    title VARCHAR(255) NOT NULL,
+    caption TEXT DEFAULT NULL,
+    tag VARCHAR(100) DEFAULT NULL,
+    image_path VARCHAR(500) DEFAULT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    archived_by INT DEFAULT NULL,
+    archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Fetch archived achievements
+$archivedAchievements = [];
+$res = $conn->query("SELECT a.*, u.username as archived_by_name 
+    FROM community_achievements_archive a 
+    LEFT JOIN users u ON a.archived_by = u.id 
+    ORDER BY a.archived_at DESC");
+while ($res && $row = $res->fetch_assoc()) {
+    $archivedAchievements[] = $row;
+}
+
+$totalArchived = count($archivedPrograms) + count($archivedAssistance) + count($archivedAchievements);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -393,10 +398,10 @@ $totalArchived = count($archivedPrograms) + count($archivedAssistance) + count($
             <div class="archive-card">
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
-                        <h5 class="mb-1">Archived Impact Stories</h5>
-                        <h3 class="mb-0"><?= count($archivedBeneficiaries) ?></h3>
+                        <h5 class="mb-1">Archived Achievements</h5>
+                        <h3 class="mb-0"><?= count($archivedAchievements) ?></h3>
                     </div>
-                    <i class="bi bi-heart-pulse text-info" style="font-size: 2.5rem;"></i>
+                    <i class="bi bi-image text-info" style="font-size: 2.5rem;"></i>
                 </div>
             </div>
         </div>
@@ -502,53 +507,46 @@ $totalArchived = count($archivedPrograms) + count($archivedAssistance) + count($
     </div>
     <?php endif; ?>
 
-    <?php if (!empty($archivedBeneficiaries)): ?>
-    <!-- Archived Impact Stories -->
+    <?php if (!empty($archivedAchievements)): ?>
+    <!-- Archived Community Achievements -->
     <div class="archive-card">
-        <h5 class="mb-3"><i class="bi bi-heart-pulse text-info me-2"></i>Archived Impact Stories</h5>
+        <h5 class="mb-3"><i class="bi bi-image text-info me-2"></i>Archived Community Achievements</h5>
         <div class="table-responsive">
-            <table class="table table-hover">
+            <table class="table table-hover align-middle">
                 <thead>
                     <tr>
-                        <th>Beneficiary</th>
-                        <th>Assistance Type</th>
-                        <th>Amount/Qty</th>
-                        <th>Barangay</th>
-                        <th>Status</th>
+                        <th>Photo</th>
+                        <th>Title</th>
+                        <th>Tag</th>
                         <th>Archived</th>
                         <th>By</th>
                         <?php if ($canEdit): ?><th>Actions</th><?php endif; ?>
                     </tr>
                 </thead>
                 <tbody>
-                    <?php foreach ($archivedBeneficiaries as $b): ?>
+                    <?php foreach ($archivedAchievements as $ach): ?>
                     <tr>
                         <td>
-                            <strong><?= e($b['name']) ?></strong>
-                            <?php if (!empty($b['short_story'])): ?>
-                            <br><small class="text-muted"><?= e(substr($b['short_story'], 0, 50)) ?><?= strlen($b['short_story']) > 50 ? '...' : '' ?></small>
-                            <?php endif; ?>
+                            <img src="../../<?= e($ach['image_path']) ?>"
+                                 style="width:60px;height:45px;object-fit:cover;border-radius:6px;"
+                                 onerror="this.src='https://placehold.co/60x45?text=No+Image'"
+                                 alt="<?= e($ach['title']) ?>">
                         </td>
-                        <td><?= e($b['assistance_type'] ?? '-') ?></td>
                         <td>
-                            <?php if ($b['amount_value']): ?>
-                                <span class="text-success fw-bold">₱<?= number_format($b['amount_value'], 0) ?></span>
-                            <?php elseif ($b['quantity']): ?>
-                                <?= $b['quantity'] ?> items
-                            <?php else: ?>
-                                -
+                            <strong><?= e($ach['title']) ?></strong>
+                            <?php if (!empty($ach['caption'])): ?>
+                            <br><small class="text-muted"><?= e(substr($ach['caption'], 0, 60)) ?><?= strlen($ach['caption']) > 60 ? '…' : '' ?></small>
                             <?php endif; ?>
                         </td>
-                        <td><?= e($b['barangay'] ?? '-') ?></td>
-                        <td><span class="badge-archived"><?= ucfirst($b['status'] ?? '') ?></span></td>
-                        <td><?= $b['archived_at'] ? date('M d, Y', strtotime($b['archived_at'])) : '-' ?></td>
-                        <td><?= e($b['archived_by_name'] ?: 'System') ?></td>
+                        <td><?= !empty($ach['tag']) ? '<span class="badge bg-success bg-opacity-10 text-success">' . e($ach['tag']) . '</span>' : '-' ?></td>
+                        <td><?= $ach['archived_at'] ? date('M d, Y', strtotime($ach['archived_at'])) : '-' ?></td>
+                        <td><?= e($ach['archived_by_name'] ?: 'System') ?></td>
                         <?php if ($canEdit): ?>
                         <td>
-                            <button class="btn btn-sm btn-success" onclick="confirmRestoreBeneficiary(<?= $b['id'] ?>, '<?= addslashes($b['name']) ?>')" title="Restore">
+                            <button class="btn btn-sm btn-success" onclick="confirmRestoreAchievement(<?= $ach['id'] ?>, '<?= addslashes($ach['title']) ?>')" title="Restore">
                                 <i class="bi bi-arrow-counterclockwise"></i>
                             </button>
-                            <button class="btn btn-sm btn-danger" onclick="confirmDeleteBeneficiary(<?= $b['id'] ?>, '<?= addslashes($b['name']) ?>')" title="Delete Permanent">
+                            <button class="btn btn-sm btn-danger" onclick="confirmDeleteAchievement(<?= $ach['id'] ?>, '<?= addslashes($ach['title']) ?>')" title="Delete Permanent">
                                 <i class="bi bi-trash"></i>
                             </button>
                         </td>
@@ -629,9 +627,9 @@ function confirmDeleteAssistance(id, name) {
     });
 }
 
-function confirmRestoreBeneficiary(id, name) {
+function confirmRestoreAchievement(id, name) {
     Swal.fire({
-        title: 'Restore Impact Story?',
+        title: 'Restore Achievement?',
         text: `Are you sure you want to restore "${name}"?`,
         icon: 'question',
         showCancelButton: true,
@@ -640,12 +638,12 @@ function confirmRestoreBeneficiary(id, name) {
         confirmButtonText: 'Yes, Restore'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = `?restore_beneficiary=${id}`;
+            window.location.href = `?restore_achievement=${id}`;
         }
     });
 }
 
-function confirmDeleteBeneficiary(id, name) {
+function confirmDeleteAchievement(id, name) {
     Swal.fire({
         title: 'Delete Permanently?',
         text: `This will permanently delete "${name}". This cannot be undone!`,
@@ -656,13 +654,13 @@ function confirmDeleteBeneficiary(id, name) {
         confirmButtonText: 'Yes, Delete'
     }).then((result) => {
         if (result.isConfirmed) {
-            window.location.href = `?delete_permanent=${id}&type=beneficiary`;
+            window.location.href = `?delete_permanent=${id}&type=achievement`;
         }
     });
 }
 </script>
 
-<?php if (isset($_GET['restore_program']) || isset($_GET['restore_assistance']) || isset($_GET['restore_beneficiary'])): ?>
+<?php if (isset($_GET['restore_program']) || isset($_GET['restore_assistance']) || isset($_GET['restore_achievement'])): ?>
 <script>
     Swal.fire({
         icon: 'success',

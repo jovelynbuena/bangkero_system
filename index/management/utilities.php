@@ -34,6 +34,7 @@ $memberName = isset($_SESSION['member_name']) ? $_SESSION['member_name'] : 'Admi
         .main-content {
             margin-left: 250px;
             padding: 32px 32px 16px 32px;
+            padding-top: 66px;
             min-height: 100vh;
         }
 

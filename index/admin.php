@@ -118,6 +118,22 @@ $announcementsTrend['change'] = $thisCount - $lastCount;
 $announcementsTrend['direction'] = $announcementsTrend['change'] > 0 ? 'up' : ($announcementsTrend['change'] < 0 ? 'down' : 'same');
 $announcementsTrend['percent'] = $lastCount > 0 ? round(($announcementsTrend['change'] / $lastCount) * 100, 1) : 0;
 
+// Messages (unread contact messages)
+$messagesRow = $conn->query("SELECT COUNT(*) AS total FROM contact_messages WHERE status = 'unread'")->fetch_assoc();
+$unreadMessages = $messagesRow ? (int)$messagesRow['total'] : 0;
+$totalMessagesRow = $conn->query("SELECT COUNT(*) AS total FROM contact_messages")->fetch_assoc();
+$totalMessages = $totalMessagesRow ? (int)$totalMessagesRow['total'] : 0;
+
+// Messages trend
+$messagesTrend = ['change' => 0, 'direction' => '', 'percent' => 0];
+$lastMonthMessages = $conn->query("SELECT COUNT(*) AS total FROM contact_messages WHERE created_at >= '$lastMonthStart' AND created_at <= '$lastMonthEnd'")->fetch_assoc();
+$thisMonthMessages = $conn->query("SELECT COUNT(*) AS total FROM contact_messages WHERE created_at >= '$thisMonthStart'")->fetch_assoc();
+$lastCount = $lastMonthMessages ? (int)$lastMonthMessages['total'] : 0;
+$thisCount = $thisMonthMessages ? (int)$thisMonthMessages['total'] : 0;
+$messagesTrend['change'] = $thisCount - $lastCount;
+$messagesTrend['direction'] = $messagesTrend['change'] > 0 ? 'up' : ($messagesTrend['change'] < 0 ? 'down' : 'same');
+$messagesTrend['percent'] = $lastCount > 0 ? round(($messagesTrend['change'] / $lastCount) * 100, 1) : 0;
+
 // ===== UPCOMING EVENTS (TODAY & NEXT 24 HOURS) =====
 $today = date('Y-m-d');
 $tomorrow = date('Y-m-d', strtotime('+1 day'));
@@ -456,90 +472,86 @@ h6 { font-size: 1.05rem; }
     from { opacity: 0; transform: translateY(-20px); }
     to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes chartFadeIn {
+    from { opacity: 0; transform: translateY(16px); }
+    to   { opacity: 1; transform: translateY(0); }
+}
+.chart-card-animate {
+    animation: chartFadeIn 0.6s ease-out both;
+}
 @keyframes pulse {
     0%, 100% { transform: scale(1); }
     50%       { transform: scale(1.04); }
 }
 
 /* ===== DASHBOARD STAT CARDS ===== */
-.dashboard-card {
-    border-radius: 18px;
-    box-shadow: 0 4px 16px rgba(0,0,0,0.07);
-    transition: transform 0.22s ease, box-shadow 0.22s ease;
-    border: 1px solid #e8ecf0;
-    background: #FFFFFF;
-    overflow: hidden;
-    position: relative;
+.stat-card-wrap {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px;
+    border-left: 4px solid #6366f1;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.07);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+    height: 100%;
+    display: block;
+    text-decoration: none;
 }
-.dashboard-card:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 14px 36px rgba(0,0,0,0.11);
+.stat-card-wrap:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    text-decoration: none;
 }
-.dashboard-card .card-body {
-    padding: 26px 24px;
-    position: relative;
-    z-index: 1;
-}
-.dashboard-card .card-title {
-    font-size: 1rem;
-    font-weight: 600;
-    color: #64748b;
-    margin-bottom: 6px;
-    letter-spacing: 0.2px;
-}
-.dashboard-card .stat-number {
-    font-size: 2.2rem;
-    font-weight: 800;
-    color: #1e293b;
-    line-height: 1;
-    margin-bottom: 4px;
-}
-.dashboard-card:hover .card-hover-info {
-    opacity: 1;
-    transform: translateY(0);
-}
-.card-hover-info {
-    position: absolute;
-    bottom: 0; left: 0; right: 0;
-    background: linear-gradient(135deg, rgba(99,102,241,0.95), rgba(139,92,246,0.95));
-    color: white;
-    padding: 11px;
-    text-align: center;
-    opacity: 0;
-    transform: translateY(100%);
-    transition: all 0.3s ease;
-    font-size: 0.9rem;
-    font-weight: 500;
-    z-index: 2;
-}
+.stat-card-wrap .sc-icon  { font-size: 1.5rem; margin-bottom: 6px; }
+.stat-card-wrap .sc-num   { font-size: 1.4rem; font-weight: 700; color: #1e293b; line-height: 1.2; }
+.stat-card-wrap .sc-label { font-size: 0.8rem; color: #64748b; margin-top: 2px; }
+.stat-card-wrap .sc-trend { font-size: 0.75rem; font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 3px; }
+.sc-trend.trend-up   { color: #16a34a; }
+.sc-trend.trend-down { color: #dc2626; }
+.sc-trend.trend-same { color: #8b5cf6; }
 
-/* ===== TREND INDICATORS ===== */
-.trend-indicator {
-    font-size: 0.88rem;
-    font-weight: 700;
-    margin-top: 8px;
-    display: flex;
-    align-items: center;
-    gap: 5px;
-}
-.trend-indicator.trend-up   { color: #10b981; }
-.trend-indicator.trend-down { color: #ef4444; }
-.trend-indicator.trend-same { color: #8b5cf6; }
-.trend-indicator i { font-size: 1rem; }
+/* per-card colors */
+.stat-card-members  { background: #ffffff; border-left-color: #6366f1; }
+.stat-card-members  .sc-icon { color: #6366f1; }
+.stat-card-officers { background: #ffffff; border-left-color: #22c55e; }
+.stat-card-officers .sc-icon { color: #22c55e; }
+.stat-card-events   { background: #ffffff; border-left-color: #f97316; }
+.stat-card-events   .sc-icon { color: #f97316; }
+.stat-card-announce { background: #ffffff; border-left-color: #a855f7; }
+.stat-card-announce .sc-icon { color: #a855f7; }
+.stat-card-messages { background: #ffffff; border-left-color: #f59e0b; }
+.stat-card-messages .sc-icon { color: #f59e0b; }
 
-/* ===== ICON BOX ===== */
+/* ===== ICON BOX (used elsewhere in page) ===== */
 .icon-box {
-    border-radius: 14px;
+    border-radius: 12px;
     color: #fff;
-    width: 62px;
-    height: 62px;
-    min-width: 62px;
+    width: 48px;
+    height: 48px;
+    min-width: 48px;
     display: flex;
     justify-content: center;
     align-items: center;
-    font-size: 1.7rem;
+    font-size: 1.35rem;
     flex-shrink: 0;
 }
+.icon-box-members  { background: #6366f1; }
+.icon-box-officers { background: #22c55e; }
+.icon-box-events   { background: #f97316; }
+.icon-box-announce { background: #a855f7; }
+.icon-box-messages { background: #f59e0b; }
+
+/* ===== TREND INDICATORS (legacy, used in other sections) ===== */
+.trend-indicator {
+    font-size: 0.82rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+}
+.trend-indicator.trend-up   { color: #16a34a; }
+.trend-indicator.trend-down { color: #dc2626; }
+.trend-indicator.trend-same { color: #8b5cf6; }
 
 /* ===== ANALYTICS / EVENT CARDS ===== */
 .event-card {
@@ -1009,96 +1021,87 @@ h6 { font-size: 1.05rem; }
 </div>
 
 <!-- Dashboard Cards -->
-<div class="dashboard-cards row g-4 mb-4">
-    <div class="col-md-3">
-        <a href="management/memberlist.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100 position-relative">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <span class="icon-box bg-primary"><i class="bi bi-people"></i></span>
-                    <div class="flex-grow-1">
-                        <div class="card-title">Total Members</div>
-                        <div class="card-text fs-4 fw-semibold"><?php echo $members; ?></div>
-                        <?php if ($membersTrend['change'] != 0): ?>
-                        <div class="trend-indicator trend-<?= $membersTrend['direction'] ?>">
-                            <i class="bi bi-arrow-<?= $membersTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
-                            <?= abs($membersTrend['change']) ?> from last month
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="card-hover-info">
-                    <small>Click to view full member list</small>
-                </div>
+<div class="dashboard-cards row g-3 mb-4">
+
+    <!-- Members -->
+    <div class="col-6 col-md">
+        <a href="management/memberlist.php" class="stat-card-wrap stat-card-members">
+            <div class="sc-icon"><i class="bi bi-people-fill"></i></div>
+            <div class="sc-num"><?= $members ?></div>
+            <div class="sc-label">Total Members</div>
+            <?php if ($membersTrend['change'] != 0): ?>
+            <div class="sc-trend trend-<?= $membersTrend['direction'] ?>">
+                <i class="bi bi-arrow-<?= $membersTrend['direction'] === 'up' ? 'up' : 'down' ?>-short"></i>
+                <?= abs($membersTrend['change']) ?> from last month
             </div>
+            <?php endif; ?>
         </a>
     </div>
 
-    <div class="col-md-3">
-        <a href="management/officerslist.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100 position-relative">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <span class="icon-box bg-success"><i class="bi bi-person-badge"></i></span>
-                    <div class="flex-grow-1">
-                        <div class="card-title">Total Officers</div>
-                        <div class="card-text fs-4 fw-semibold"><?php echo $officers; ?></div>
-                        <?php if ($officersTrend['change'] != 0): ?>
-                        <div class="trend-indicator trend-<?= $officersTrend['direction'] ?>">
-                            <i class="bi bi-arrow-<?= $officersTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
-                            <?= abs($officersTrend['change']) ?> from last month
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="card-hover-info">
-                    <small>Click to view officers list</small>
-                </div>
+    <!-- Officers -->
+    <div class="col-6 col-md">
+        <a href="management/officerslist.php" class="stat-card-wrap stat-card-officers">
+            <div class="sc-icon"><i class="bi bi-person-badge-fill"></i></div>
+            <div class="sc-num"><?= $officers ?></div>
+            <div class="sc-label">Total Officers</div>
+            <?php if ($officersTrend['change'] != 0): ?>
+            <div class="sc-trend trend-<?= $officersTrend['direction'] ?>">
+                <i class="bi bi-arrow-<?= $officersTrend['direction'] === 'up' ? 'up' : 'down' ?>-short"></i>
+                <?= abs($officersTrend['change']) ?> from last month
             </div>
+            <?php endif; ?>
         </a>
     </div>
 
-    <div class="col-md-3">
-        <a href="event.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100 position-relative">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <span class="icon-box bg-warning"><i class="bi bi-calendar-event"></i></span>
-                    <div class="flex-grow-1">
-                        <div class="card-title">Upcoming Events</div>
-                        <div class="card-text fs-4 fw-semibold"><?php echo $eventsUpcoming; ?></div>
-                        <?php if ($eventsTrend['change'] != 0): ?>
-                        <div class="trend-indicator trend-<?= $eventsTrend['direction'] ?>">
-                            <i class="bi bi-arrow-<?= $eventsTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
-                            <?= abs($eventsTrend['change']) ?> from last month
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="card-hover-info">
-                    <small>Click to view all events</small>
-                </div>
+    <!-- Upcoming Events -->
+    <div class="col-6 col-md">
+        <a href="event.php" class="stat-card-wrap stat-card-events">
+            <div class="sc-icon"><i class="bi bi-calendar-event-fill"></i></div>
+            <div class="sc-num"><?= $eventsUpcoming ?></div>
+            <div class="sc-label">Upcoming Events</div>
+            <?php if ($eventsTrend['change'] != 0): ?>
+            <div class="sc-trend trend-<?= $eventsTrend['direction'] ?>">
+                <i class="bi bi-arrow-<?= $eventsTrend['direction'] === 'up' ? 'up' : 'down' ?>-short"></i>
+                <?= abs($eventsTrend['change']) ?> from last month
             </div>
+            <?php endif; ?>
         </a>
     </div>
 
-    <div class="col-md-3">
-        <a href="announcement/admin_announcement.php" class="text-decoration-none">
-            <div class="card dashboard-card h-100 position-relative">
-                <div class="card-body d-flex align-items-center gap-3">
-                    <span class="icon-box bg-danger"><i class="bi bi-megaphone"></i></span>
-                    <div class="flex-grow-1">
-                        <div class="card-title">Announcements</div>
-                        <div class="card-text fs-4 fw-semibold"><?php echo $announcements; ?></div>
-                        <?php if ($announcementsTrend['change'] != 0): ?>
-                        <div class="trend-indicator trend-<?= $announcementsTrend['direction'] ?>">
-                            <i class="bi bi-arrow-<?= $announcementsTrend['direction'] === 'up' ? 'up' : 'down' ?>"></i>
-                            <?= abs($announcementsTrend['change']) ?> from last month
-                        </div>
-                        <?php endif; ?>
-                    </div>
-                </div>
-                <div class="card-hover-info">
-                    <small>Click to manage announcements</small>
-                </div>
+    <!-- Announcements -->
+    <div class="col-6 col-md">
+        <a href="announcement/admin_announcement.php" class="stat-card-wrap stat-card-announce">
+            <div class="sc-icon"><i class="bi bi-megaphone-fill"></i></div>
+            <div class="sc-num"><?= $announcements ?></div>
+            <div class="sc-label">Announcements</div>
+            <?php if ($announcementsTrend['change'] != 0): ?>
+            <div class="sc-trend trend-<?= $announcementsTrend['direction'] ?>">
+                <i class="bi bi-arrow-<?= $announcementsTrend['direction'] === 'up' ? 'up' : 'down' ?>-short"></i>
+                <?= abs($announcementsTrend['change']) ?> from last month
             </div>
+            <?php endif; ?>
+        </a>
+    </div>
+
+    <!-- Messages -->
+    <div class="col-6 col-md">
+        <a href="http://localhost/bangkero_system/index/management/contact_messages.php" class="stat-card-wrap stat-card-messages">
+            <div class="sc-icon" style="position:relative;display:inline-block;">
+                <i class="bi bi-envelope-fill"></i>
+                <?php if ($unreadMessages > 0): ?>
+                <span style="position:absolute;top:-4px;right:-8px;background:#ef4444;color:#fff;border-radius:50%;font-size:0.55rem;font-weight:700;width:15px;height:15px;display:inline-flex;align-items:center;justify-content:center;"><?= min($unreadMessages,99) ?></span>
+                <?php endif; ?>
+            </div>
+            <div class="sc-num"><?= $unreadMessages ?><?= $unreadMessages > 0 ? '<span style="font-size:0.75rem;font-weight:500;color:#92400e;"> unread</span>' : '' ?></div>
+            <div class="sc-label">New Messages</div>
+            <?php if ($messagesTrend['change'] != 0): ?>
+            <div class="sc-trend trend-<?= $messagesTrend['direction'] ?>">
+                <i class="bi bi-arrow-<?= $messagesTrend['direction'] === 'up' ? 'up' : 'down' ?>-short"></i>
+                <?= abs($messagesTrend['change']) ?> from last month
+            </div>
+            <?php else: ?>
+            <div style="font-size:0.72rem;color:#94a3b8;margin-top:4px;"><?= $totalMessages ?> total received</div>
+            <?php endif; ?>
         </a>
     </div>
 
@@ -1107,31 +1110,22 @@ h6 { font-size: 1.05rem; }
 <!-- Member Analytics Panel -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card event-card p-3 shadow-sm">
-            <div class="card-body">
-                <div class="d-flex align-items-center mb-4">
-                    <div class="icon-box me-3" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">
-                        <i class="bi bi-people-fill fs-4"></i>
+        <!-- Monthly New Members — modern smooth line chart card -->
+        <div class="chart-card-animate" style="background:#ffffff; border-radius:18px; box-shadow:0 4px 24px rgba(99,102,241,0.08); padding:28px 28px 20px; border:1px solid #ede9fe;">
+            <div class="d-flex align-items-center justify-content-between mb-1">
+                <div class="d-flex align-items-center gap-3">
+                    <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;">
+                        <i class="bi bi-people-fill"></i>
                     </div>
                     <div>
-                        <h5 class="mb-0 fw-bold text-dark">Member Analytics</h5>
-                        <p class="mb-0 text-muted small">Last 6 months overview</p>
+                        <div style="font-weight:700;font-size:1rem;color:#1e293b;">Monthly New Members</div>
+                        <div style="font-size:0.78rem;color:#94a3b8;">Growth trend over the last 6 months</div>
                     </div>
                 </div>
-                <div class="row gy-4">
-                    <div class="col-lg-12">
-                        <div class="card border-0 shadow-sm h-100" style="background: linear-gradient(135deg, #f8f9ff 0%, #ffffff 100%);">
-                            <div class="card-body p-4">
-                                <h6 class="card-title fw-bold text-dark mb-3">
-                                    <i class="bi bi-graph-up me-2 text-primary"></i>Monthly New Members
-                                </h6>
-                                <div class="chart-fixed" style="height: 280px;">
-                                    <canvas id="monthlyNewMembersChart" class="chart-canvas"></canvas>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                <span style="font-size:0.72rem;font-weight:600;letter-spacing:0.5px;color:#6366f1;background:#eef2ff;padding:4px 12px;border-radius:20px;">LAST 6 MONTHS</span>
+            </div>
+            <div style="height:290px;position:relative;margin-top:12px;">
+                <canvas id="monthlyNewMembersChart"></canvas>
             </div>
         </div>
     </div>
@@ -1705,27 +1699,88 @@ Chart.defaults.font.size = 11;
 
         const monthlyCtx = document.getElementById('monthlyNewMembersChart');
         if (monthlyCtx) {
+            // Gradient fill
+            const mlCtx2d = monthlyCtx.getContext('2d');
+            const gradientFill = mlCtx2d.createLinearGradient(0, 0, 0, 280);
+            gradientFill.addColorStop(0,   'rgba(99, 102, 241, 0.22)');
+            gradientFill.addColorStop(0.6, 'rgba(99, 102, 241, 0.05)');
+            gradientFill.addColorStop(1,   'rgba(99, 102, 241, 0)');
+
+            // Per-point styling: highlight the last data point
+            const lastIdx = monthlyNew.length - 1;
+            const pointBg    = monthlyNew.map((_, i) => i === lastIdx ? '#6366f1' : '#ffffff');
+            const pointBorder = monthlyNew.map((_, i) => i === lastIdx ? '#6366f1' : '#6366f1');
+            const pointRadius = monthlyNew.map((_, i) => i === lastIdx ? 7 : 5);
+            const pointHover  = monthlyNew.map((_, i) => i === lastIdx ? 9 : 7);
+
             new Chart(monthlyCtx, {
-                type: 'bar',
+                type: 'line',
                 data: {
                     labels: monthLabels,
                     datasets: [{
-                                label: 'New Members',
-                                data: monthlyNew,
-                                backgroundColor: 'rgba(102, 126, 234, 0.7)',
-                                borderColor: '#667eea',
-                                borderWidth: 2,
-                                borderRadius: 8,
-                                hoverBackgroundColor: 'rgba(102, 126, 234, 0.9)'
-                            }]
-
+                        label: 'New Members',
+                        data: monthlyNew,
+                        borderColor: '#6366f1',
+                        borderWidth: 2.5,
+                        tension: 0.45,
+                        fill: true,
+                        backgroundColor: gradientFill,
+                        pointBackgroundColor: pointBg,
+                        pointBorderColor: pointBorder,
+                        pointBorderWidth: 2.5,
+                        pointRadius: pointRadius,
+                        pointHoverRadius: pointHover,
+                        pointHoverBackgroundColor: '#6366f1',
+                        pointHoverBorderColor: '#ffffff',
+                        pointHoverBorderWidth: 3,
+                        cubicInterpolationMode: 'monotone'
+                    }]
                 },
                 options: {
                     responsive: true,
                     maintainAspectRatio: false,
+                    animation: {
+                        duration: 1200,
+                        easing: 'easeInOutQuart',
+                        x: { from: 0 }
+                    },
+                    interaction: {
+                        mode: 'index',
+                        intersect: false
+                    },
                     plugins: {
-                        legend: {
-                            display: false
+                        legend: { display: false },
+                        tooltip: {
+                            backgroundColor: '#1e293b',
+                            titleColor: '#94a3b8',
+                            bodyColor: '#ffffff',
+                            bodyFont: { size: 14, weight: '700' },
+                            titleFont: { size: 11 },
+                            padding: 12,
+                            cornerRadius: 10,
+                            displayColors: false,
+                            callbacks: {
+                                title: ctx => ctx[0].label,
+                                label: ctx => '  ' + ctx.parsed.y + ' new members'
+                            }
+                        }
+                    },
+                    scales: {
+                        x: {
+                            grid: { display: false },
+                            border: { display: false },
+                            ticks: { color: '#94a3b8', font: { size: 11, weight: '500' } }
+                        },
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: 'rgba(148,163,184,0.12)', drawBorder: false },
+                            border: { display: false, dash: [4, 4] },
+                            ticks: {
+                                color: '#94a3b8',
+                                font: { size: 11 },
+                                stepSize: 1,
+                                padding: 8
+                            }
                         }
                     }
                 }

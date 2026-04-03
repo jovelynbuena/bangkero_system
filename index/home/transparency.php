@@ -80,40 +80,14 @@ $assistanceQuery = "SELECT
     LIMIT 10";
 $assistanceResult = $conn->query($assistanceQuery);
 
-// Fetch beneficiaries / impact stories
-$beneficiariesQuery = "SELECT
-    b.id,
-    b.name,
-    b.assistance_type,
-    b.amount_value,
-    b.quantity,
-    b.date_assisted,
-    b.barangay,
-    b.municipality,
-    b.status,
-    b.short_story,
-    b.featured,
-    c.name AS program_name
-    FROM transparency_beneficiaries b
-    LEFT JOIN transparency_campaigns c ON b.program_id = c.id
-    ORDER BY b.featured DESC, b.date_assisted DESC
-    LIMIT 12";
-$beneficiariesResult = $conn->query($beneficiariesQuery);
-
-// Stats for beneficiaries — includes all records regardless of status
-$benStatsResult = $conn->query(
-    "SELECT COUNT(*) AS total_ben, COALESCE(SUM(amount_value), 0) AS total_val FROM transparency_beneficiaries"
-);
-$benStats = $benStatsResult ? $benStatsResult->fetch_assoc() : ['total_ben' => 0, 'total_val' => 0];
-
-// Combined grand total: donations + beneficiary amounts
-$grandTotalResult = $conn->query(
-    "SELECT
-        (SELECT COALESCE(SUM(amount), 0) FROM transparency_donations WHERE status = 'confirmed')
-        + (SELECT COALESCE(SUM(amount_value), 0) FROM transparency_beneficiaries)
-        AS grand_total"
-);
-$grandTotal = $grandTotalResult ? (float)$grandTotalResult->fetch_assoc()['grand_total'] : 0;
+// Fetch community achievements for photo-wall gallery
+$achievementsResult = $conn->query("SELECT * FROM community_achievements WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC");
+$achievementsList = [];
+if ($achievementsResult && $achievementsResult->num_rows > 0) {
+    while ($row = $achievementsResult->fetch_assoc()) {
+        $achievementsList[] = $row;
+    }
+}
 
 // Helper function to format currency
 function formatCurrency($amount) {
@@ -156,24 +130,24 @@ function getStatusClass($status) {
   
   <style>
     :root {
-      /* Primary Theme Colors - Navy Blue */
-      --primary-color: #2c3e50;
-      --secondary-color: #34495e;
-      --accent-color: #3498db;
-      --light-blue: #5dade2;
-      --pale-blue: #ebf5fb;
-      
+      /* Modern Coastal Fresh Theme — matches user_home.php */
+      --primary-color: #2E86AB;
+      --secondary-color: #1B4F72;
+      --accent-color: #F4A261;
+      --light-blue: #A8DADC;
+      --pale-blue: #e8f6f8;
+
       /* Supporting Colors */
       --dark: #1a252f;
-      --gray: #6c757d;
-      --light-gray: #ecf0f1;
+      --gray: #6b7280;
+      --light-gray: #f0f9fb;
       --white: #ffffff;
-      --border: #d5dbdb;
-      
+      --border: #c9e8ec;
+
       /* Shadows */
-      --shadow-sm: 0 2px 8px rgba(44, 62, 80, 0.08);
-      --shadow-md: 0 4px 16px rgba(44, 62, 80, 0.12);
-      --shadow-lg: 0 8px 32px rgba(44, 62, 80, 0.16);
+      --shadow-sm: 0 2px 8px rgba(46, 134, 171, 0.08);
+      --shadow-md: 0 4px 16px rgba(46, 134, 171, 0.12);
+      --shadow-lg: 0 8px 32px rgba(46, 134, 171, 0.18);
     }
 
     * {
@@ -183,7 +157,7 @@ function getStatusClass($status) {
     body {
       font-family: 'Inter', sans-serif;
       background-color: var(--light-gray);
-      color: var(--primary-color);
+      color: var(--dark);
       overflow-x: hidden;
       padding-top: 80px;
     }
@@ -298,19 +272,19 @@ function getStatusClass($status) {
     .stat-card:hover {
       transform: translateY(-6px);
       box-shadow: var(--shadow-lg);
-      border-color: var(--accent-color);
+      border-color: var(--primary-color);
     }
 
     .stat-icon {
       width: 55px;
       height: 55px;
       border-radius: 14px;
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--accent-color) 100%);
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 16px;
-      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+      box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
     }
 
     .stat-icon i {
@@ -407,7 +381,7 @@ function getStatusClass($status) {
     .program-card:hover {
       transform: translateY(-6px);
       box-shadow: var(--shadow-lg);
-      border-color: var(--accent-color);
+      border-color: var(--primary-color);
     }
 
     .program-status {
@@ -504,8 +478,8 @@ function getStatusClass($status) {
 
     .search-box input:focus {
       outline: none;
-      border-color: var(--accent-color);
-      box-shadow: 0 0 0 3px rgba(52, 152, 219, 0.1);
+      border-color: var(--primary-color);
+      box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.15);
     }
 
     .search-box i {
@@ -599,7 +573,7 @@ function getStatusClass($status) {
 
     .amount-cell {
       font-weight: 700;
-      color: var(--accent-color);
+      color: var(--primary-color);
       font-family: 'Poppins', sans-serif;
       font-size: 1rem;
     }
@@ -686,220 +660,97 @@ function getStatusClass($status) {
       }
     }
 
-    /* ==================== BENEFICIARIES SECTION ==================== */
-    .beneficiaries-section {
+    /* ==================== ACHIEVEMENTS GALLERY ==================== */
+    .achievements-section {
       padding: 60px 0;
       background: white;
     }
 
-    /* 2×2 grid wrapper — max 2 columns, center last odd card */
-    .ben-grid {
+    .achievements-grid {
       display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: 24px;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 22px;
     }
 
-    @media (max-width: 767px) {
-      .ben-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    /* Center last card when odd total */
-    .ben-grid-item:last-child:nth-child(odd) {
-      grid-column: 1 / -1;
-      max-width: calc(50% - 12px);
-      margin: 0 auto;
-    }
-
-    @media (max-width: 767px) {
-      .ben-grid-item:last-child:nth-child(odd) {
-        grid-column: unset;
-        max-width: 100%;
-        margin: 0;
-      }
-    }
-
-    .ben-card {
+    .ach-card {
+      border-radius: 16px;
+      overflow: hidden;
       background: #fff;
       border: 1.5px solid var(--border);
-      border-radius: 14px;
-      padding: 22px 24px;
-      display: flex;
-      flex-direction: column;
-      transition: box-shadow 0.25s ease, transform 0.25s ease;
-      position: relative;
-      overflow: hidden;
+      box-shadow: var(--shadow-sm);
+      transition: transform 0.28s ease, box-shadow 0.28s ease;
     }
 
-    .ben-card::before {
-      content: '';
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%;
-      height: 3px;
-      border-radius: 14px 14px 0 0;
-    }
-
-    /* Top-border color per category */
-    .ben-card.cat-financial::before   { background: #1565c0; }
-    .ben-card.cat-relief::before      { background: #2e7d32; }
-    .ben-card.cat-educational::before { background: #7b1fa2; }
-    .ben-card.cat-training::before    { background: #ef6c00; }
-    .ben-card.cat-livelihood::before  { background: #c2185b; }
-    .ben-card.cat-default::before     { background: var(--accent-color); }
-
-    .ben-card:hover {
-      transform: translateY(-4px);
+    .ach-card:hover {
+      transform: translateY(-6px);
       box-shadow: var(--shadow-lg);
     }
 
-    /* Category badge */
-    .ben-badge {
+    .ach-img-wrap {
+      width: 100%;
+      height: 200px;
+      overflow: hidden;
+      background: var(--pale-blue);
+    }
+
+    .ach-img-wrap img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform 0.4s ease;
+    }
+
+    .ach-card:hover .ach-img-wrap img {
+      transform: scale(1.05);
+    }
+
+    .ach-body {
+      padding: 16px 18px 20px;
+    }
+
+    .ach-tag {
       display: inline-flex;
       align-items: center;
       gap: 5px;
-      padding: 4px 11px;
-      border-radius: 50px;
-      font-size: 0.73rem;
-      font-weight: 700;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
-      margin-bottom: 14px;
-      width: fit-content;
-    }
-
-    .ben-badge.cat-financial   { background: #e3f2fd; color: #1565c0; }
-    .ben-badge.cat-relief      { background: #e8f5e9; color: #2e7d32; }
-    .ben-badge.cat-educational { background: #f3e5f5; color: #7b1fa2; }
-    .ben-badge.cat-training    { background: #fff3e0; color: #ef6c00; }
-    .ben-badge.cat-livelihood  { background: #fce4ec; color: #c2185b; }
-    .ben-badge.cat-default     { background: var(--pale-blue); color: var(--primary-color); }
-
-    .ben-name {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 700;
-      font-size: 1.05rem;
-      color: var(--dark);
-      margin-bottom: 3px;
-    }
-
-    .ben-location {
-      font-size: 0.8rem;
-      color: var(--gray);
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      margin-bottom: 10px;
-    }
-
-    .ben-program-tag {
-      font-size: 0.78rem;
-      color: var(--accent-color);
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .ben-description {
-      font-size: 0.87rem;
-      color: var(--gray);
-      line-height: 1.65;
-      flex: 1;
-      margin-bottom: 16px;
-    }
-
-    .ben-description em {
-      display: block;
-      font-style: italic;
-      color: #7f8c8d;
-      margin-top: 6px;
-      padding-left: 10px;
-      border-left: 2px solid var(--border);
-    }
-
-    .ben-footer {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .ben-amount {
-      font-weight: 700;
+      background: var(--pale-blue);
       color: var(--primary-color);
-      font-family: 'Poppins', sans-serif;
-      font-size: 1rem;
-    }
-
-    .ben-date {
-      font-size: 0.76rem;
-      color: var(--gray);
-    }
-
-    .ben-status-pill {
-      font-size: 0.71rem;
-      font-weight: 600;
-      padding: 3px 10px;
-      border-radius: 50px;
-      text-transform: capitalize;
-      white-space: nowrap;
-    }
-
-    .ben-status-pill.served       { background: #d5f4e6; color: #1a8a50; }
-    .ben-status-pill.in-progress  { background: #fff8e1; color: #d48806; }
-    .ben-status-pill.pending      { background: #fde8e8; color: #c0392b; }
-
-    /* ==================== BENEFICIARY SUMMARY BAR ==================== */
-    .ben-summary-bar {
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
-      border-radius: 14px;
-      padding: 22px 32px;
-      color: white;
-      display: flex;
-      justify-content: space-around;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 20px;
-      margin-bottom: 40px;
-    }
-
-    .ben-summary-item {
-      text-align: center;
-    }
-
-    .ben-summary-value {
-      font-family: 'Poppins', sans-serif;
-      font-size: 1.9rem;
-      font-weight: 800;
-      line-height: 1;
-      margin-bottom: 4px;
-    }
-
-    .ben-summary-label {
-      font-size: 0.78rem;
-      font-weight: 500;
-      opacity: 0.85;
+      font-size: 0.72rem;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.4px;
+      padding: 4px 10px;
+      border-radius: 50px;
+      margin-bottom: 10px;
     }
 
-    .ben-summary-divider {
-      width: 1px;
-      height: 40px;
-      background: rgba(255,255,255,0.25);
+    .ach-title {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 0.97rem;
+      color: var(--dark);
+      margin-bottom: 6px;
+      line-height: 1.35;
     }
 
-    @media (max-width: 576px) {
-      .ben-summary-divider { display: none; }
-      .ben-summary-bar { padding: 18px 20px; }
+    .ach-caption {
+      font-size: 0.83rem;
+      color: var(--gray);
+      line-height: 1.55;
     }
 
+    @media (max-width: 767px) {
+      .achievements-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 14px;
+      }
+      .ach-img-wrap { height: 150px; }
+    }
 
+    @media (max-width: 480px) {
+      .achievements-grid {
+        grid-template-columns: 1fr;
+      }
+    }
 
     /* Empty State */
     .empty-state {
@@ -1030,7 +881,7 @@ function getStatusClass($status) {
           <div class="stat-icon">
             <i class="bi bi-cash-stack"></i>
           </div>
-          <div class="stat-value"><?= formatCurrency($grandTotal) ?></div>
+          <div class="stat-value"><?= formatCurrency($stats['total_assistance']) ?></div>
           <div class="stat-label">Total Assistance Received</div>
         </div>
       </div>
@@ -1068,14 +919,14 @@ function getStatusClass($status) {
         </div>
       </div>
 
-      <!-- Stat 5: Total Beneficiaries -->
+      <!-- Stat 5: Community Achievements -->
       <div class="col-lg col-md-6">
         <div class="stat-card">
           <div class="stat-icon">
-            <i class="bi bi-people-fill"></i>
+            <i class="bi bi-images"></i>
           </div>
-          <div class="stat-value"><?= number_format($benStats['total_ben']) ?></div>
-          <div class="stat-label">Beneficiaries Served</div>
+          <div class="stat-value"><?= number_format(count($achievementsList)) ?></div>
+          <div class="stat-label">Community Achievements</div>
         </div>
       </div>
     </div>
@@ -1127,146 +978,40 @@ function getStatusClass($status) {
   </div>
 </section>
 
-<!-- SECTION 4: BENEFICIARIES & IMPACT STORIES -->
-<section class="beneficiaries-section">
+<!-- SECTION 4: COMMUNITY ACHIEVEMENTS GALLERY -->
+<section class="achievements-section">
   <div class="container">
     <div class="section-header">
-      <h2>Beneficiaries & Impact</h2>
-      <p>Community members and fisherfolk who received assistance through our programs</p>
+      <h2>Community Achievements</h2>
+      <p>Products, outcomes, and milestones from our livelihood programs — grown and made by our fisherfolk community</p>
     </div>
 
-    <!-- Summary Bar -->
-    <?php
-      $distinctBarangayResult = $conn->query("SELECT COUNT(DISTINCT barangay) AS cnt FROM transparency_beneficiaries WHERE barangay != ''");
-      $barangayCount = $distinctBarangayResult ? (int)$distinctBarangayResult->fetch_assoc()['cnt'] : 0;
-    ?>
-    <div class="ben-summary-bar">
-      <div class="ben-summary-item">
-        <div class="ben-summary-value"><?= number_format($benStats['total_ben']) ?></div>
-        <div class="ben-summary-label">Total Beneficiaries</div>
-      </div>
-      <div class="ben-summary-divider"></div>
-      <div class="ben-summary-item">
-        <div class="ben-summary-value"><?= '₱' . number_format($benStats['total_val'], 0) ?></div>
-        <div class="ben-summary-label">Total Assistance Value</div>
-      </div>
-      <div class="ben-summary-divider"></div>
-      <div class="ben-summary-item">
-        <div class="ben-summary-value"><?= number_format($barangayCount) ?></div>
-        <div class="ben-summary-label">Barangays Reached</div>
-      </div>
-    </div>
-
-    <?php
-    // Map assistance type to CSS category class
-    function getBenCatClass(string $type): string {
-      $t = strtolower($type);
-      if (str_contains($t, 'financial'))                      return 'cat-financial';
-      if (str_contains($t, 'relief') || str_contains($t, 'goods')) return 'cat-relief';
-      if (str_contains($t, 'educ'))                           return 'cat-educational';
-      if (str_contains($t, 'train'))                          return 'cat-training';
-      if (str_contains($t, 'livelihood'))                     return 'cat-livelihood';
-      return 'cat-default';
-    }
-
-    // Map category to Bootstrap icon
-    function getBenCatIcon(string $type): string {
-      $t = strtolower($type);
-      if (str_contains($t, 'financial'))                      return 'bi-cash-coin';
-      if (str_contains($t, 'relief') || str_contains($t, 'goods')) return 'bi-box-seam';
-      if (str_contains($t, 'educ'))                           return 'bi-mortarboard';
-      if (str_contains($t, 'train'))                          return 'bi-person-workspace';
-      if (str_contains($t, 'livelihood'))                     return 'bi-tools';
-      return 'bi-gift';
-    }
-
-    // Build a short description: "Type assistance via [Program]" + story excerpt
-    function buildBenDescription(array $ben): string {
-      $parts = [];
-      $type    = htmlspecialchars($ben['assistance_type'] ?? '');
-      $program = htmlspecialchars($ben['program_name'] ?? '');
-      $qty     = (int)($ben['quantity'] ?? 0);
-
-      if ($type) {
-        $line = $type . ' assistance';
-        if ($qty > 0) $line .= ' (' . $qty . ' unit' . ($qty > 1 ? 's' : '') . ')';
-        if ($program) $line .= ' under <strong>' . $program . '</strong>';
-        $parts[] = $line . '.';
-      } elseif ($program) {
-        $parts[] = 'Assisted under <strong>' . $program . '</strong>.';
-      }
-
-      $story = trim($ben['short_story'] ?? '');
-      if ($story !== '') {
-        $excerpt = htmlspecialchars(mb_substr($story, 0, 110));
-        if (mb_strlen($story) > 110) $excerpt .= '&hellip;';
-        $parts[] = '<em>&ldquo;' . $excerpt . '&rdquo;</em>';
-      }
-
-      return implode(' ', $parts);
-    }
-    ?>
-
-    <?php if ($beneficiariesResult && $beneficiariesResult->num_rows > 0): ?>
-    <div class="ben-grid">
-      <?php while ($ben = $beneficiariesResult->fetch_assoc()):
-        $catClass   = getBenCatClass($ben['assistance_type'] ?? '');
-        $catIcon    = getBenCatIcon($ben['assistance_type'] ?? '');
-        $statusSlug = strtolower(str_replace([' ', '_'], '-', $ben['status'] ?? ''));
-        $desc       = buildBenDescription($ben);
-      ?>
-      <div class="ben-grid-item">
-        <div class="ben-card <?= $catClass ?>">
-
-          <!-- Category Badge -->
-          <span class="ben-badge <?= $catClass ?>">
-            <i class="bi <?= $catIcon ?>"></i>
-            <?= htmlspecialchars($ben['assistance_type'] ?? 'Assistance') ?>
-          </span>
-
-          <!-- Name -->
-          <div class="ben-name"><?= htmlspecialchars($ben['name']) ?></div>
-
-          <!-- Location -->
-          <?php if (!empty($ben['barangay'])): ?>
-          <div class="ben-location">
-            <i class="bi bi-geo-alt"></i>
-            <?= htmlspecialchars($ben['barangay']) ?>
-            <?= !empty($ben['municipality']) ? ', ' . htmlspecialchars($ben['municipality']) : '' ?>
-          </div>
+    <?php if (!empty($achievementsList)): ?>
+    <div class="achievements-grid">
+      <?php foreach ($achievementsList as $ach): ?>
+      <div class="ach-card">
+        <div class="ach-img-wrap">
+          <img src="../../<?= htmlspecialchars($ach['image_path']) ?>"
+               alt="<?= htmlspecialchars($ach['title']) ?>"
+               onerror="this.parentElement.style.background='#e8f6f8'; this.style.display='none';">
+        </div>
+        <div class="ach-body">
+          <?php if (!empty($ach['tag'])): ?>
+          <span class="ach-tag"><i class="bi bi-check-circle-fill"></i> <?= htmlspecialchars($ach['tag']) ?></span>
           <?php endif; ?>
-
-          <!-- Description (type + program + story) -->
-          <?php if ($desc): ?>
-          <div class="ben-description"><?= $desc ?></div>
+          <div class="ach-title"><?= htmlspecialchars($ach['title']) ?></div>
+          <?php if (!empty($ach['caption'])): ?>
+          <div class="ach-caption"><?= htmlspecialchars($ach['caption']) ?></div>
           <?php endif; ?>
-
-          <!-- Footer: amount, date, status -->
-          <div class="ben-footer">
-            <div>
-              <?php if ($ben['amount_value'] > 0): ?>
-              <div class="ben-amount"><?= '₱' . number_format($ben['amount_value'], 2) ?></div>
-              <?php endif; ?>
-              <?php if (!empty($ben['date_assisted'])): ?>
-              <div class="ben-date"><?= date('M d, Y', strtotime($ben['date_assisted'])) ?></div>
-              <?php endif; ?>
-            </div>
-            <?php if (!empty($ben['status'])): ?>
-            <span class="ben-status-pill <?= $statusSlug ?>">
-              <?= htmlspecialchars(ucfirst($ben['status'])) ?>
-            </span>
-            <?php endif; ?>
-          </div>
-
         </div>
       </div>
-      <?php endwhile; ?>
+      <?php endforeach; ?>
     </div>
     <?php else: ?>
     <div class="empty-state">
-      <i class="bi bi-people"></i>
-      <h4>No Beneficiary Records Yet</h4>
-      <p>Beneficiary and impact information will appear here once records are available.</p>
+      <i class="bi bi-images"></i>
+      <h4>Coming Soon</h4>
+      <p>Photos of community products and achievements will be shared here.</p>
     </div>
     <?php endif; ?>
   </div>

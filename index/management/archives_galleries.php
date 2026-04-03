@@ -136,8 +136,6 @@ $sql = "SELECT * FROM galleries_archive $where_sql ORDER BY $order LIMIT $limit 
 $result = $conn->query($sql);
 
 ?>
-<?php include('../navbar.php'); ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -151,7 +149,7 @@ $result = $conn->query($sql);
 
     <style>
         body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; }
-        .main-content { margin-left: 270px; padding: 32px; min-height: 100vh; }
+        .main-content { margin-left: 250px; padding: 32px; min-height: 100vh; }
         .page-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 30px; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2); color: white; }
         .table-container { background: white; border-radius: 12px; padding: 24px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
         .gallery-thumb { width: 50px; height: 50px; object-fit: cover; border-radius: 8px; }
@@ -159,18 +157,17 @@ $result = $conn->query($sql);
         .btn-delete { background: #ef4444; color: white; border: none; border-radius: 8px; padding: 6px 12px; }
         .badge-category { padding: 4px 8px; border-radius: 6px; font-size: 11px; font-weight: 600; }
         
-        @media (max-width: 991.98px) { .main-content { margin-left: 0; padding: 20px; } }
+        @media (max-width: 991.98px) { .main-content { margin-left: 0; padding: 16px; } }
     </style>
 </head>
 <body>
 
+<?php include('../navbar.php'); ?>
+
 <div class="main-content">
-    <div class="page-header d-flex justify-content-between align-items-center">
-        <div>
-            <h2><i class="bi bi-archive-fill me-2"></i>Archived Galleries</h2>
-            <p>View, restore or permanently delete archived photo galleries</p>
-        </div>
-        <a href="galleries.php" class="btn btn-light rounded-pill px-4"><i class="bi bi-arrow-left me-2"></i>Back to Galleries</a>
+    <div class="page-header">
+        <h2><i class="bi bi-archive-fill me-2"></i>Archived Galleries</h2>
+        <p>View, restore or permanently delete archived photo galleries</p>
     </div>
 
     <div class="card shadow-sm border-0 mb-4">

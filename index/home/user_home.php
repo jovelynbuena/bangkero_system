@@ -24,8 +24,10 @@ $conn->query("CREATE TABLE IF NOT EXISTS partners_sponsors (
     logo_path VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL DEFAULT 'partner',
     sort_order INT NOT NULL DEFAULT 0,
+    website_url VARCHAR(500) DEFAULT NULL,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+$conn->query("ALTER TABLE partners_sponsors ADD COLUMN IF NOT EXISTS website_url VARCHAR(500) DEFAULT NULL");
 
 // Ensure home_carousel_slides table exists
 $conn->query("CREATE TABLE IF NOT EXISTS home_carousel_slides (
@@ -101,7 +103,6 @@ $impactStats = [
     'total_donations'   => 0,
     'beneficiaries'     => 0,
     'programs_completed'=> 0,
-    'impact_story'      => null,
 ];
 
 // Total confirmed donations
@@ -115,10 +116,6 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['beneficiaries'] = (int)$row[
 // Completed programs
 $r = $conn->query("SELECT COUNT(*) AS total FROM transparency_campaigns WHERE status='completed'");
 if ($r && $row = $r->fetch_assoc()) { $impactStats['programs_completed'] = (int)$row['total']; }
-
-// Latest featured impact story/beneficiary
-$r = $conn->query("SELECT name, short_story, photo_path, date_assisted FROM transparency_beneficiaries WHERE featured=1 AND short_story IS NOT NULL ORDER BY date_assisted DESC LIMIT 1");
-if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
 
 ?>
 
@@ -137,21 +134,22 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
   <link href="../../css/main-style.css" rel="stylesheet">
   <style>
     :root {
-      --primary: #2c3e50;
-      --secondary: #34495e;
-      --accent: #5a6c7d;
-      --light: #ecf0f1;
+      --primary: #2E86AB;
+      --secondary: #A8DADC;
+      --accent: #1B4F72;
+      --accent-dark: #154260;
+      --light: #e8f6f8;
       --success: #27ae60;
-      --info: #3498db;
-      --bg: #f8f9fa;
-      --dark: #1a252f;
-      --gray: #95a5a6;
-      --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+      --info: #2E86AB;
+      --bg: #FFFFFF;
+      --dark: #222222;
+      --gray: #6b7280;
+      --card-shadow: 0 4px 20px rgba(46, 134, 171, 0.10);
     }
     body {
       font-family: 'Inter', sans-serif;
       background-color: var(--bg);
-      color: #2c3e50;
+      color: #333333;
       overflow-x: hidden;
     }
     * {
@@ -201,7 +199,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       transform: translateX(-50%);
       width: 0;
       height: 3px;
-      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
       border-radius: 2px;
       transition: width 0.3s ease;
     }
@@ -211,13 +209,8 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .navbar-nav .nav-link:hover,
     .navbar-nav .nav-link.active {
-      color: var(--primary-orange) !important;
-      background: var(--light-orange);
-    }
-    .navbar-nav .nav-link:hover,
-    .navbar-nav .nav-link.active {
-      color: var(--primary-orange) !important;
-      background: var(--light-orange);
+      color: var(--primary) !important;
+      background: var(--light);
     }
     
     /* Modern Hero Carousel */
@@ -233,8 +226,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      /* Lightened overlay for better image visibility */
-      background: linear-gradient(135deg, rgba(44, 62, 80, 0.45) 0%, rgba(26, 37, 47, 0.55) 100%);
+      background: linear-gradient(135deg, rgba(46, 134, 171, 0.40) 0%, rgba(34, 34, 34, 0.52) 100%);
       z-index: 1;
     }
     .carousel-caption {
@@ -283,13 +275,13 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       box-shadow: 0 4px 15px rgba(0,0,0,0.2);
     }
     .carousel-btn-primary {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       color: white;
       border: 2px solid transparent;
     }
     .carousel-btn-primary:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.4);
+      box-shadow: 0 6px 20px rgba(27, 79, 114, 0.45);
       color: white;
     }
     .carousel-btn-secondary {
@@ -318,7 +310,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     .carousel-control-next-icon {
       width: 40px;
       height: 40px;
-      background-color: rgba(44, 62, 80, 0.7);
+      background-color: rgba(46, 134, 171, 0.75);
       border-radius: 50%;
       padding: 10px;
     }
@@ -358,14 +350,14 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     
     /* ==================== GALLERY SECTION STYLES ==================== */
     .gallery-section {
-      background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+      background: linear-gradient(180deg, #fff 0%, #f0fafc 100%);
       padding: 60px 0;
       position: relative;
       overflow: hidden;
     }
     .gallery-section h2 {
       font-family: 'Poppins', sans-serif;
-      color: var(--dark);
+      color: var(--primary);
       font-weight: 700;
       font-size: 2.5rem;
       margin-bottom: 2rem;
@@ -394,7 +386,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .gallery-item:hover {
       transform: translateY(-8px);
-      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
+      box-shadow: 0 12px 40px rgba(46, 134, 171, 0.18);
     }
     .gallery-item:hover img {
       transform: scale(1.1);
@@ -403,7 +395,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 100%;
-      background: linear-gradient(135deg, rgba(44, 62, 80, 0.7) 0%, rgba(26, 37, 47, 0.8) 100%);
+      background: linear-gradient(135deg, rgba(46, 134, 171, 0.7) 0%, rgba(34, 34, 34, 0.75) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -423,7 +415,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       to { transform: scale(1); opacity: 1; }
     }
     .btn-view-gallery {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       color: white;
       padding: 14px 40px;
       border-radius: 50px;
@@ -434,23 +426,23 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       align-items: center;
       gap: 10px;
       transition: all 0.3s ease;
-      box-shadow: 0 4px 15px rgba(44, 62, 80, 0.25);
+      box-shadow: 0 4px 15px rgba(27, 79, 114, 0.30);
     }
     .btn-view-gallery:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 25px rgba(44, 62, 80, 0.35);
+      box-shadow: 0 8px 25px rgba(27, 79, 114, 0.45);
       color: white;
     }
     
     /* ==================== FEATURED PROGRAMS SECTION ==================== */
     .programs-section {
-      background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+      background: linear-gradient(135deg, #f0fafc 0%, #ffffff 100%);
       padding: 60px 0;
       position: relative;
     }
     .programs-section h2 {
       font-family: 'Poppins', sans-serif;
-      color: var(--dark);
+      color: var(--primary);
       font-weight: 700;
       font-size: 2.5rem;
       margin-bottom: 1rem;
@@ -464,9 +456,9 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .program-card {
       background: white;
-      border-radius: 20px;
+      border-radius: 16px;
       padding: 35px 30px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 20px rgba(46, 134, 171, 0.09);
       transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
       height: 100%;
       border: 2px solid transparent;
@@ -478,7 +470,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 4px;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
       transform: scaleX(0);
       transition: transform 0.4s ease;
     }
@@ -487,19 +479,19 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .program-card:hover {
       transform: translateY(-10px);
-      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.15);
-      border-color: var(--primary);
+      box-shadow: 0 12px 40px rgba(46, 134, 171, 0.18);
+      border-color: var(--secondary);
     }
     .program-icon {
       width: 70px;
       height: 70px;
       border-radius: 18px;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, #1a6d8a 100%);
       display: flex;
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.2);
+      box-shadow: 0 6px 20px rgba(46, 134, 171, 0.25);
       transition: all 0.3s ease;
     }
     .program-card:hover .program-icon {
@@ -512,12 +504,12 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     .program-card h4 {
       font-family: 'Poppins', sans-serif;
       font-weight: 700;
-      color: var(--dark);
+      color: #222;
       font-size: 1.3rem;
       margin-bottom: 15px;
     }
     .program-card p {
-      color: #64748b;
+      color: #555;
       line-height: 1.7;
       margin-bottom: 20px;
       font-size: 0.95rem;
@@ -537,9 +529,9 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       font-size: 0.9rem;
     }
     .btn-program:hover {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       color: white;
-      border-color: var(--secondary);
+      border-color: var(--accent);
       transform: translateX(5px);
     }
     
@@ -595,7 +587,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     
     /* Modern Intro Section */
     .intro-section {
-      background: linear-gradient(180deg, #ffffff 0%, #fff5f0 100%);
+      background: linear-gradient(180deg, #ffffff 0%, #e8f6f8 100%);
       padding: 50px 0;
       position: relative;
       overflow: hidden;
@@ -607,12 +599,12 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       right: -10%;
       width: 500px;
       height: 500px;
-      background: radial-gradient(circle, rgba(44, 62, 80, 0.05) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(46, 134, 171, 0.06) 0%, transparent 70%);
       border-radius: 50%;
     }
     .intro-section h2 {
       font-family: 'Poppins', sans-serif;
-      color: var(--dark);
+      color: var(--primary);
       font-weight: 700;
       margin-bottom: 1.5rem;
       font-size: 2.8rem;
@@ -627,19 +619,11 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       transform: translateX(-50%);
       width: 80px;
       height: 4px;
-      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       border-radius: 2px;
     }
     .intro-section p {
-      color: #4b5563;
-      font-size: 1.15rem;
-      line-height: 1.8;
-      max-width: 900px;
-      margin: 0 auto;
-      position: relative;
-    }
-    .intro-section p {
-      color: #4b5563;
+      color: #444;
       font-size: 1.15rem;
       line-height: 1.8;
       max-width: 900px;
@@ -649,13 +633,13 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
    
     /* Compact Event Highlight */
     .event-highlight {
-      background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%);
+      background: linear-gradient(180deg, #ffffff 0%, #f0fafc 100%);
       padding: 40px 20px;
       position: relative;
     }
     .event-highlight h2 {
       font-family: 'Poppins', sans-serif;
-      color: var(--dark);
+      color: var(--primary);
       margin-bottom: 20px;
       font-weight: 700;
       font-size: 1.5rem;
@@ -663,7 +647,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     .event-card {
       border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+      box-shadow: 0 4px 20px rgba(46, 134, 171, 0.10);
       transition: all 0.3s ease;
       border: none;
       background: white;
@@ -673,7 +657,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .event-card:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 32px rgba(44, 62, 80, 0.12);
+      box-shadow: 0 8px 32px rgba(46, 134, 171, 0.18);
     }
     .event-poster-wrapper {
       position: relative;
@@ -699,7 +683,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .event-badge {
       display: inline-block;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       color: white;
       padding: 6px 14px;
       border-radius: 20px;
@@ -711,7 +695,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       align-self: flex-start;
     }
     .event-details h3 {
-      color: var(--dark);
+      color: #222;
       font-weight: 700;
       font-size: 1.3rem;
       margin-bottom: 10px;
@@ -719,7 +703,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       line-height: 1.3;
     }
     .event-description {
-      color: #64748b;
+      color: #555;
       font-size: 0.9rem;
       line-height: 1.5;
       margin-bottom: 15px;
@@ -735,13 +719,13 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       display: flex;
       align-items: center;
       padding: 8px 12px;
-      background: #f8fafc;
+      background: #f0fafc;
       border-radius: 8px;
       transition: all 0.2s ease;
-      border-left: 3px solid var(--primary);
+      border-left: 3px solid var(--secondary);
     }
     .event-details .icon-text:hover {
-      background: #f1f5f9;
+      background: #e8f6f8;
     }
     .event-details .icon-text i {
       color: var(--primary);
@@ -749,7 +733,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       font-size: 1rem;
     }
     .event-details .icon-text span {
-      color: var(--dark);
+      color: #333;
       font-weight: 600;
       font-size: 0.85rem;
     }
@@ -778,21 +762,21 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     
     /* Compact Countdown */
     .countdown-wrapper {
-      background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+      background: linear-gradient(135deg, #f0fafc 0%, #e8f6f8 100%);
       padding: 15px;
       border-radius: 12px;
       margin-top: auto;
-      border: 1px solid #e2e8f0;
+      border: 1px solid #b8e4e8;
     }
     .countdown-label {
       text-align: center;
-      color: var(--dark);
+      color: var(--primary);
       font-weight: 600;
       font-size: 0.75rem;
       text-transform: uppercase;
       letter-spacing: 1px;
       margin-bottom: 10px;
-      opacity: 0.7;
+      opacity: 0.8;
     }
     .countdown {
       display: flex;
@@ -801,17 +785,17 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       flex-wrap: wrap;
     }
     .countdown div {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, #1a6d8a 100%);
       color: #fff;
       padding: 12px 8px;
       border-radius: 8px;
       min-width: 60px;
-      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
+      box-shadow: 0 4px 12px rgba(46, 134, 171, 0.25);
       transition: all 0.3s ease;
     }
     .countdown div:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(44, 62, 80, 0.25);
+      box-shadow: 0 8px 20px rgba(46, 134, 171, 0.35);
     }
     .countdown div span {
       display: block;
@@ -836,13 +820,13 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       gap: 6px;
     }
     .countdown-pro div {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, #1a6d8a 100%);
       color: white;
       padding: 10px 6px;
       border-radius: 8px;
       min-width: 55px;
       text-align: center;
-      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.2);
+      box-shadow: 0 4px 12px rgba(46, 134, 171, 0.22);
     }
     .countdown-pro div span {
       display: block;
@@ -865,7 +849,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       background: white;
       border-radius: 16px;
       overflow: hidden;
-      box-shadow: 0 4px 20px rgba(44, 62, 80, 0.08);
+      box-shadow: 0 4px 20px rgba(46, 134, 171, 0.10);
       height: 100%;
       transition: all 0.3s ease;
       display: flex;
@@ -873,7 +857,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .awards-widget:hover {
       transform: translateY(-4px);
-      box-shadow: 0 8px 30px rgba(44, 62, 80, 0.15);
+      box-shadow: 0 8px 30px rgba(46, 134, 171, 0.18);
     }
     .awards-header {
       background: linear-gradient(135deg, #d4af37 0%, #f4e5a1 100%);
@@ -1043,7 +1027,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       align-items: center;
       gap: 6px;
       padding: 9px 18px;
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       color: white;
       text-decoration: none;
       border-radius: 8px;
@@ -1053,18 +1037,18 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .btn-view-awards:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.3);
+      box-shadow: 0 4px 12px rgba(27, 79, 114, 0.35);
       color: white;
     }
     
     /* Modern Announcement Cards */
     .announcements-section {
       padding: 50px 0;
-      background: linear-gradient(180deg, #fff 0%, #f8fafc 100%);
+      background: linear-gradient(180deg, #fff 0%, #f0fafc 100%);
     }
     .announcements-section h2 {
       font-family: 'Poppins', sans-serif;
-      color: var(--dark);
+      color: var(--primary);
       font-weight: 700;
       margin-bottom: 35px;
       font-size: 2.5rem;
@@ -1073,7 +1057,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       background: #ffffff;
       border: none;
       border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+      box-shadow: 0 4px 20px rgba(46, 134, 171, 0.09);
       transition: all 0.4s ease;
       overflow: hidden;
       position: relative;
@@ -1085,7 +1069,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       left: 0;
       width: 100%;
       height: 4px;
-      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--secondary-orange) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       transform: scaleX(0);
       transition: transform 0.4s ease;
     }
@@ -1094,21 +1078,21 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .announcement-card:hover {
       transform: translateY(-10px);
-      box-shadow: 0 12px 40px rgba(255, 107, 53, 0.2);
+      box-shadow: 0 12px 40px rgba(27, 79, 114, 0.18);
     }
     .announcement-card h5 {
-      color: var(--dark);
+      color: #222;
       font-weight: 700;
       font-size: 1.2rem;
     }
     .announcement-card .badge {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, #1a6d8a 100%);
       padding: 6px 12px;
       border-radius: 8px;
       font-weight: 600;
     }
     .announcement-card .btn {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       border: none;
       color: white;
       font-weight: 600;
@@ -1118,7 +1102,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     }
     .announcement-card .btn:hover {
       transform: translateX(4px);
-      box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+      box-shadow: 0 4px 12px rgba(27, 79, 114, 0.35);
     }
     .view-all-btn {
       background: transparent;
@@ -1130,58 +1114,227 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       transition: all 0.3s ease;
     }
     .view-all-btn:hover {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--secondary) 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+      border-color: var(--accent);
       color: white;
       transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(44, 62, 80, 0.25);
-    }
-
-    .view-all-btn:hover {
-      background: linear-gradient(135deg, var(--primary-orange) 0%, var(--dark-orange) 100%);
-      color: white;
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
+      box-shadow: 0 6px 20px rgba(27, 79, 114, 0.30);
     }
     
-    /* Partnerships Section */
+    /* ==================== PARTNERSHIPS / SPONSORS SECTION ==================== */
     .partnerships {
-      padding: 50px 0;
-      background: linear-gradient(135deg, #ecf0f1 0%, #ffffff 100%);
+      padding: 70px 0 60px;
+      background: #ffffff;
+      position: relative;
+    }
+    .partnerships::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 4px;
+      background: linear-gradient(90deg, #2E86AB 0%, #A8DADC 50%, #F4A261 100%);
+    }
+
+    /* Section Header */
+    .partnerships .section-header {
+      text-align: center;
+      margin-bottom: 3rem;
+    }
+    .partnerships .section-eyebrow {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(46, 134, 171, 0.08);
+      color: #2E86AB;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      padding: 6px 16px;
+      border-radius: 50px;
+      margin-bottom: 14px;
+      border: 1px solid rgba(46, 134, 171, 0.18);
     }
     .partnerships h2 {
       font-family: 'Poppins', sans-serif;
-      color: var(--dark);
-      font-weight: 700;
-      font-size: 2.5rem;
-      margin-bottom: 20px;
+      color: #2E86AB;
+      font-weight: 800;
+      font-size: 2.2rem;
+      margin-bottom: 10px;
+      line-height: 1.2;
     }
-    .partnerships img {
-      max-height: 90px;
-      transition: all 0.4s ease;
-      filter: grayscale(100%) brightness(0.9);
-      opacity: 0.7;
+    .partnerships .section-divider {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      margin: 14px auto 16px;
     }
-    .partnerships img:hover {
-      transform: scale(1.12);
-      filter: grayscale(0%) brightness(1);
-      opacity: 1;
+    .partnerships .section-divider::before,
+    .partnerships .section-divider::after {
+      content: '';
+      width: 60px;
+      height: 2px;
+      background: #A8DADC;
+      border-radius: 2px;
     }
+    .partnerships .section-divider span {
+      width: 10px;
+      height: 10px;
+      background: #F4A261;
+      border-radius: 50%;
+      display: inline-block;
+    }
+    .partnerships .section-desc {
+      color: #64748b;
+      font-size: 1rem;
+      max-width: 680px;
+      margin: 0 auto;
+      line-height: 1.75;
+    }
+
+    /* Logo Grid */
+    .partners-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+
+    /* Individual partner card */
     .partner-card {
-      background: white;
-      padding: 30px;
+      background: #ffffff;
+      border: 1.5px solid #e8f4f7;
       border-radius: 16px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.06);
-      transition: all 0.3s ease;
-      height: 100%;
+      padding: 28px 20px 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      box-shadow: 0 2px 10px rgba(46, 134, 171, 0.06);
+      position: relative;
+      overflow: hidden;
+      text-decoration: none;
+      cursor: default;
+    }
+    a.partner-card {
+      cursor: pointer;
+    }
+    .partner-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, #2E86AB 0%, #A8DADC 100%);
+      transform: scaleX(0);
+      transform-origin: left;
+      transition: transform 0.35s ease;
+      border-radius: 0 0 16px 16px;
     }
     .partner-card:hover {
-      transform: translateY(-8px);
-      box-shadow: 0 12px 40px rgba(44, 62, 80, 0.12);
+      transform: translateY(-6px);
+      border-color: #A8DADC;
+      box-shadow: 0 10px 30px rgba(46, 134, 171, 0.14);
+    }
+    .partner-card:hover::after {
+      transform: scaleX(1);
+    }
+    /* External link icon on hoverable cards */
+    a.partner-card .partner-link-icon {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      width: 24px;
+      height: 24px;
+      background: rgba(46, 134, 171, 0.10);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.7rem;
+      color: #2E86AB;
+      opacity: 0;
+      transition: opacity 0.25s ease;
+    }
+    a.partner-card:hover .partner-link-icon {
+      opacity: 1;
+    }
+
+    /* Logo wrapper */
+    .partner-logo-wrap {
+      width: 100%;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .partner-logo-wrap img {
+      width: 100%;
+      height: 80px;
+      object-fit: contain;
+      filter: grayscale(85%) opacity(0.70);
+      transition: filter 0.35s ease, transform 0.35s ease;
+    }
+    .partner-card:hover .partner-logo-wrap img {
+      filter: grayscale(0%) opacity(1);
+      transform: scale(1.05);
+    }
+
+    /* Partner name & badge */
+    .partner-info {
+      text-align: center;
+      width: 100%;
+    }
+    .partner-info .partner-name {
+      font-size: 0.8rem;
+      font-weight: 700;
+      color: #334155;
+      line-height: 1.4;
+      margin-bottom: 6px;
+    }
+    .partner-info .badge {
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: 50px;
+      letter-spacing: 0.4px;
+    }
+    .partner-info .badge-sponsor {
+      background: rgba(244, 162, 97, 0.15);
+      color: #c1652a;
+      border: 1px solid rgba(244, 162, 97, 0.35);
+    }
+    .partner-info .badge-partner {
+      background: rgba(46, 134, 171, 0.10);
+      color: #1a6d8a;
+      border: 1px solid rgba(46, 134, 171, 0.22);
+    }
+
+    /* Responsive tweaks */
+    @media (max-width: 768px) {
+      .partners-grid {
+        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+        gap: 14px;
+      }
+      .partner-card {
+        padding: 20px 14px 16px;
+      }
+      .partnerships h2 {
+        font-size: 1.7rem;
+      }
+    }
+    @media (max-width: 480px) {
+      .partners-grid {
+        grid-template-columns: repeat(2, 1fr);
+        gap: 12px;
+      }
     }
 
     /* ==================== TRANSPARENCY & IMPACT HIGHLIGHTS ==================== */
     .impact-section {
-      background: linear-gradient(160deg, #f0f4f8 0%, #e8eef5 50%, #f0f4f8 100%);
+      background: linear-gradient(160deg, #e8f6f8 0%, #d4eef2 50%, #e8f6f8 100%);
       padding: 70px 0;
       position: relative;
       overflow: hidden;
@@ -1191,7 +1344,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       position: absolute;
       top: -80px; right: -80px;
       width: 320px; height: 320px;
-      background: radial-gradient(circle, rgba(44,62,80,0.07) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(46,134,171,0.08) 0%, transparent 70%);
       border-radius: 50%;
       pointer-events: none;
     }
@@ -1200,7 +1353,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       position: absolute;
       bottom: -60px; left: -60px;
       width: 260px; height: 260px;
-      background: radial-gradient(circle, rgba(52,152,219,0.07) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(168,218,220,0.12) 0%, transparent 70%);
       border-radius: 50%;
       pointer-events: none;
     }
@@ -1214,7 +1367,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       display: inline-flex;
       align-items: center;
       gap: 8px;
-      background: linear-gradient(135deg, #2c3e50 0%, #3498db 100%);
+      background: linear-gradient(135deg, #2E86AB 0%, #1a6d8a 100%);
       color: white;
       font-size: 0.78rem;
       font-weight: 700;
@@ -1228,12 +1381,12 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       font-family: 'Poppins', sans-serif;
       font-size: 2.4rem;
       font-weight: 800;
-      color: #1a252f;
+      color: #1a3a4a;
       margin-bottom: 0.8rem;
       line-height: 1.2;
     }
     .impact-section-header p {
-      color: #64748b;
+      color: #4a7a8a;
       font-size: 1.05rem;
       max-width: 640px;
       margin: 0 auto;
@@ -1249,40 +1402,40 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       position: relative;
       overflow: hidden;
       box-shadow:
-        0 1px 2px rgba(44,62,80,0.06),
-        0 6px 18px rgba(44,62,80,0.10),
-        0 16px 32px rgba(44,62,80,0.06);
+        0 1px 2px rgba(46,134,171,0.06),
+        0 6px 18px rgba(46,134,171,0.10),
+        0 16px 32px rgba(46,134,171,0.06);
       transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1.5px solid rgba(44,62,80,0.06);
+      border: 1.5px solid rgba(168,218,220,0.3);
     }
     .impact-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0;
       width: 100%; height: 4px;
-      background: linear-gradient(90deg, var(--grad-start, #2c3e50) 0%, var(--grad-end, #3498db) 100%);
+      background: linear-gradient(90deg, var(--grad-start, #2E86AB) 0%, var(--grad-end, #A8DADC) 100%);
       border-radius: 20px 20px 0 0;
     }
     .impact-card:hover {
       transform: translateY(-8px) scale(1.01);
       box-shadow:
-        0 2px 4px rgba(44,62,80,0.08),
-        0 12px 28px rgba(44,62,80,0.14),
-        0 28px 48px rgba(44,62,80,0.10);
-      border-color: rgba(52,152,219,0.2);
+        0 2px 4px rgba(46,134,171,0.08),
+        0 12px 28px rgba(46,134,171,0.16),
+        0 28px 48px rgba(46,134,171,0.10);
+      border-color: rgba(168,218,220,0.5);
     }
     /* Faint watermark icon */
     .impact-card .card-watermark {
       position: absolute;
       bottom: -10px; right: -10px;
       font-size: 7rem;
-      color: rgba(44,62,80,0.04);
+      color: rgba(46,134,171,0.05);
       line-height: 1;
       pointer-events: none;
       transition: color 0.35s;
     }
     .impact-card:hover .card-watermark {
-      color: rgba(52,152,219,0.07);
+      color: rgba(168,218,220,0.12);
     }
 
     .impact-icon-wrap {
@@ -1293,13 +1446,13 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       align-items: center;
       justify-content: center;
       margin-bottom: 20px;
-      background: linear-gradient(135deg, var(--grad-start, #2c3e50) 0%, var(--grad-end, #3498db) 100%);
-      box-shadow: 0 6px 18px rgba(44,62,80,0.22);
+      background: linear-gradient(135deg, var(--grad-start, #2E86AB) 0%, var(--grad-end, #A8DADC) 100%);
+      box-shadow: 0 6px 18px rgba(46,134,171,0.22);
       transition: transform 0.35s ease, box-shadow 0.35s ease;
     }
     .impact-card:hover .impact-icon-wrap {
       transform: rotate(-6deg) scale(1.1);
-      box-shadow: 0 10px 24px rgba(44,62,80,0.28);
+      box-shadow: 0 10px 24px rgba(46,134,171,0.30);
     }
     .impact-icon-wrap i {
       font-size: 1.7rem;
@@ -1310,7 +1463,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       font-family: 'Poppins', sans-serif;
       font-size: 2.6rem;
       font-weight: 800;
-      color: #1a252f;
+      color: #1a3a4a;
       line-height: 1;
       margin-bottom: 6px;
       letter-spacing: -1px;
@@ -1325,25 +1478,25 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 0.8px;
-      color: #64748b;
+      color: #4a7a8a;
       margin-bottom: 10px;
     }
     .impact-desc {
       font-size: 0.88rem;
-      color: #94a3b8;
+      color: #6a9aaa;
       line-height: 1.5;
       margin: 0;
     }
 
     /* Story card */
     .impact-story-card {
-      --grad-start: #1a252f;
-      --grad-end: #2c3e50;
-      background: linear-gradient(145deg, #1a252f 0%, #2c3e50 100%) !important;
+      --grad-start: #1a3a4a;
+      --grad-end: #2E86AB;
+      background: linear-gradient(145deg, #1a3a4a 0%, #2E86AB 100%) !important;
       color: white;
     }
     .impact-story-card::before {
-      background: linear-gradient(90deg, #3498db 0%, #5dade2 100%);
+      background: linear-gradient(90deg, #A8DADC 0%, #1B4F72 100%);
     }
     .impact-story-card .impact-label { color: rgba(255,255,255,0.65); }
     .impact-story-card .impact-desc  { color: rgba(255,255,255,0.80); }
@@ -1358,8 +1511,8 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       line-height: 1.3;
     }
     .impact-story-card .impact-icon-wrap {
-      background: rgba(255,255,255,0.15);
-      box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+      background: rgba(255,255,255,0.18);
+      box-shadow: 0 6px 18px rgba(0,0,0,0.20);
     }
     .story-quote {
       font-style: italic;
@@ -1367,7 +1520,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       color: rgba(255,255,255,0.85);
       line-height: 1.6;
       padding-left: 14px;
-      border-left: 3px solid rgba(255,255,255,0.3);
+      border-left: 3px solid rgba(168,218,220,0.5);
       margin: 0 0 14px;
     }
     .story-date-badge {
@@ -1376,8 +1529,8 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       gap: 5px;
       font-size: 0.75rem;
       font-weight: 600;
-      color: rgba(255,255,255,0.65);
-      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.70);
+      background: rgba(255,255,255,0.12);
       padding: 4px 12px;
       border-radius: 50px;
     }
@@ -1387,7 +1540,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       gap: 6px;
       font-size: 0.82rem;
       font-weight: 700;
-      color: rgba(255,255,255,0.8);
+      color: rgba(255,255,255,0.85);
       text-decoration: none;
       margin-top: 16px;
       transition: color 0.2s;
@@ -1408,18 +1561,18 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       align-items: center;
       gap: 10px;
       padding: 14px 36px;
-      background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
+      background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
       color: white;
       border-radius: 50px;
       font-weight: 700;
       font-size: 0.95rem;
       text-decoration: none;
-      box-shadow: 0 4px 16px rgba(44,62,80,0.25);
+      box-shadow: 0 4px 16px rgba(27,79,114,0.30);
       transition: all 0.3s ease;
     }
     .btn-impact-more:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 24px rgba(44,62,80,0.35);
+      box-shadow: 0 8px 24px rgba(27,79,114,0.42);
       color: white;
     }
     .btn-impact-more i { transition: transform 0.25s ease; }
@@ -1910,8 +2063,8 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
     <div class="row g-4 justify-content-center">
 
       <!-- Card 1: Total Donations -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="impact-card" style="--grad-start:#2c3e50; --grad-end:#3498db;">
+      <div class="col-sm-6 col-lg-4">
+        <div class="impact-card" style="--grad-start:#2E86AB; --grad-end:#A8DADC;">
           <i class="bi bi-piggy-bank card-watermark"></i>
           <div class="impact-icon-wrap">
             <i class="bi bi-cash-coin"></i>
@@ -1929,7 +2082,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       </div>
 
       <!-- Card 2: Beneficiaries -->
-      <div class="col-sm-6 col-lg-3">
+      <div class="col-sm-6 col-lg-4">
         <div class="impact-card" style="--grad-start:#1a6b3c; --grad-end:#27ae60;">
           <i class="bi bi-people card-watermark"></i>
           <div class="impact-icon-wrap" style="background:linear-gradient(135deg,#1a6b3c,#27ae60);">
@@ -1944,7 +2097,7 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
       </div>
 
       <!-- Card 3: Programs Completed -->
-      <div class="col-sm-6 col-lg-3">
+      <div class="col-sm-6 col-lg-4">
         <div class="impact-card" style="--grad-start:#7d3c98; --grad-end:#9b59b6;">
           <i class="bi bi-journal-check card-watermark"></i>
           <div class="impact-icon-wrap" style="background:linear-gradient(135deg,#7d3c98,#9b59b6);">
@@ -1955,36 +2108,6 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['impact_story'] = $row; }
           </div>
           <div class="impact-label">Community Programs Completed</div>
           <p class="impact-desc">Successfully concluded livelihood, relief, and training campaigns.</p>
-        </div>
-      </div>
-
-      <!-- Card 4: Impact Story -->
-      <div class="col-sm-6 col-lg-3">
-        <div class="impact-card impact-story-card">
-          <i class="bi bi-stars card-watermark"></i>
-          <div class="impact-icon-wrap">
-            <i class="bi bi-heart-pulse-fill"></i>
-          </div>
-          <?php if (!empty($impactStats['impact_story'])): $story = $impactStats['impact_story']; ?>
-            <div class="impact-label">Recent Impact Story</div>
-            <p class="story-name"><?= htmlspecialchars($story['name']) ?></p>
-            <p class="story-quote"><?= htmlspecialchars(mb_strimwidth($story['short_story'], 0, 110, '…')) ?></p>
-            <span class="story-date-badge">
-              <i class="bi bi-calendar-event"></i>
-              <?= date('M Y', strtotime($story['date_assisted'])) ?>
-            </span>
-            <br>
-            <a href="transparency.php" class="impact-cta-link">
-              Read Full Story <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
-          <?php else: ?>
-            <div class="impact-label">Recent Impact Story</div>
-            <p class="story-name">Building Brighter Futures</p>
-            <p class="story-quote">Our members continue to uplift their families through the programs and resources provided by our association every season.</p>
-            <a href="transparency.php" class="impact-cta-link">
-              View All Stories <i class="bi bi-arrow-right-circle-fill"></i>
-            </a>
-          <?php endif; ?>
         </div>
       </div>
 
@@ -2316,62 +2439,99 @@ document.addEventListener('DOMContentLoaded', () => {
 </script>
 
 
-<!-- Partnerships Section with Slider -->
-<section class="partnerships py-5" style="background: linear-gradient(135deg, #ecf0f1 0%, #ffffff 100%);">
+<!-- Partnerships / Sponsors Section -->
+<section class="partnerships">
   <div class="container">
-    <div class="text-center mb-5">
-      <h2 class="section-title">Our Partners &amp; Sponsors</h2>
-      <p class="text-muted" style="font-size: 1.1rem; max-width: 700px; margin: 0 auto;">
+
+    <!-- Section Header -->
+    <div class="section-header">
+      <span class="section-eyebrow">
+        <i class="bi bi-handshake-fill"></i> Valued Partners &amp; Sponsors
+      </span>
+      <h2>Our Partners &amp; Sponsors</h2>
+      <div class="section-divider"><span></span></div>
+      <p class="section-desc">
         We are grateful to our partner institutions and generous sponsors who continuously support
-        our programs for local bangkeros and fisherfolk. Through their assistance, we are able to
-        strengthen community-based livelihood, promote responsible coastal tourism, and implement
-        initiatives that protect our marine environment.
+        our programs for local bangkeros and fisherfolk. Through their assistance, we strengthen
+        community-based livelihood, promote responsible coastal tourism, and protect our marine environment.
       </p>
     </div>
-    
-    <!-- Partner Slider -->
-    <div class="partner-slider-container position-relative" style="overflow: hidden; padding: 20px 0;">
-      <div class="partner-track-wrapper d-flex align-items-center justify-content-center flex-wrap gap-4">
-        <?php if (!empty($partnersList)): ?>
-          <?php foreach ($partnersList as $partner): ?>
-            <div class="partner-card text-center">
-              <img src="../../<?= htmlspecialchars($partner['logo_path']) ?>" class="img-fluid mb-3" alt="<?= htmlspecialchars($partner['name']) ?>" style="max-height: 90px;">
-              <p class="mt-2 text-dark small fw-semibold mb-0"><?= htmlspecialchars($partner['name']) ?></p>
+
+    <!-- Partners Grid -->
+    <div class="partners-grid">
+      <?php if (!empty($partnersList)): ?>
+        <?php foreach ($partnersList as $partner): ?>
+          <?php
+            $hasUrl = !empty($partner['website_url']);
+            $tag    = $hasUrl ? 'a' : 'div';
+            $attrs  = $hasUrl
+              ? 'href="' . htmlspecialchars($partner['website_url']) . '" target="_blank" rel="noopener noreferrer"'
+              : '';
+          ?>
+          <<?= $tag ?> class="partner-card" <?= $attrs ?>>
+            <?php if ($hasUrl): ?>
+              <span class="partner-link-icon"><i class="bi bi-box-arrow-up-right"></i></span>
+            <?php endif; ?>
+            <div class="partner-logo-wrap">
+              <img src="../../<?= htmlspecialchars($partner['logo_path']) ?>"
+                   alt="<?= htmlspecialchars($partner['name']) ?>">
+            </div>
+            <div class="partner-info">
+              <p class="partner-name"><?= htmlspecialchars($partner['name']) ?></p>
               <?php if (!empty($partner['type'])): ?>
-                <div class="mt-1">
-                  <?php if ($partner['type'] === 'sponsor'): ?>
-                    <span class="badge bg-warning text-dark small">Sponsor</span>
-                  <?php else: ?>
-                    <span class="badge bg-info text-dark small">Partner</span>
-                  <?php endif; ?>
-                </div>
+                <?php if ($partner['type'] === 'sponsor'): ?>
+                  <span class="badge badge-sponsor">Sponsor</span>
+                <?php else: ?>
+                  <span class="badge badge-partner">Partner</span>
+                <?php endif; ?>
               <?php endif; ?>
             </div>
-          <?php endforeach; ?>
-        <?php else: ?>
-          <!-- Fallback static partners when no records in DB yet -->
-          <div class="partner-card">
-            <img src="../uploads/partners/olongapo.png" class="img-fluid mb-3" alt="Municipality of Olongapo" style="max-height: 90px;">
-            <p class="mt-2 text-dark small fw-semibold mb-0">Municipality of Olongapo City</p>
+          </<?= $tag ?>>
+        <?php endforeach; ?>
+      <?php else: ?>
+        <!-- Fallback static partners when no records in DB yet -->
+        <div class="partner-card">
+          <div class="partner-logo-wrap">
+            <img src="../uploads/partners/olongapo.png" alt="Municipality of Olongapo">
           </div>
-          
-          <div class="partner-card">
-            <img src="../uploads/partners/bfar.png" class="img-fluid mb-3" alt="BFAR" style="max-height: 90px;">
-            <p class="mt-2 text-dark small fw-semibold mb-0">Bureau of Fisheries &amp; Aquatic Resources</p>
+          <div class="partner-info">
+            <p class="partner-name">Municipality of Olongapo City</p>
+            <span class="badge badge-partner">Partner</span>
           </div>
-          
-          <div class="partner-card">
-            <img src="../uploads/partners/agriculture.png" class="img-fluid mb-3" alt="Agriculture" style="max-height: 90px;">
-            <p class="mt-2 text-dark small fw-semibold mb-0">Olongapo City Agriculture Department</p>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo-wrap">
+            <img src="../uploads/partners/bfar.png" alt="BFAR">
           </div>
-          
-          <div class="partner-card">
-            <img src="../uploads/partners/usaid.png" class="img-fluid mb-3" alt="USAID" style="max-height: 90px;">
-            <p class="mt-2 text-dark small fw-semibold mb-0">USAID</p>
+          <div class="partner-info">
+            <p class="partner-name">Bureau of Fisheries &amp; Aquatic Resources</p>
+            <span class="badge badge-partner">Partner</span>
           </div>
-        <?php endif; ?>
-      </div>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo-wrap">
+            <img src="../uploads/partners/agriculture.png" alt="Agriculture">
+          </div>
+          <div class="partner-info">
+            <p class="partner-name">Olongapo City Agriculture Department</p>
+            <span class="badge badge-partner">Partner</span>
+          </div>
+        </div>
+
+        <div class="partner-card">
+          <div class="partner-logo-wrap">
+            <img src="../uploads/partners/usaid.png" alt="USAID">
+          </div>
+          <div class="partner-info">
+            <p class="partner-name">USAID</p>
+            <span class="badge badge-sponsor">Sponsor</span>
+          </div>
+        </div>
+      <?php endif; ?>
     </div>
+
   </div>
 </section>
 </main>

@@ -133,8 +133,6 @@ $sql = "SELECT * FROM awards_archive $where_sql ORDER BY $order LIMIT $limit OFF
 $result = $conn->query($sql);
 
 ?>
-<?php include('../navbar.php'); ?>
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -182,6 +180,8 @@ $result = $conn->query($sql);
 
 </head>
 <body>
+
+<?php include('../navbar.php'); ?>
 
 <div class="main-content">
     <div class="page-header d-flex justify-content-between align-items-center">

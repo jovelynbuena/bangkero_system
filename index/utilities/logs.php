@@ -59,8 +59,6 @@ $action_types = [];
 while ($row = $actions_result->fetch_assoc()) {
     $action_types[] = $row['action'];
 }
-
-include('../navbar.php');
 ?>
 
 
@@ -90,7 +88,8 @@ include('../navbar.php');
     }
     .main-content { 
         margin-left: 270px; 
-        padding: 32px; 
+        padding: 32px;
+        padding-top: 66px;
         min-height: 100vh; 
     }
     
@@ -398,7 +397,9 @@ include('../navbar.php');
   </style>
 </head>
 <body>
-  
+
+<?php include('../navbar.php'); ?>
+
 <div class="main-content">
     <!-- Page Header -->
     <div class="page-header">

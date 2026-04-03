@@ -100,10 +100,7 @@ function parseSqlFile($sql) {
     return $queries;
 }
 
-// Include navbar only for non-AJAX requests
-if (!$isAjaxRequest) {
-    include('../navbar.php');
-}
+// Include navbar only for non-AJAX requests - moved to after <body>
 
 // Read flash messages from restore_action.php (if any)
 $success_message = $success_message ?? null;
@@ -566,6 +563,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         .main-content {
             margin-left: 270px;
             padding: 20px;
+            padding-top: 66px;
             min-height: 100vh;
         }
 
@@ -1110,6 +1108,8 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
     </style>
 </head>
 <body>
+
+<?php if (!$isAjaxRequest) { include('../navbar.php'); } ?>
 
 <div class="main-content">
     <div class="container-fluid">

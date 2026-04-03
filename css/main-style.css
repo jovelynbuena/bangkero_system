@@ -4,18 +4,19 @@
    ========================================== */
 
 :root {
-  --primary: #2c3e50;
-  --secondary: #34495e;
-  --accent: #5a6c7d;
-  --light: #ecf0f1;
+  --primary: #2E86AB;
+  --secondary: #A8DADC;
+  --accent: #1B4F72;
+  --accent-dark: #154260;
+  --light: #e8f6f8;
   --success: #27ae60;
-  --info: #3498db;
-  --warning: #f39c12;
+  --info: #2E86AB;
+  --warning: #1B4F72;
   --danger: #e74c3c;
-  --bg: #f8f9fa;
-  --dark: #1a252f;
-  --gray: #95a5a6;
-  --card-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+  --bg: #FFFFFF;
+  --dark: #222222;
+  --gray: #6b7280;
+  --card-shadow: 0 4px 20px rgba(46, 134, 171, 0.10);
   --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -26,7 +27,7 @@
 body {
   font-family: 'Inter', sans-serif;
   background-color: var(--bg);
-  color: #2c3e50;
+  color: #333333;
   overflow-x: hidden;
 }
 
@@ -77,7 +78,7 @@ body {
   transform: translateX(-50%);
   width: 0;
   height: 3px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), var(--accent));
   border-radius: 2px;
   transition: width 0.3s ease;
 }
@@ -111,7 +112,7 @@ body {
   left: 0;
   width: 100%;
   height: 100%;
-  background: linear-gradient(135deg, rgba(44, 62, 80, 0.75), rgba(26, 37, 47, 0.85));
+  background: linear-gradient(135deg, rgba(46, 134, 171, 0.40), rgba(34, 34, 34, 0.52));
   z-index: 1;
 }
 
@@ -158,20 +159,20 @@ body {
    BUTTONS & CTA STYLES
    ========================================== */
 .btn-primary {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   border: none;
   color: white;
   font-weight: 600;
   padding: 12px 32px;
   border-radius: 50px;
   transition: var(--transition);
-  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+  box-shadow: 0 4px 12px rgba(27, 79, 114, 0.28);
 }
 
 .btn-primary:hover {
   transform: translateY(-3px);
-  box-shadow: 0 8px 24px rgba(44, 62, 80, 0.35);
-  background: linear-gradient(135deg, var(--secondary), var(--primary));
+  box-shadow: 0 8px 24px rgba(27, 79, 114, 0.42);
+  background: linear-gradient(135deg, var(--accent-dark), var(--accent));
 }
 
 .btn-outline-primary {
@@ -185,10 +186,11 @@ body {
 }
 
 .btn-outline-primary:hover {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
+  border-color: var(--accent);
   color: white;
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(44, 62, 80, 0.25);
+  box-shadow: 0 6px 20px rgba(27, 79, 114, 0.32);
 }
 
 .cta-btn {
@@ -199,7 +201,7 @@ body {
   font-weight: 700;
   font-size: 1.1rem;
   border: none;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
   transition: var(--transition);
   display: inline-block;
   text-decoration: none;
@@ -207,7 +209,7 @@ body {
 
 .cta-btn:hover {
   transform: translateY(-4px);
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
   color: var(--primary);
 }
 
@@ -216,9 +218,9 @@ body {
    ========================================== */
 .card-modern {
   background: #fff;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #c8e8ec;
   border-radius: 18px;
-  box-shadow: 0 6px 24px rgba(44, 62, 80, 0.1);
+  box-shadow: 0 6px 24px rgba(46, 134, 171, 0.10);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   overflow: hidden;
   position: relative;
@@ -242,7 +244,7 @@ body {
 
 .card-modern:hover {
   transform: translateY(-8px);
-  box-shadow: 0 16px 48px rgba(44, 62, 80, 0.15);
+  box-shadow: 0 16px 48px rgba(46, 134, 171, 0.18);
 }
 
 /* ==========================================
@@ -250,7 +252,7 @@ body {
    ========================================== */
 .section-title {
   font-family: 'Poppins', sans-serif;
-  color: var(--dark);
+  color: var(--primary);
   font-weight: 800;
   font-size: 2.5rem;
   position: relative;
@@ -266,14 +268,14 @@ body {
   left: 0;
   width: 60%;
   height: 4px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   border-radius: 2px;
 }
 
 .divider {
   width: 70px;
   height: 4px;
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--accent), var(--accent-dark));
   border-radius: 2px;
   margin: 1rem auto 1.5rem auto;
 }
@@ -282,11 +284,11 @@ body {
    COUNTDOWN STYLES
    ========================================== */
 .countdown-wrapper {
-  background: linear-gradient(135deg, #f8f9fa, #f1f5f9);
+  background: linear-gradient(135deg, #f0fafc, #e8f6f8);
   padding: 25px;
   border-radius: 20px;
   margin-top: 25px;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #b8e4e8;
   position: relative;
   overflow: hidden;
 }
@@ -309,12 +311,12 @@ body {
 }
 
 .countdown div {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), #1a6d8a);
   color: #fff;
   padding: 28px 24px;
   border-radius: 18px;
   min-width: 100px;
-  box-shadow: 0 8px 24px rgba(44, 62, 80, 0.25);
+  box-shadow: 0 8px 24px rgba(46, 134, 171, 0.28);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -322,7 +324,7 @@ body {
 
 .countdown div:hover {
   transform: translateY(-6px) scale(1.05);
-  box-shadow: 0 16px 40px rgba(44, 62, 80, 0.35);
+  box-shadow: 0 16px 40px rgba(46, 134, 171, 0.38);
 }
 
 .countdown div span {
@@ -332,7 +334,7 @@ body {
   font-family: 'Poppins', sans-serif;
   line-height: 1;
   margin-bottom: 8px;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
 .countdown div small {
@@ -347,13 +349,13 @@ body {
    CTA BLOCKS STYLES
    ========================================== */
 .cta-block {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), #1a6d8a);
   color: white;
   padding: 40px 30px;
   border-radius: 20px;
   text-align: center;
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-  box-shadow: 0 8px 24px rgba(44, 62, 80, 0.2);
+  box-shadow: 0 8px 24px rgba(46, 134, 171, 0.25);
   position: relative;
   overflow: hidden;
   height: 100%;
@@ -366,13 +368,13 @@ body {
   right: -10%;
   width: 300px;
   height: 300px;
-  background: radial-gradient(circle, rgba(255,255,255,0.1), transparent 70%);
+  background: radial-gradient(circle, rgba(255,255,255,0.10), transparent 70%);
   border-radius: 50%;
 }
 
 .cta-block:hover {
   transform: translateY(-8px);
-  box-shadow: 0 16px 48px rgba(44, 62, 80, 0.3);
+  box-shadow: 0 16px 48px rgba(46, 134, 171, 0.35);
 }
 
 .cta-block i {
@@ -405,7 +407,7 @@ body {
 
 .cta-block .btn:hover {
   transform: scale(1.05);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
 /* ==========================================
@@ -426,7 +428,7 @@ body {
   background: white;
   padding: 30px;
   border-radius: 16px;
-  box-shadow: 0 4px 20px rgba(0,0,0,0.06);
+  box-shadow: 0 4px 20px rgba(46, 134, 171, 0.08);
   transition: var(--transition);
   min-width: 250px;
   text-align: center;
@@ -434,7 +436,7 @@ body {
 
 .partner-card:hover {
   transform: translateY(-8px);
-  box-shadow: 0 12px 40px rgba(44, 62, 80, 0.12);
+  box-shadow: 0 12px 40px rgba(46, 134, 171, 0.16);
 }
 
 .partner-card img {
@@ -513,7 +515,7 @@ body {
 }
 
 .shadow-modern {
-  box-shadow: 0 8px 32px rgba(44, 62, 80, 0.1);
+  box-shadow: 0 8px 32px rgba(46, 134, 171, 0.12);
 }
 
 .shadow-hover {
@@ -521,14 +523,14 @@ body {
 }
 
 .shadow-hover:hover {
-  box-shadow: 0 16px 48px rgba(44, 62, 80, 0.15);
+  box-shadow: 0 16px 48px rgba(46, 134, 171, 0.18);
 }
 
 /* ==========================================
    ACCORDION / TAB ENHANCEMENTS
    ========================================== */
 .accordion-item {
-  border: 1px solid #e2e8f0;
+  border: 1px solid #c8e8ec;
   margin-bottom: 12px;
   border-radius: 12px;
   overflow: hidden;
@@ -537,13 +539,13 @@ body {
 
 .accordion-button {
   font-weight: 600;
-  color: var(--dark);
+  color: #333;
   background: white;
   padding: 18px 24px;
 }
 
 .accordion-button:not(.collapsed) {
-  background: linear-gradient(135deg, var(--light), #f1f5f9);
+  background: linear-gradient(135deg, var(--light), #d4eef2);
   color: var(--primary);
   box-shadow: none;
 }
@@ -554,16 +556,16 @@ body {
 }
 
 .accordion-body {
-  color: #64748b;
+  color: #555;
   line-height: 1.7;
   padding: 20px 24px;
 }
 
 /* Tabs */
 .nav-pills .nav-link {
-  color: var(--dark);
+  color: #333;
   background: white;
-  border: 1px solid #e2e8f0;
+  border: 1px solid #c8e8ec;
   border-radius: 50px;
   padding: 10px 24px;
   margin-right: 10px;
@@ -579,8 +581,8 @@ body {
 }
 
 .nav-pills .nav-link.active {
-  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  background: linear-gradient(135deg, var(--primary), #1a6d8a);
   border-color: var(--primary);
   color: white;
-  box-shadow: 0 4px 12px rgba(44, 62, 80, 0.25);
+  box-shadow: 0 4px 12px rgba(46, 134, 171, 0.28);
 }
