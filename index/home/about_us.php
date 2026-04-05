@@ -940,7 +940,6 @@ while ($row = $result->fetch_assoc()) {
       ?>
     </div>
   </div>
-</div>
 
 <script>
 // Animate counters when in viewport
@@ -997,5 +996,6 @@ document.addEventListener('DOMContentLoaded', () => {
 <?php include("partials/footer.php"); ?>
 <?php include 'chatbox.php'; ?>
 
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 </body>
 </html>

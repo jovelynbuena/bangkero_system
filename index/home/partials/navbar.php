@@ -392,14 +392,21 @@
       }
     });
 
+
     // ==================== PREVENT BODY SCROLL WHEN MOBILE MENU OPEN ====================
     if (collapseEl) {
       collapseEl.addEventListener('show.bs.collapse', function () {
         document.body.style.overflow = 'hidden';
+        // Hide chat toggle so it's not confused with navbar hamburger
+        const chatToggle = document.getElementById('chat-toggle');
+        if (chatToggle) chatToggle.style.display = 'none';
       });
 
       collapseEl.addEventListener('hidden.bs.collapse', function () {
         document.body.style.overflow = '';
+        // Restore chat toggle
+        const chatToggle = document.getElementById('chat-toggle');
+        if (chatToggle) chatToggle.style.display = 'flex';
       });
     }
   });
