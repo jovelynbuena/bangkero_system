@@ -206,10 +206,9 @@ if (isset($_GET['restore_achievement']) && $canEdit) {
 
 // Fetch archived assistance
 $archivedAssistance = [];
-$res = $conn->query("SELECT a.*, u.username as archived_by_name, c.name as program_name
+$res = $conn->query("SELECT a.*, u.username as archived_by_name
     FROM transparency_donations_archive a 
     LEFT JOIN users u ON a.archived_by = u.id 
-    LEFT JOIN transparency_campaigns c ON a.campaign_id = c.id
     ORDER BY a.archived_at DESC");
 while ($res && $row = $res->fetch_assoc()) {
     $archivedAssistance[] = $row;
@@ -372,7 +371,7 @@ $totalArchived = count($archivedAssistance) + count($archivedAchievements);
                     <tr>
                         <td>
                             <strong><?= e($a['donor_name']) ?></strong>
-                            <br><small class="text-muted"><?= e($a['donor_type']) ?><?= $a['program_name'] ? ' • ' . e($a['program_name']) : '' ?></small>
+                            <br><small class="text-muted"><?= e($a['donor_type']) ?></small>
                         </td>
                         <td>₱<?= number_format($a['amount'], 0) ?></td>
                         <td><?= $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '-' ?></td>

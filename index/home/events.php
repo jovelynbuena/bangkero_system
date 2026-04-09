@@ -678,7 +678,7 @@ $eventDate = $event ? $event['date'] : null; // format: YYYY-MM-DD
             Want to make a difference? Join our coastal cleanups, livelihood training, 
             and support programs for fishermen families.
           </p>
-          <a href="contact.php" class="btn btn-light btn-sm px-4 rounded-pill fw-semibold">Sign Up</a>
+          <a href="contact_us.php" class="btn btn-light btn-sm px-4 rounded-pill fw-semibold">Sign Up</a>
         </div>
 
         <!-- Gallery -->
