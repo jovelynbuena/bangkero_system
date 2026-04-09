@@ -6,8 +6,6 @@ require_once('../../config/db_connect.php');
 $stats = [
     'total_assistance' => 0,
     'partner_count' => 0,
-    'active_programs' => 0,
-    'funds_utilized' => 0,
     'last_updated' => date('F Y')
 ];
 
@@ -26,45 +24,6 @@ if ($result && $row = $result->fetch_assoc()) {
         $stats['last_updated'] = date('F Y', strtotime($row['last_update']));
     }
 }
-
-// Get active programs count
-$programsQuery = "SELECT COUNT(*) AS active_count FROM transparency_campaigns WHERE status IN ('ongoing', 'active')";
-$result = $conn->query($programsQuery);
-if ($result && $row = $result->fetch_assoc()) {
-    $stats['active_programs'] = $row['active_count'];
-}
-
-// Get funds utilized (using goal_amount from campaigns)
-$utilizedQuery = "SELECT COALESCE(SUM(goal_amount), 0) AS utilized
-    FROM transparency_campaigns
-    WHERE status IN ('ongoing','completed')";
-$result = $conn->query($utilizedQuery);
-if ($result && $row = $result->fetch_assoc()) {
-    $stats['funds_utilized'] = $row['utilized'];
-}
-
-// Fetch active programs/projects from transparency_campaigns
-$programsQuery = "SELECT 
-    c.id,
-    c.name AS program_name,
-    c.description,
-    c.goal_amount AS allocated_budget,
-    c.status,
-    c.created_at,
-    COALESCE(SUM(d.amount), 0) AS received_amount
-    FROM transparency_campaigns c
-    LEFT JOIN transparency_donations d ON c.id = d.campaign_id AND d.status='confirmed'
-    WHERE c.status IN ('active', 'ongoing', 'completed')
-    GROUP BY c.id
-    ORDER BY 
-        CASE c.status 
-            WHEN 'active' THEN 1 
-            WHEN 'ongoing' THEN 2 
-            ELSE 3 
-        END,
-        c.created_at DESC 
-    LIMIT 6";
-$programsResult = $conn->query($programsQuery);
 
 // Fetch recent assistance received (using donations table - limit 10)
 $assistanceQuery = "SELECT 
@@ -343,107 +302,6 @@ function getStatusClass($status) {
       font-size: 1.1rem;
       max-width: 700px;
       margin: 1.5rem auto 0;
-    }
-
-    /* ==================== PROGRAMS SECTION ==================== */
-    .programs-section {
-      padding: 60px 0;
-      background: white;
-    }
-
-    .program-card {
-      background: white;
-      border: 2px solid var(--border);
-      border-radius: 16px;
-      padding: 24px;
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      height: 100%;
-      position: relative;
-      overflow: hidden;
-    }
-
-    .program-card::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 3px;
-      background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
-      transform: scaleX(0);
-      transition: transform 0.3s ease;
-    }
-
-    .program-card:hover::before {
-      transform: scaleX(1);
-    }
-
-    .program-card:hover {
-      transform: translateY(-6px);
-      box-shadow: var(--shadow-lg);
-      border-color: var(--primary-color);
-    }
-
-    .program-status {
-      position: absolute;
-      top: 20px;
-      right: 20px;
-      padding: 6px 14px;
-      border-radius: 50px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .program-status.active, .program-status.ongoing {
-      background: var(--pale-blue);
-      color: var(--primary-color);
-    }
-
-    .program-status.completed {
-      background: #d5f4e6;
-      color: #27ae60;
-    }
-
-    .program-card h4 {
-      font-family: 'Poppins', sans-serif;
-      font-weight: 700;
-      color: var(--dark);
-      font-size: 1.2rem;
-      margin-bottom: 12px;
-      padding-right: 90px;
-    }
-
-    .program-card p {
-      color: var(--gray);
-      line-height: 1.6;
-      margin-bottom: 18px;
-      font-size: 0.9rem;
-    }
-
-    .program-stats {
-      display: flex;
-      justify-content: space-between;
-      margin-bottom: 12px;
-    }
-
-    .program-stat {
-      text-align: center;
-    }
-
-    .program-stat-value {
-      font-size: 1.3rem;
-      font-weight: 700;
-      color: var(--primary-color);
-      font-family: 'Poppins', sans-serif;
-    }
-
-    .program-stat-label {
-      font-size: 0.75rem;
-      color: var(--gray);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
     }
 
     /* ==================== ASSISTANCE TABLE ==================== */
@@ -897,29 +755,7 @@ function getStatusClass($status) {
         </div>
       </div>
 
-      <!-- Stat 3: Active Programs -->
-      <div class="col-lg col-md-6">
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="bi bi-kanban"></i>
-          </div>
-          <div class="stat-value"><?= number_format($stats['active_programs']) ?></div>
-          <div class="stat-label">Active Programs</div>
-        </div>
-      </div>
-
-      <!-- Stat 4: Funds Utilized -->
-      <div class="col-lg col-md-6">
-        <div class="stat-card">
-          <div class="stat-icon">
-            <i class="bi bi-wallet2"></i>
-          </div>
-          <div class="stat-value"><?= formatCurrency($stats['funds_utilized']) ?></div>
-          <div class="stat-label">Funds Utilized</div>
-        </div>
-      </div>
-
-      <!-- Stat 5: Community Achievements -->
+      <!-- Stat 3: Community Achievements -->
       <div class="col-lg col-md-6">
         <div class="stat-card">
           <div class="stat-icon">
@@ -933,52 +769,7 @@ function getStatusClass($status) {
   </div>
 </section>
 
-<!-- SECTION 3: ACTIVE PROGRAMS & PROJECTS -->
-<section class="programs-section">
-  <div class="container">
-    <div class="section-header">
-      <h2>Programs & Projects</h2>
-      <p>Initiatives and livelihood programs that support and empower our fishing community</p>
-    </div>
-
-    <?php if ($programsResult && $programsResult->num_rows > 0): ?>
-    <div class="row g-4">
-      <?php while ($program = $programsResult->fetch_assoc()): ?>
-      <div class="col-lg-4 col-md-6">
-        <div class="program-card">
-          <!-- Status Badge -->
-          <span class="program-status <?= getStatusClass($program['status']) ?>">
-            <?= htmlspecialchars(ucfirst($program['status'])) ?>
-          </span>
-
-          <!-- Program Title -->
-          <h4><?= htmlspecialchars($program['program_name']) ?></h4>
-
-          <!-- Program Description -->
-          <p><?= htmlspecialchars(substr($program['description'], 0, 120)) ?>...</p>
-
-          <!-- Program Budget -->
-          <div class="program-stats">
-            <div class="program-stat">
-              <div class="program-stat-value"><?= formatCurrency($program['allocated_budget']) ?></div>
-              <div class="program-stat-label">Budget Allocated</div>
-            </div>
-          </div>
-        </div>
-      </div>
-      <?php endwhile; ?>
-    </div>
-    <?php else: ?>
-    <div class="empty-state">
-      <i class="bi bi-kanban"></i>
-      <h4>No Active Programs</h4>
-      <p>There are currently no active programs. Please check back later for updates.</p>
-    </div>
-    <?php endif; ?>
-  </div>
-</section>
-
-<!-- SECTION 4: COMMUNITY ACHIEVEMENTS GALLERY -->
+<!-- SECTION 3: COMMUNITY ACHIEVEMENTS GALLERY -->
 <section class="achievements-section">
   <div class="container">
     <div class="section-header">
@@ -1018,7 +809,7 @@ function getStatusClass($status) {
 </section>
 
 
-<!-- SECTION 5: CORE VALUES -->
+<!-- SECTION 4: CORE VALUES -->
 <section class="values-section">
   <div class="container">
     <div class="section-header">
@@ -1058,7 +849,7 @@ function getStatusClass($status) {
   </div>
 </section>
 
-<!-- SECTION 6: RECENT ASSISTANCE RECEIVED -->
+<!-- SECTION 5: RECENT ASSISTANCE RECEIVED -->
 <section class="assistance-section">
   <div class="container">
     <div class="section-header">
