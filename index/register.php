@@ -105,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(160deg, #0d4f6c 0%, #1a7a9a 35%, #1B4F72 65%, #0d2d45 100%);
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             align-items: center;
@@ -113,19 +113,57 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             padding: 20px;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
+            position: relative;
         }
-        
+
+        /* Dot grid texture */
         body::before {
             content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background-image: 
-                radial-gradient(circle at 20% 50%, rgba(255, 255, 255, 0.05) 0%, transparent 50%),
-                radial-gradient(circle at 80% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 50%);
-            animation: float 20s ease-in-out infinite;
+            position: fixed;
+            inset: 0;
+            background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
+            background-size: 30px 30px;
+            pointer-events: none;
+            z-index: 0;
         }
-        
+
+        /* Floating light blobs */
+        body::after {
+            content: '';
+            position: fixed;
+            inset: 0;
+            background:
+                radial-gradient(ellipse 600px 400px at 15% 30%, rgba(168, 218, 220, 0.18) 0%, transparent 70%),
+                radial-gradient(ellipse 500px 350px at 85% 70%, rgba(244, 162, 97, 0.10) 0%, transparent 70%);
+            pointer-events: none;
+            z-index: 0;
+            animation: blobDrift 12s ease-in-out infinite alternate;
+        }
+
+        @keyframes blobDrift {
+            0%   { transform: translateY(0) scale(1); }
+            100% { transform: translateY(-18px) scale(1.03); }
+        }
+
+        /* Animated wave at the bottom */
+        .bg-wave {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            line-height: 0;
+            z-index: 0;
+            opacity: 0.18;
+            animation: waveShift 8s ease-in-out infinite alternate;
+        }
+
+        .bg-wave svg { display: block; width: 100%; }
+
+        @keyframes waveShift {
+            0%   { transform: translateX(0); }
+            100% { transform: translateX(-40px); }
+        }
+
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
             50% { transform: translateY(-20px); }
@@ -148,12 +186,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: var(--card-bg);
             padding: 40px 36px;
             border-radius: 20px;
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.22);
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.5);
             backdrop-filter: blur(10px);
             position: relative;
-            z-index: 1;
+            z-index: 10;
             animation: fadeInUp 0.6s ease-out;
             max-height: 95vh;
             overflow-y: auto;
@@ -426,6 +464,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body>
+    <!-- Animated wave background -->
+    <div class="bg-wave">
+        <svg viewBox="0 0 1440 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+            <path d="M0,60 C240,110 480,10 720,60 C960,110 1200,10 1440,60 L1440,120 L0,120 Z" fill="#A8DADC"/>
+        </svg>
+    </div>
+
     <div class="register-card">
         <div class="logo-wrap">
             <img src="images/logo1.png" alt="Logo">

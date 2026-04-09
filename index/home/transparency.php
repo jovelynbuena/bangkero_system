@@ -2,6 +2,27 @@
 session_start();
 require_once('../../config/db_connect.php');
 
+// Load transparency hero settings
+$hero_settings = [
+    'title'    => 'Transparency & Association Progress',
+    'subtitle' => 'Promoting accountability through transparent reporting of assistance received, programs implemented, and sustainable initiatives that empower our fishing community.',
+    'bg_image' => ''
+];
+$hsRes = $conn->query("SELECT setting_key, setting_value FROM transparency_hero_settings");
+while ($hsRes && $hsRow = $hsRes->fetch_assoc()) {
+    $hero_settings[$hsRow['setting_key']] = $hsRow['setting_value'];
+}
+
+// Ensure images table exists before querying
+$conn->query("CREATE TABLE IF NOT EXISTS transparency_donation_images (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    donation_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_donation_id (donation_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // Fetch financial summary statistics
 $stats = [
     'total_assistance' => 0,
@@ -9,14 +30,12 @@ $stats = [
     'last_updated' => date('F Y')
 ];
 
-// Get total assistance received (using donations table for now)
-$assistanceQuery = "SELECT 
+$result = $conn->query("SELECT 
     COALESCE(SUM(amount), 0) AS total_assistance,
     COUNT(DISTINCT donor_name) AS partner_count,
     MAX(date_received) AS last_update
     FROM transparency_donations
-    WHERE status = 'confirmed'";
-$result = $conn->query($assistanceQuery);
+    WHERE status = 'confirmed'");
 if ($result && $row = $result->fetch_assoc()) {
     $stats['total_assistance'] = $row['total_assistance'];
     $stats['partner_count'] = $row['partner_count'];
@@ -25,53 +44,72 @@ if ($result && $row = $result->fetch_assoc()) {
     }
 }
 
-// Fetch recent assistance received (using donations table - limit 10)
-$assistanceQuery = "SELECT 
-    d.donor_name AS source_name,
-    'OTHER' AS source_type,
-    d.amount,
-    d.date_received,
-    COALESCE(c.name, 'General Support') AS description
+// Fetch recent assistance records with their images
+$assistanceList = [];
+$aRes = $conn->query("SELECT d.id, d.donor_name, d.donor_type, d.amount, d.date_received, d.notes
     FROM transparency_donations d
-    LEFT JOIN transparency_campaigns c ON d.campaign_id = c.id
     WHERE d.status = 'confirmed'
-    ORDER BY d.date_received DESC 
-    LIMIT 10";
-$assistanceResult = $conn->query($assistanceQuery);
-
-// Fetch community achievements for photo-wall gallery
-$achievementsResult = $conn->query("SELECT * FROM community_achievements WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC");
-$achievementsList = [];
-if ($achievementsResult && $achievementsResult->num_rows > 0) {
-    while ($row = $achievementsResult->fetch_assoc()) {
-        $achievementsList[] = $row;
+    ORDER BY d.date_received DESC
+    LIMIT 20");
+while ($aRes && $aRow = $aRes->fetch_assoc()) {
+    $aRow['images'] = [];
+    $assistanceList[$aRow['id']] = $aRow;
+}
+if (!empty($assistanceList)) {
+    $ids = implode(',', array_keys($assistanceList));
+    $imgRes = $conn->query("SELECT * FROM transparency_donation_images WHERE donation_id IN ($ids) ORDER BY sort_order, id");
+    while ($imgRes && $imgRow = $imgRes->fetch_assoc()) {
+        $assistanceList[$imgRow['donation_id']]['images'][] = $imgRow;
     }
 }
+$assistanceList = array_values($assistanceList);
+
+// Fetch community achievements with all their images
+$achievementsList = [];
+$achRes = $conn->query("SELECT * FROM community_achievements WHERE is_active = 1 ORDER BY sort_order ASC, created_at DESC");
+while ($achRes && $achRow = $achRes->fetch_assoc()) {
+    $achRow['images'] = [];
+    $achievementsList[$achRow['id']] = $achRow;
+}
+if (!empty($achievementsList)) {
+    $achIds = implode(',', array_keys($achievementsList));
+    // Ensure images table exists before querying
+    $conn->query("CREATE TABLE IF NOT EXISTS community_achievement_images (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        achievement_id INT NOT NULL,
+        image_path VARCHAR(500) NOT NULL,
+        sort_order INT NOT NULL DEFAULT 0,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_achievement_id (achievement_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $achImgRes = $conn->query("SELECT * FROM community_achievement_images WHERE achievement_id IN ($achIds) ORDER BY sort_order, id");
+    while ($achImgRes && $achImgRow = $achImgRes->fetch_assoc()) {
+        $achievementsList[$achImgRow['achievement_id']]['images'][] = $achImgRow;
+    }
+}
+$achievementsList = array_values($achievementsList);
 
 // Helper function to format currency
 function formatCurrency($amount) {
     return '₱' . number_format($amount, 2);
 }
 
-// Helper function to get source type label
-function getSourceTypeLabel($type) {
-    $labels = [
-        'DOLE' => 'DOLE Program',
-        'LGU' => 'LGU Support',
-        'NGO' => 'NGO Partner',
-        'PRIVATE' => 'Private Sponsor',
-        'MEMBERSHIP' => 'Membership Fees',
-        'OTHER' => 'Other Source'
+// Helper: source type badge label & color class
+function getSourceTypeBadge($type) {
+    $map = [
+        'DOLE'       => ['label' => 'DOLE',       'class' => 'DOLE'],
+        'LGU'        => ['label' => 'LGU',         'class' => 'LGU'],
+        'NGO'        => ['label' => 'NGO',         'class' => 'NGO'],
+        'Private'    => ['label' => 'Private',     'class' => 'PRIVATE'],
+        'Membership' => ['label' => 'Membership',  'class' => 'MEMBERSHIP'],
+        'Others'     => ['label' => 'Others',      'class' => 'OTHER'],
     ];
-    return $labels[$type] ?? $type;
-}
-
-// Helper function to get status badge class
-function getStatusClass($status) {
-    $status = strtolower($status);
-    if ($status === 'active' || $status === 'ongoing') return 'active';
-    if ($status === 'completed') return 'completed';
-    return 'pending';
+    $key = ucfirst(strtolower($type));
+    // Try exact match first, then case-insensitive
+    foreach ($map as $k => $v) {
+        if (strcasecmp($k, $type) === 0) return $v;
+    }
+    return ['label' => $type ?: 'Other', 'class' => 'OTHER'];
 }
 ?>
 
@@ -123,150 +161,234 @@ function getStatusClass($status) {
 
     /* ==================== HERO SECTION ==================== */
     .hero-section {
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+      background: linear-gradient(150deg, #1a6b8a 0%, #1B4F72 55%, #12344d 100%);
       color: white;
-      padding: 80px 0 60px;
+      padding: 90px 0 110px;
       position: relative;
       overflow: hidden;
     }
 
+    /* Subtle dot-grid texture */
     .hero-section::before {
       content: '';
       position: absolute;
-      top: 0;
+      inset: 0;
+      background-image: radial-gradient(rgba(255,255,255,0.07) 1px, transparent 1px);
+      background-size: 28px 28px;
+      pointer-events: none;
+    }
+
+    /* Floating decorative blobs */
+    .hero-blob {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(60px);
+      pointer-events: none;
+      opacity: 0.18;
+      animation: blobFloat 8s ease-in-out infinite alternate;
+    }
+
+    .hero-blob-1 {
+      width: 380px; height: 380px;
+      background: #A8DADC;
+      top: -80px; right: -60px;
+      animation-delay: 0s;
+    }
+
+    .hero-blob-2 {
+      width: 260px; height: 260px;
+      background: #F4A261;
+      bottom: 0px; left: -40px;
+      animation-delay: 3s;
+      opacity: 0.12;
+    }
+
+    @keyframes blobFloat {
+      0%   { transform: translateY(0) scale(1); }
+      100% { transform: translateY(-22px) scale(1.05); }
+    }
+
+    /* Wave divider at bottom */
+    .hero-wave {
+      position: absolute;
+      bottom: -2px;
       left: 0;
       width: 100%;
-      height: 100%;
-      background: url('data:image/svg+xml,<svg width="100" height="100" xmlns="http://www.w3.org/2000/svg"><defs><pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse"><path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-      opacity: 0.3;
+      line-height: 0;
+      z-index: 2;
+    }
+
+    .hero-wave svg {
+      display: block;
+      width: 100%;
     }
 
     .hero-content {
       position: relative;
-      z-index: 1;
+      z-index: 3;
     }
+
+    /* Page label chip above title */
+    .hero-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.22);
+      backdrop-filter: blur(8px);
+      padding: 6px 16px;
+      border-radius: 50px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.9);
+      margin-bottom: 20px;
+    }
+
+    .hero-chip i { font-size: 0.85rem; color: var(--accent-color); }
 
     .hero-section h1 {
       font-family: 'Poppins', sans-serif;
-      font-size: 3rem;
-      font-weight: 800;
+      font-size: 2.9rem;
+      font-weight: 700;
       margin-bottom: 1rem;
-      text-shadow: 0 2px 12px rgba(0,0,0,0.2);
+      line-height: 1.2;
+      letter-spacing: -0.5px;
+    }
+
+    .hero-section h1 span {
+      background: linear-gradient(90deg, #A8DADC, #F4A261);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     }
 
     .hero-section .subtitle {
-      font-size: 1.2rem;
+      font-size: 1.05rem;
       font-weight: 400;
-      opacity: 0.95;
-      max-width: 800px;
-      margin: 0 auto 2rem;
-      line-height: 1.7;
+      color: rgba(255,255,255,0.8);
+      max-width: 680px;
+      margin: 0 auto 2.2rem;
+      line-height: 1.75;
     }
 
+    /* Breadcrumb — minimal inline text, no pill */
     .breadcrumb {
-      background: rgba(255,255,255,0.15);
-      backdrop-filter: blur(10px);
-      padding: 12px 24px;
-      border-radius: 50px;
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
       display: inline-flex;
-      margin-bottom: 2rem;
+      margin-bottom: 18px;
+      gap: 0;
     }
 
     .breadcrumb-item {
-      color: rgba(255,255,255,0.8);
+      color: rgba(255,255,255,0.55);
       font-weight: 500;
+      font-size: 0.82rem;
     }
 
+    .breadcrumb-item a { color: rgba(255,255,255,0.55); text-decoration: none; }
+    .breadcrumb-item a:hover { color: rgba(255,255,255,0.85); }
+
     .breadcrumb-item.active {
-      color: white;
+      color: rgba(255,255,255,0.9);
       font-weight: 600;
     }
 
     .breadcrumb-item + .breadcrumb-item::before {
-      color: rgba(255,255,255,0.6);
-      content: ">";
+      color: rgba(255,255,255,0.35);
+      content: "/";
+      padding: 0 8px;
     }
 
     .last-updated {
-      background: rgba(255,255,255,0.2);
-      backdrop-filter: blur(10px);
-      padding: 10px 24px;
-      border-radius: 50px;
       display: inline-flex;
       align-items: center;
-      gap: 8px;
-      font-weight: 600;
+      gap: 7px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.18);
+      padding: 7px 18px;
+      border-radius: 50px;
+      font-size: 0.82rem;
+      font-weight: 500;
+      color: rgba(255,255,255,0.82);
     }
+
+    .last-updated i { color: var(--accent-color); }
 
     /* ==================== STATISTICS CARDS ==================== */
     .stats-section {
-      margin-top: -40px;
-      padding: 0 0 60px;
+      margin-top: -56px;
+      padding: 0 0 64px;
       position: relative;
       z-index: 10;
     }
 
     .stat-card {
       background: white;
-      border-radius: 16px;
-      padding: 24px 20px;
-      box-shadow: var(--shadow-md);
+      border-radius: 20px;
+      padding: 28px 24px 24px;
+      box-shadow: 0 8px 30px rgba(46,134,171,0.13);
       transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 2px solid transparent;
+      border: 1px solid rgba(46,134,171,0.1);
       height: 100%;
       position: relative;
       overflow: hidden;
+      text-align: center;
     }
 
-    .stat-card::before {
+    /* Soft tinted background circle behind icon */
+    .stat-card::after {
       content: '';
       position: absolute;
-      top: 0;
-      left: 0;
-      width: 4px;
-      height: 100%;
-      background: linear-gradient(180deg, var(--primary-color) 0%, var(--accent-color) 100%);
+      top: -20px; right: -20px;
+      width: 100px; height: 100px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(46,134,171,0.07) 0%, transparent 70%);
+      pointer-events: none;
     }
 
     .stat-card:hover {
-      transform: translateY(-6px);
-      box-shadow: var(--shadow-lg);
-      border-color: var(--primary-color);
+      transform: translateY(-7px);
+      box-shadow: 0 20px 50px rgba(46,134,171,0.18);
+      border-color: rgba(46,134,171,0.25);
     }
 
     .stat-icon {
-      width: 55px;
-      height: 55px;
-      border-radius: 14px;
-      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+      width: 60px;
+      height: 60px;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(46,134,171,0.12) 0%, rgba(27,79,114,0.1) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-bottom: 16px;
-      box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
+      margin: 0 auto 16px;
+      border: 1.5px solid rgba(46,134,171,0.18);
     }
 
     .stat-icon i {
-      font-size: 1.6rem;
-      color: white;
+      font-size: 1.55rem;
+      color: var(--primary-color);
     }
 
     .stat-value {
-      font-size: 2.2rem;
+      font-size: 2.4rem;
       font-weight: 800;
-      color: var(--primary-color);
+      color: var(--dark);
       font-family: 'Poppins', sans-serif;
-      margin-bottom: 8px;
+      margin-bottom: 6px;
       line-height: 1;
     }
 
     .stat-label {
-      font-size: 0.88rem;
+      font-size: 0.8rem;
       color: var(--gray);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      line-height: 1.3;
+      letter-spacing: 0.6px;
+      line-height: 1.4;
     }
 
     /* ==================== SECTION HEADERS ==================== */
@@ -436,10 +558,289 @@ function getStatusClass($status) {
       font-size: 1rem;
     }
 
+    /* ==================== ASSISTANCE CARDS ==================== */
+
+    .assistance-section {
+      background: #f0f5fb;
+    }
+
+    /* ── Grid: 2 columns on md+ ── */
+    #assistanceGrid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 767px) {
+      #assistanceGrid { grid-template-columns: 1fr; }
+    }
+
+    /* ── Compact card ── */
+    .assistance-card {
+      background: #fff;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      box-shadow: 0 4px 18px rgba(46,134,171,0.09);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .assistance-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 12px 32px rgba(46,134,171,0.16);
+    }
+
+    /* ── Top accent bar ── */
+    .assistance-card-accent {
+      height: 4px;
+      background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
+    }
+
+    /* ── Image strip (only when images exist) ── */
+    .assistance-img-strip {
+      width: 100%;
+      height: 160px;
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 4px;
+      padding: 10px 10px 0;
+      box-sizing: border-box;
+    }
+
+    .assistance-img-strip.one-img {
+      grid-template-columns: 1fr;
+    }
+
+    .astrip-primary {
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+      position: relative;
+    }
+
+    .astrip-primary img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .astrip-primary:hover img { transform: scale(1.04); }
+
+    .astrip-primary-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
+      border-radius: 8px;
+      pointer-events: none;
+    }
+
+    .astrip-thumbs {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .astrip-thumb {
+      flex: 1;
+      border-radius: 8px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .astrip-thumb img {
+      width: 100%; height: 100%;
+      object-fit: cover;
+      display: block;
+      transition: transform 0.3s ease;
+    }
+
+    .astrip-thumb:hover img { transform: scale(1.05); }
+
+    /* ── Cash-only icon banner (no images) ── */
+    .assistance-cash-banner {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px 18px 0;
+    }
+
+    .acash-icon {
+      width: 48px; height: 48px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      box-shadow: 0 4px 12px rgba(46,134,171,0.28);
+    }
+
+    .acash-icon i {
+      font-size: 1.4rem;
+      color: #fff;
+    }
+
+    .acash-amount-wrap .acash-label {
+      font-size: 0.68rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray);
+    }
+
+    .acash-amount-wrap .acash-value {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+      font-size: 1.35rem;
+      color: var(--primary-color);
+      line-height: 1.1;
+    }
+
+    .acash-amount-wrap .acash-goods {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--gray);
+      line-height: 1.2;
+    }
+
+    /* ── Card body ── */
+    .assistance-body {
+      padding: 14px 16px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
+      flex: 1;
+    }
+
+    .assistance-body .src-name {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 700;
+      font-size: 0.95rem;
+      color: var(--dark);
+      margin-bottom: 6px;
+      line-height: 1.3;
+    }
+
+    .assistance-meta {
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin-bottom: 10px;
+    }
+
+    /* Amount shown inside body when images are present */
+    .assistance-amount {
+      font-family: 'Poppins', sans-serif;
+      font-weight: 800;
+      color: var(--primary-color);
+      font-size: 1.05rem;
+      margin-bottom: 2px;
+    }
+
+    .assistance-amount.zero {
+      font-size: 0.82rem;
+      font-weight: 600;
+      color: var(--gray);
+    }
+
+    .assistance-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 8px 0;
+    }
+
+    .assistance-detail-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+
+    .assistance-detail-row .det-label {
+      font-size: 0.67rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--gray);
+      min-width: 38px;
+      padding-top: 1px;
+    }
+
+    .assistance-detail-row .det-value {
+      font-size: 0.8rem;
+      color: var(--dark);
+      line-height: 1.4;
+      opacity: 0.85;
+    }
+
+    .assistance-notes-text {
+      font-size: 0.77rem;
+      color: var(--gray);
+      line-height: 1.5;
+      margin-top: 4px;
+    }
+
+    /* Lightbox overlay */
+    #assistanceLightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.88);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #assistanceLightbox.show { display: flex; }
+
+    #assistanceLightbox img {
+      max-width: 92vw;
+      max-height: 88vh;
+      border-radius: 10px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    #assistanceLightbox .lb-close {
+      position: absolute;
+      top: 18px;
+      right: 24px;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    #assistanceLightbox .lb-prev,
+    #assistanceLightbox .lb-next {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #fff;
+      font-size: 2.5rem;
+      cursor: pointer;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 50%;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s;
+    }
+
+    #assistanceLightbox .lb-prev:hover,
+    #assistanceLightbox .lb-next:hover { background: rgba(255,255,255,0.25); }
+
+    #assistanceLightbox .lb-prev { left: 16px; }
+    #assistanceLightbox .lb-next { right: 16px; }
+
     /* ==================== RESPONSIVE DESIGN ==================== */
     @media (max-width: 991px) {
       .hero-section h1 {
-        font-size: 2.2rem;
+        font-size: 2.1rem;
       }
 
       .section-header h2 {
@@ -461,11 +862,11 @@ function getStatusClass($status) {
       }
 
       .hero-section {
-        padding: 50px 0 40px;
+        padding: 60px 0 90px;
       }
 
       .hero-section h1 {
-        font-size: 1.8rem;
+        font-size: 1.75rem;
       }
 
       .hero-section .subtitle {
@@ -524,46 +925,155 @@ function getStatusClass($status) {
       background: white;
     }
 
+    /* Outer grid — one card per row, full-width showcase */
     .achievements-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
-      gap: 22px;
+      display: flex;
+      flex-direction: column;
+      gap: 36px;
     }
 
+    /* Card wrapper */
     .ach-card {
-      border-radius: 16px;
+      border-radius: 18px;
       overflow: hidden;
       background: #fff;
       border: 1.5px solid var(--border);
-      box-shadow: var(--shadow-sm);
-      transition: transform 0.28s ease, box-shadow 0.28s ease;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+      transition: box-shadow 0.3s ease, transform 0.3s ease;
     }
 
     .ach-card:hover {
-      transform: translateY(-6px);
-      box-shadow: var(--shadow-lg);
+      box-shadow: 0 18px 40px rgba(46,134,171,0.16);
+      transform: translateY(-4px);
     }
 
-    .ach-img-wrap {
-      width: 100%;
-      height: 200px;
+    /* ── IMAGE CLUSTER (primary + two stacked secondaries) ── */
+    .ach-image-cluster {
+      display: grid;
+      grid-template-columns: 65fr 35fr;
+      grid-template-rows: 1fr 1fr;
+      gap: 8px;
+      height: 340px;
+      padding: 12px 12px 0;
+    }
+
+    /* Primary image spans both rows on the left */
+    .ach-primary {
+      grid-row: 1 / 3;
+      position: relative;
+      border-radius: 14px;
       overflow: hidden;
-      background: var(--pale-blue);
+      cursor: pointer;
     }
 
-    .ach-img-wrap img {
+    .ach-primary img {
       width: 100%;
       height: 100%;
       object-fit: cover;
-      transition: transform 0.4s ease;
+      display: block;
+      filter: brightness(1.02) contrast(1.03);
+      transition: transform 0.35s ease;
     }
 
-    .ach-card:hover .ach-img-wrap img {
+    .ach-primary:hover img {
+      transform: scale(1.04);
+    }
+
+    /* Gradient overlay on primary image */
+    .ach-primary-overlay {
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(to top, rgba(0,0,0,0.62) 0%, rgba(0,0,0,0.18) 45%, transparent 100%);
+      pointer-events: none;
+      border-radius: 14px;
+    }
+
+    /* Text overlay — bottom-left of primary image */
+    .ach-primary-text {
+      position: absolute;
+      bottom: 18px;
+      left: 18px;
+      right: 14px;
+      pointer-events: none;
+    }
+
+    .ach-primary-text .ach-overlay-title {
+      font-family: 'Poppins', sans-serif;
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: #fff;
+      line-height: 1.3;
+      margin-bottom: 4px;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.4);
+    }
+
+    .ach-primary-text .ach-overlay-sub {
+      font-size: 0.8rem;
+      font-weight: 400;
+      color: rgba(255,255,255,0.82);
+      line-height: 1.4;
+      text-shadow: 0 1px 3px rgba(0,0,0,0.35);
+    }
+
+    /* "View Gallery" button on primary image */
+    .ach-view-btn {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      background: rgba(255,255,255,0.18);
+      backdrop-filter: blur(6px);
+      color: #fff;
+      border: 1px solid rgba(255,255,255,0.35);
+      border-radius: 50px;
+      padding: 5px 14px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      transition: background 0.2s ease;
+      pointer-events: all;
+    }
+
+    .ach-view-btn:hover {
+      background: rgba(255,255,255,0.32);
+    }
+
+    /* Secondary images — right column */
+    .ach-secondary {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      cursor: pointer;
+    }
+
+    .ach-secondary img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      filter: brightness(1.01) contrast(1.02);
+      transition: transform 0.35s ease;
+    }
+
+    .ach-secondary:hover img {
       transform: scale(1.05);
     }
 
+    /* No photo placeholder */
+    .ach-no-photo {
+      height: 220px;
+      background: var(--pale-blue);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--primary-color);
+      opacity: 0.35;
+      font-size: 3rem;
+    }
+
+    /* Card body */
     .ach-body {
-      padding: 16px 18px 20px;
+      padding: 18px 20px 22px;
     }
 
     .ach-tag {
@@ -584,30 +1094,130 @@ function getStatusClass($status) {
     .ach-title {
       font-family: 'Poppins', sans-serif;
       font-weight: 700;
-      font-size: 0.97rem;
+      font-size: 1.05rem;
       color: var(--dark);
       margin-bottom: 6px;
       line-height: 1.35;
     }
 
     .ach-caption {
-      font-size: 0.83rem;
+      font-size: 0.85rem;
       color: var(--gray);
-      line-height: 1.55;
+      line-height: 1.6;
     }
 
+    /* Achievement Lightbox */
+    #achLightbox {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #achLightbox.show { display: flex; }
+
+    #achLightbox img {
+      max-width: 92vw;
+      max-height: 88vh;
+      border-radius: 10px;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.5);
+    }
+
+    #achLightbox .lb-close {
+      position: absolute;
+      top: 18px;
+      right: 24px;
+      color: #fff;
+      font-size: 2rem;
+      cursor: pointer;
+      line-height: 1;
+    }
+
+    #achLightbox .lb-prev,
+    #achLightbox .lb-next {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #fff;
+      cursor: pointer;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 50%;
+      width: 52px;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      transition: background 0.2s;
+    }
+
+    #achLightbox .lb-prev:hover,
+    #achLightbox .lb-next:hover { background: rgba(255,255,255,0.25); }
+
+    #achLightbox .lb-prev { left: 16px; }
+    #achLightbox .lb-next { right: 16px; }
+
+    #achLightbox .lb-counter {
+      position: absolute;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: rgba(255,255,255,0.8);
+      font-size: 0.9rem;
+      background: rgba(0,0,0,0.4);
+      padding: 4px 14px;
+      border-radius: 20px;
+    }
+
+    #achLightbox .lb-caption {
+      position: absolute;
+      bottom: 50px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: #fff;
+      font-size: 0.95rem;
+      font-weight: 600;
+      background: rgba(0,0,0,0.5);
+      padding: 6px 18px;
+      border-radius: 20px;
+      white-space: nowrap;
+      max-width: 90vw;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    /* Responsive */
     @media (max-width: 767px) {
-      .achievements-grid {
-        grid-template-columns: repeat(2, 1fr);
-        gap: 14px;
+      .ach-image-cluster {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: 180px 120px;
+        height: auto;
       }
-      .ach-img-wrap { height: 150px; }
+      .ach-primary {
+        grid-column: 1 / 3;
+        grid-row: 1 / 2;
+      }
+      .ach-secondary {
+        grid-row: 2 / 3;
+      }
     }
 
     @media (max-width: 480px) {
-      .achievements-grid {
+      .ach-image-cluster {
         grid-template-columns: 1fr;
+        grid-template-rows: 200px 120px 120px;
+        height: auto;
       }
+      .ach-primary {
+        grid-column: 1;
+        grid-row: 1 / 2;
+      }
+      .ach-secondary:nth-child(2) { grid-row: 2; }
+      .ach-secondary:nth-child(3) { grid-row: 3; }
     }
 
     /* Empty State */
@@ -701,31 +1311,50 @@ function getStatusClass($status) {
 
 <!-- SECTION 1: HERO / PAGE HEADER -->
 <section class="hero-section">
+  <!-- Background image layer (from DB) -->
+  <div id="heroBgLayer" style="position:absolute;inset:0;background-size:cover;background-position:center;<?= !empty($hero_settings['bg_image']) ? 'background-image:url(\'../../' . htmlspecialchars($hero_settings['bg_image']) . '\');opacity:0.28;' : 'opacity:0;' ?>z-index:0;transition:opacity 0.4s ease;pointer-events:none;"></div>
+  <!-- Floating blobs -->
+  <div class="hero-blob hero-blob-1"></div>
+  <div class="hero-blob hero-blob-2"></div>
+
   <div class="container">
     <div class="hero-content text-center">
+
       <!-- Breadcrumb -->
       <nav aria-label="breadcrumb">
         <ol class="breadcrumb justify-content-center">
-          <li class="breadcrumb-item"><a href="user_home.php" style="color: rgba(255,255,255,0.8); text-decoration: none;">Home</a></li>
+          <li class="breadcrumb-item"><a href="user_home.php">Home</a></li>
           <li class="breadcrumb-item active" aria-current="page">Transparency & Progress</li>
         </ol>
       </nav>
 
+      <!-- Page label chip -->
+      <div class="hero-chip">
+        <i class="bi bi-bar-chart-line-fill"></i>
+        Association Report
+      </div>
+
       <!-- Page Title -->
-      <h1>Transparency & Association Progress</h1>
-      
+      <h1><?= htmlspecialchars($hero_settings['title']) ?></h1>
+
       <!-- Subtitle -->
       <p class="subtitle">
-        Promoting accountability through transparent reporting of assistance received, programs implemented, 
-        and sustainable initiatives that empower our fishing community.
+        <?= htmlspecialchars($hero_settings['subtitle']) ?>
       </p>
 
       <!-- Last Updated -->
       <div class="last-updated">
-        <i class="bi bi-calendar-check"></i>
+        <i class="bi bi-calendar-check-fill"></i>
         Last Updated: <?= htmlspecialchars($stats['last_updated']) ?>
       </div>
     </div>
+  </div>
+
+  <!-- Wave SVG divider -->
+  <div class="hero-wave">
+    <svg viewBox="0 0 1440 60" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+      <path d="M0,30 C360,70 1080,-10 1440,30 L1440,60 L0,60 Z" fill="#f0f5fb"/>
+    </svg>
   </div>
 </section>
 
@@ -769,7 +1398,171 @@ function getStatusClass($status) {
   </div>
 </section>
 
-<!-- SECTION 3: COMMUNITY ACHIEVEMENTS GALLERY -->
+<!-- SECTION 3: RECENT ASSISTANCE RECEIVED -->
+<section class="assistance-section">
+  <div class="container">
+    <div class="section-header">
+      <h2>Recent Assistance Received</h2>
+      <p>Support from government agencies, NGOs, and partners — including goods, tools, and financial aid</p>
+    </div>
+
+    <!-- Search -->
+    <div class="table-controls">
+      <div class="search-box">
+        <i class="bi bi-search"></i>
+        <input type="text" id="searchInput" placeholder="Search by source or type..." />
+      </div>
+    </div>
+
+    <?php if (!empty($assistanceList)): ?>
+    <div id="assistanceGrid">
+      <?php foreach ($assistanceList as $a):
+        $badge     = getSourceTypeBadge($a['donor_type']);
+        $hasAmount = (float)$a['amount'] > 0;
+        $imgs      = $a['images'];
+        $primaryImg    = $imgs[0]['image_path'] ?? '';
+        $secondaryImg1 = $imgs[1]['image_path'] ?? '';
+        $secondaryImg2 = $imgs[2]['image_path'] ?? '';
+        $imgCount  = count($imgs);
+        $dateLabel = $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '';
+      ?>
+      <div class="assistance-item"
+           data-name="<?= htmlspecialchars(strtolower($a['donor_name'])) ?>"
+           data-type="<?= htmlspecialchars(strtolower($a['donor_type'])) ?>">
+        <div class="assistance-card">
+
+          <!-- Top accent bar -->
+          <div class="assistance-card-accent"></div>
+
+          <?php if ($primaryImg): ?>
+          <!-- ── Image strip (compact, fixed height) ── -->
+          <div class="assistance-img-strip <?= $imgCount === 1 ? 'one-img' : '' ?>">
+
+            <!-- Primary -->
+            <div class="astrip-primary" onclick="openLightbox(<?= $a['id'] ?>, 0)">
+              <img src="../../<?= htmlspecialchars($primaryImg) ?>"
+                   alt="<?= htmlspecialchars($a['donor_name']) ?>"
+                   onerror="this.parentElement.style.background='var(--pale-blue)'; this.style.display='none';">
+              <div class="astrip-primary-overlay"></div>
+            </div>
+
+            <?php if ($imgCount > 1): ?>
+            <!-- Thumbnail stack -->
+            <div class="astrip-thumbs">
+              <div class="astrip-thumb" onclick="openLightbox(<?= $a['id'] ?>, 1)">
+                <img src="../../<?= htmlspecialchars($secondaryImg1 ?: $primaryImg) ?>"
+                     alt=""
+                     onerror="this.parentElement.style.background='var(--pale-blue)'; this.style.display='none';">
+              </div>
+              <?php if ($imgCount > 2): ?>
+              <div class="astrip-thumb" onclick="openLightbox(<?= $a['id'] ?>, 2)">
+                <img src="../../<?= htmlspecialchars($secondaryImg2 ?: $primaryImg) ?>"
+                     alt=""
+                     onerror="this.parentElement.style.background='var(--pale-blue)'; this.style.display='none';">
+              </div>
+              <?php endif; ?>
+            </div>
+            <?php endif; ?>
+
+          </div>
+          <?php elseif ($hasAmount): ?>
+          <!-- ── Cash-only banner (no images) ── -->
+          <div class="assistance-cash-banner">
+            <div class="acash-icon"><i class="bi bi-cash-stack"></i></div>
+            <div class="acash-amount-wrap">
+              <div class="acash-label">Amount Received</div>
+              <div class="acash-value"><?= formatCurrency($a['amount']) ?></div>
+            </div>
+          </div>
+          <?php else: ?>
+          <!-- ── Goods/Tools banner (no images, no amount) ── -->
+          <div class="assistance-cash-banner">
+            <div class="acash-icon"><i class="bi bi-box-seam"></i></div>
+            <div class="acash-amount-wrap">
+              <div class="acash-label">Assistance Type</div>
+              <div class="acash-goods">Goods / Tools</div>
+            </div>
+          </div>
+          <?php endif; ?>
+
+          <!-- ── Card body (details) ── -->
+          <div class="assistance-body">
+
+            <div class="src-name"><?= htmlspecialchars($a['donor_name']) ?></div>
+
+            <div class="assistance-meta">
+              <span class="source-type-badge <?= htmlspecialchars($badge['class']) ?>">
+                <?= htmlspecialchars($badge['label']) ?>
+              </span>
+            </div>
+
+            <?php if ($primaryImg): ?>
+              <?php if ($hasAmount): ?>
+              <span class="assistance-amount"><?= formatCurrency($a['amount']) ?></span>
+              <?php else: ?>
+              <span class="assistance-amount zero"><i class="bi bi-box-seam me-1"></i>Goods / Tools</span>
+              <?php endif; ?>
+              <hr class="assistance-divider">
+            <?php endif; ?>
+
+            <?php if ($dateLabel): ?>
+            <div class="assistance-detail-row">
+              <span class="det-label">Date</span>
+              <span class="det-value"><?= $dateLabel ?></span>
+            </div>
+            <?php endif; ?>
+
+            <div class="assistance-detail-row">
+              <span class="det-label">Type</span>
+              <span class="det-value"><?= htmlspecialchars($a['donor_type'] ?: '—') ?></span>
+            </div>
+
+            <?php if (!empty($a['notes'])): ?>
+            <hr class="assistance-divider">
+            <div class="assistance-notes-text"><?= htmlspecialchars($a['notes']) ?></div>
+            <?php endif; ?>
+
+          </div>
+        </div>
+      </div>
+
+      <!-- Hidden image list for lightbox -->
+      <div id="lbImages-<?= $a['id'] ?>" style="display:none">
+        <?php foreach ($imgs as $img): ?>
+        <span>../../<?= htmlspecialchars($img['image_path']) ?></span>
+        <?php endforeach; ?>
+      </div>
+
+      <?php endforeach; ?>
+    </div>
+
+    <div id="noResults" style="display:none">
+      <div class="empty-state mt-3">
+        <i class="bi bi-search"></i>
+        <h4>No matches found</h4>
+        <p>Try a different search term.</p>
+      </div>
+    </div>
+
+    <?php else: ?>
+    <div class="empty-state">
+      <i class="bi bi-inbox"></i>
+      <h4>No Records Yet</h4>
+      <p>No assistance records available at the moment.</p>
+    </div>
+    <?php endif; ?>
+  </div>
+</section>
+
+<!-- Lightbox -->
+<div id="assistanceLightbox">
+  <span class="lb-close" onclick="closeLightbox()">&times;</span>
+  <button class="lb-prev" onclick="lbNav(-1)"><i class="bi bi-chevron-left"></i></button>
+  <img id="lbImg" src="" alt="">
+  <button class="lb-next" onclick="lbNav(1)"><i class="bi bi-chevron-right"></i></button>
+</div>
+
+<!-- SECTION 4: COMMUNITY ACHIEVEMENTS GALLERY -->
 <section class="achievements-section">
   <div class="container">
     <div class="section-header">
@@ -779,13 +1572,67 @@ function getStatusClass($status) {
 
     <?php if (!empty($achievementsList)): ?>
     <div class="achievements-grid">
-      <?php foreach ($achievementsList as $ach): ?>
+      <?php foreach ($achievementsList as $ach):
+        $achImgs = !empty($ach['images']) ? $ach['images'] : ((!empty($ach['image_path'])) ? [['image_path'=>$ach['image_path']]] : []);
+        $primaryImg   = $achImgs[0]['image_path'] ?? '';
+        $secondaryImg1 = $achImgs[1]['image_path'] ?? '';
+        $secondaryImg2 = $achImgs[2]['image_path'] ?? '';
+        // fallback: if only 1 image, reuse it for secondaries so the layout doesn't collapse
+        if (!$secondaryImg1) $secondaryImg1 = $primaryImg;
+        if (!$secondaryImg2) $secondaryImg2 = $primaryImg;
+      ?>
       <div class="ach-card">
-        <div class="ach-img-wrap">
-          <img src="../../<?= htmlspecialchars($ach['image_path']) ?>"
-               alt="<?= htmlspecialchars($ach['title']) ?>"
-               onerror="this.parentElement.style.background='#e8f6f8'; this.style.display='none';">
+
+        <?php if ($primaryImg): ?>
+        <!-- ── Image cluster: 65% primary + 35% two stacked secondaries ── -->
+        <div class="ach-image-cluster">
+
+          <!-- Primary (dominant) image -->
+          <div class="ach-primary" onclick="openAchLightbox(<?= $ach['id'] ?>, 0)">
+            <img src="../../<?= htmlspecialchars($primaryImg) ?>"
+                 alt="<?= htmlspecialchars($ach['title']) ?>"
+                 onerror="this.parentElement.style.background='var(--pale-blue)'; this.style.display='none';">
+            <div class="ach-primary-overlay"></div>
+            <div class="ach-primary-text">
+              <div class="ach-overlay-title"><?= htmlspecialchars($ach['title']) ?></div>
+              <?php if (!empty($ach['caption'])): ?>
+              <div class="ach-overlay-sub"><?= htmlspecialchars(mb_substr($ach['caption'], 0, 90)) ?><?= mb_strlen($ach['caption']) > 90 ? '…' : '' ?></div>
+              <?php endif; ?>
+            </div>
+            <?php if (count($achImgs) > 1): ?>
+            <button class="ach-view-btn" onclick="event.stopPropagation(); openAchLightbox(<?= $ach['id'] ?>, 0)">
+              <i class="bi bi-images me-1"></i>View Gallery
+            </button>
+            <?php endif; ?>
+          </div>
+
+          <!-- Secondary image 1 -->
+          <div class="ach-secondary" onclick="openAchLightbox(<?= $ach['id'] ?>, <?= isset($achImgs[1]) ? 1 : 0 ?>)">
+            <img src="../../<?= htmlspecialchars($secondaryImg1) ?>"
+                 alt="<?= htmlspecialchars($ach['title']) ?>"
+                 onerror="this.parentElement.style.background='var(--pale-blue)'; this.style.display='none';">
+          </div>
+
+          <!-- Secondary image 2 -->
+          <div class="ach-secondary" onclick="openAchLightbox(<?= $ach['id'] ?>, <?= isset($achImgs[2]) ? 2 : 0 ?>)">
+            <img src="../../<?= htmlspecialchars($secondaryImg2) ?>"
+                 alt="<?= htmlspecialchars($ach['title']) ?>"
+                 onerror="this.parentElement.style.background='var(--pale-blue)'; this.style.display='none';">
+          </div>
+
         </div>
+        <?php else: ?>
+        <div class="ach-no-photo"><i class="bi bi-image"></i></div>
+        <?php endif; ?>
+
+        <!-- Hidden image list for lightbox (all images) -->
+        <div id="achLbImages-<?= $ach['id'] ?>" style="display:none"
+             data-title="<?= htmlspecialchars($ach['title']) ?>">
+          <?php foreach ($achImgs as $achImg): ?>
+          <span>../../<?= htmlspecialchars($achImg['image_path']) ?></span>
+          <?php endforeach; ?>
+        </div>
+
         <div class="ach-body">
           <?php if (!empty($ach['tag'])): ?>
           <span class="ach-tag"><i class="bi bi-check-circle-fill"></i> <?= htmlspecialchars($ach['tag']) ?></span>
@@ -808,8 +1655,17 @@ function getStatusClass($status) {
   </div>
 </section>
 
+<!-- Achievement Lightbox -->
+<div id="achLightbox">
+  <span class="lb-close" onclick="closeAchLightbox()">&times;</span>
+  <button class="lb-prev" onclick="achLbNav(-1)"><i class="bi bi-chevron-left"></i></button>
+  <img id="achLbImg" src="" alt="">
+  <button class="lb-next" onclick="achLbNav(1)"><i class="bi bi-chevron-right"></i></button>
+  <div class="lb-caption" id="achLbCaption"></div>
+  <div class="lb-counter" id="achLbCounter"></div>
+</div>
 
-<!-- SECTION 4: CORE VALUES -->
+<!-- SECTION 5: CORE VALUES -->
 <section class="values-section">
   <div class="container">
     <div class="section-header">
@@ -849,64 +1705,6 @@ function getStatusClass($status) {
   </div>
 </section>
 
-<!-- SECTION 5: RECENT ASSISTANCE RECEIVED -->
-<section class="assistance-section">
-  <div class="container">
-    <div class="section-header">
-      <h2>Recent Assistance Received</h2>
-      <p>Support from government agencies, NGOs, and partners that help sustain our programs</p>
-    </div>
-
-    <!-- Table Controls -->
-    <div class="table-controls">
-      <div class="search-box">
-        <i class="bi bi-search"></i>
-        <input type="text" id="searchInput" placeholder="Search by source or type..." />
-      </div>
-    </div>
-
-    <!-- Assistance Table -->
-    <?php if ($assistanceResult && $assistanceResult->num_rows > 0): ?>
-    <div class="table-container">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Source</th>
-            <th>Type</th>
-            <th>Amount/Description</th>
-            <th>Date Received</th>
-          </tr>
-        </thead>
-        <tbody id="assistanceTableBody">
-          <?php while ($assistance = $assistanceResult->fetch_assoc()): ?>
-          <tr>
-            <td>
-              <span class="source-name"><?= htmlspecialchars($assistance['source_name']) ?></span>
-            </td>
-            <td>
-              <span class="source-type-badge OTHER">
-                Support/Assistance
-              </span>
-            </td>
-            <td>
-              <span class="amount-cell"><?= formatCurrency($assistance['amount']) ?></span>
-            </td>
-            <td><?= date('M d, Y', strtotime($assistance['date_received'])) ?></td>
-          </tr>
-          <?php endwhile; ?>
-        </tbody>
-      </table>
-    </div>
-    <?php else: ?>
-    <div class="empty-state">
-      <i class="bi bi-inbox"></i>
-      <h4>No Records Yet</h4>
-      <p>No assistance records available at the moment.</p>
-    </div>
-    <?php endif; ?>
-  </div>
-</section>
-
 <div style="height: 60px;"></div>
 
 <?php include("partials/footer.php"); ?>
@@ -914,44 +1712,122 @@ function getStatusClass($status) {
 <!-- Bootstrap JS -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Search Functionality -->
 <script>
 document.addEventListener('DOMContentLoaded', function() {
+  // ── Search ──────────────────────────────────────────────
   const searchInput = document.getElementById('searchInput');
-  const tableBody = document.getElementById('assistanceTableBody');
-  
-  if (searchInput && tableBody) {
-    const rows = Array.from(tableBody.querySelectorAll('tr'));
-    
+  const items = document.querySelectorAll('.assistance-item');
+  const noResults = document.getElementById('noResults');
+
+  if (searchInput) {
     searchInput.addEventListener('input', function() {
-      const searchTerm = this.value.toLowerCase().trim();
-      
-      rows.forEach(row => {
-        const sourceName = row.cells[0].textContent.toLowerCase();
-        const sourceType = row.cells[1].textContent.toLowerCase();
-        
-        if (sourceName.includes(searchTerm) || sourceType.includes(searchTerm)) {
-          row.style.display = '';
-        } else {
-          row.style.display = 'none';
-        }
+      const q = this.value.toLowerCase().trim();
+      let visible = 0;
+      items.forEach(item => {
+        const match = item.dataset.name.includes(q) || item.dataset.type.includes(q);
+        item.style.display = match ? '' : 'none';
+        if (match) visible++;
       });
+      if (noResults) noResults.style.display = (visible === 0 && q !== '') ? '' : 'none';
     });
   }
 
-  // Animate stat values on scroll
-  const statValues = document.querySelectorAll('.stat-value');
-  statValues.forEach((stat, index) => {
-    stat.style.opacity = '0';
-    stat.style.transform = 'translateY(20px)';
-    
+  // ── Animate stat cards ───────────────────────────────────
+  document.querySelectorAll('.stat-value').forEach((el, i) => {
+    el.style.opacity = '0';
+    el.style.transform = 'translateY(20px)';
     setTimeout(() => {
-      stat.style.transition = 'all 0.6s ease';
-      stat.style.opacity = '1';
-      stat.style.transform = 'translateY(0)';
-    }, index * 100);
+      el.style.transition = 'all 0.6s ease';
+      el.style.opacity = '1';
+      el.style.transform = 'translateY(0)';
+    }, i * 100);
   });
 });
+
+// ── Lightbox ──────────────────────────────────────────────
+let lbCurrentId = null;
+let lbCurrentIdx = 0;
+let lbImages = [];
+
+function openLightbox(donationId, startIdx) {
+  const container = document.getElementById('lbImages-' + donationId);
+  if (!container) return;
+  lbImages = Array.from(container.querySelectorAll('span')).map(s => s.textContent.trim());
+  if (!lbImages.length) return;
+  lbCurrentId = donationId;
+  lbCurrentIdx = startIdx;
+  document.getElementById('lbImg').src = lbImages[lbCurrentIdx];
+  document.getElementById('assistanceLightbox').classList.add('show');
+}
+
+function closeLightbox() {
+  document.getElementById('assistanceLightbox').classList.remove('show');
+  document.getElementById('lbImg').src = '';
+}
+
+function lbNav(dir) {
+  lbCurrentIdx = (lbCurrentIdx + dir + lbImages.length) % lbImages.length;
+  document.getElementById('lbImg').src = lbImages[lbCurrentIdx];
+}
+
+document.getElementById('assistanceLightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeLightbox();
+});
+
+document.addEventListener('keydown', function(e) {
+  const lb = document.getElementById('assistanceLightbox');
+  const achLb = document.getElementById('achLightbox');
+  if (lb.classList.contains('show')) {
+    if (e.key === 'Escape') closeLightbox();
+    if (e.key === 'ArrowLeft') lbNav(-1);
+    if (e.key === 'ArrowRight') lbNav(1);
+  }
+  if (achLb.classList.contains('show')) {
+    if (e.key === 'Escape') closeAchLightbox();
+    if (e.key === 'ArrowLeft') achLbNav(-1);
+    if (e.key === 'ArrowRight') achLbNav(1);
+  }
+});
+
+// ── Achievement Lightbox ──────────────────────────────────
+let achLbCurrentId = null;
+let achLbCurrentIdx = 0;
+let achLbImagesArr = [];
+let achLbTitle = '';
+
+function openAchLightbox(achId, startIdx) {
+  const container = document.getElementById('achLbImages-' + achId);
+  if (!container) return;
+  achLbImagesArr = Array.from(container.querySelectorAll('span')).map(s => s.textContent.trim());
+  if (!achLbImagesArr.length) return;
+  achLbCurrentId = achId;
+  achLbCurrentIdx = startIdx;
+  achLbTitle = container.dataset.title || '';
+  updateAchLb();
+  document.getElementById('achLightbox').classList.add('show');
+}
+
+function updateAchLb() {
+  document.getElementById('achLbImg').src = achLbImagesArr[achLbCurrentIdx];
+  document.getElementById('achLbCaption').textContent = achLbTitle;
+  document.getElementById('achLbCounter').textContent = (achLbCurrentIdx + 1) + ' / ' + achLbImagesArr.length;
+}
+
+function closeAchLightbox() {
+  document.getElementById('achLightbox').classList.remove('show');
+  document.getElementById('achLbImg').src = '';
+}
+
+function achLbNav(dir) {
+  achLbCurrentIdx = (achLbCurrentIdx + dir + achLbImagesArr.length) % achLbImagesArr.length;
+  updateAchLb();
+}
+
+document.getElementById('achLightbox').addEventListener('click', function(e) {
+  if (e.target === this) closeAchLightbox();
+});
+
+
 </script>
 
 </body>

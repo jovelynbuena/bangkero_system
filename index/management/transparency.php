@@ -135,19 +135,7 @@ try {
 
         // Add/Edit Assistance
         elseif ($action === 'add_assistance' || $action === 'edit_assistance') {
-            $rawProgramId = (int)($_POST['program_id'] ?? 0);
-            // Validate campaign exists to avoid FK constraint failure; use NULL if not found
             $program_id = null;
-            if ($rawProgramId > 0) {
-                $chk = $conn->prepare("SELECT id FROM transparency_campaigns WHERE id = ?");
-                $chk->bind_param('i', $rawProgramId);
-                $chk->execute();
-                $chk->store_result();
-                if ($chk->num_rows > 0) {
-                    $program_id = $rawProgramId;
-                }
-                $chk->close();
-            }
             $source_name = trim($_POST['source_name'] ?? '');
             $source_type = trim($_POST['source_type'] ?? '');
             $amount = (float)($_POST['amount'] ?? 0);
@@ -155,9 +143,18 @@ try {
             $reference = trim($_POST['reference'] ?? '');
             $notes = trim($_POST['notes'] ?? '');
 
-            if ($source_name === '' || $amount <= 0) {
-                throw new Exception('Source name and valid amount are required.');
+            if ($source_name === '') {
+                throw new Exception('Source name is required.');
             }
+            if ($amount < 0) {
+                throw new Exception('Amount cannot be negative.');
+            }
+
+            // Handle multiple image uploads
+            $uploadDir = '../../uploads/assistance/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $allowed     = ['jpg','jpeg','jfif','png','webp','gif','bmp','tiff','tif','heic','heif','avif'];
+            $allowedMimes = ['image/jpeg','image/png','image/webp','image/gif','image/bmp','image/tiff','image/heic','image/heif','image/avif'];
 
             if ($action === 'add_assistance') {
                 $stmt = $conn->prepare("INSERT INTO transparency_donations 
@@ -165,9 +162,31 @@ try {
                     VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', NOW())");
                 $stmt->bind_param('issdsss', $program_id, $source_name, $source_type, $amount, $date_received, $reference, $notes);
                 $stmt->execute();
+                $newId = $conn->insert_id;
                 $stmt->close();
+
+                // Upload new images
+                if (!empty($_FILES['assistance_images']['name'][0])) {
+                    $imgStmt = $conn->prepare("INSERT INTO transparency_donation_images (donation_id, image_path, sort_order) VALUES (?, ?, ?)");
+                    foreach ($_FILES['assistance_images']['name'] as $i => $fname) {
+                        if (empty($fname) || $_FILES['assistance_images']['error'][$i] !== UPLOAD_ERR_OK) continue;
+                        $ext = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
+                        $mime = mime_content_type($_FILES['assistance_images']['tmp_name'][$i]);
+                        if (!in_array($ext, $allowed) && !in_array($mime, $allowedMimes)) continue;
+                        if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
+                        if ($ext === 'avif') $ext = 'webp';
+                        $fileName = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                        if (move_uploaded_file($_FILES['assistance_images']['tmp_name'][$i], $uploadDir . $fileName)) {
+                            $imgPath = 'uploads/assistance/' . $fileName;
+                            $imgStmt->bind_param('isi', $newId, $imgPath, $i);
+                            $imgStmt->execute();
+                        }
+                    }
+                    $imgStmt->close();
+                }
+
                 $alertType = 'success';
-                $alertMsg = 'Assistance recorded successfully.';
+                $alertMsg  = 'Assistance recorded successfully.';
             } else {
                 $id = (int)($_POST['id'] ?? 0);
                 $stmt = $conn->prepare("UPDATE transparency_donations 
@@ -176,8 +195,32 @@ try {
                 $stmt->bind_param('issdsssi', $program_id, $source_name, $source_type, $amount, $date_received, $reference, $notes, $id);
                 $stmt->execute();
                 $stmt->close();
+
+                // Upload new images (append)
+                if (!empty($_FILES['assistance_images']['name'][0])) {
+                    $imgStmt = $conn->prepare("INSERT INTO transparency_donation_images (donation_id, image_path, sort_order) VALUES (?, ?, ?)");
+                    $sortRes = $conn->query("SELECT COALESCE(MAX(sort_order),0) as mx FROM transparency_donation_images WHERE donation_id=$id");
+                    $sortStart = $sortRes ? (int)$sortRes->fetch_assoc()['mx'] + 1 : 0;
+                    foreach ($_FILES['assistance_images']['name'] as $i => $fname) {
+                        if (empty($fname) || $_FILES['assistance_images']['error'][$i] !== UPLOAD_ERR_OK) continue;
+                        $ext = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
+                        $mime = mime_content_type($_FILES['assistance_images']['tmp_name'][$i]);
+                        if (!in_array($ext, $allowed) && !in_array($mime, $allowedMimes)) continue;
+                        if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
+                        if ($ext === 'avif') $ext = 'webp';
+                        $fileName = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                        if (move_uploaded_file($_FILES['assistance_images']['tmp_name'][$i], $uploadDir . $fileName)) {
+                            $imgPath  = 'uploads/assistance/' . $fileName;
+                            $sortVal  = $sortStart + $i;
+                            $imgStmt->bind_param('isi', $id, $imgPath, $sortVal);
+                            $imgStmt->execute();
+                        }
+                    }
+                    $imgStmt->close();
+                }
+
                 $alertType = 'success';
-                $alertMsg = 'Assistance updated successfully.';
+                $alertMsg  = 'Assistance updated successfully.';
             }
         }
 
@@ -388,12 +431,43 @@ try {
         // Delete Assistance
         elseif ($action === 'delete_assistance') {
             $id = (int)($_POST['id'] ?? 0);
+            // Delete associated images from disk
+            $imgRes = $conn->query("SELECT image_path FROM transparency_donation_images WHERE donation_id=$id");
+            while ($imgRes && $imgRow = $imgRes->fetch_assoc()) {
+                if ($imgRow['image_path'] && file_exists('../../' . $imgRow['image_path'])) {
+                    @unlink('../../' . $imgRow['image_path']);
+                }
+            }
+            $conn->query("DELETE FROM transparency_donation_images WHERE donation_id=$id");
             $stmt = $conn->prepare("DELETE FROM transparency_donations WHERE id=?");
             $stmt->bind_param('i', $id);
             $stmt->execute();
             $stmt->close();
             $alertType = 'success';
             $alertMsg = 'Assistance record deleted.';
+        }
+
+        // Delete single donation image
+        elseif ($action === 'delete_donation_image') {
+            $imgId = (int)($_POST['img_id'] ?? 0);
+            $stmtSel = $conn->prepare("SELECT * FROM transparency_donation_images WHERE id=?");
+            $stmtSel->bind_param('i', $imgId);
+            $stmtSel->execute();
+            $imgRow = $stmtSel->get_result()->fetch_assoc();
+            $stmtSel->close();
+            if ($imgRow) {
+                if ($imgRow['image_path'] && file_exists('../../' . $imgRow['image_path'])) {
+                    @unlink('../../' . $imgRow['image_path']);
+                }
+                $stmtDel = $conn->prepare("DELETE FROM transparency_donation_images WHERE id=?");
+                $stmtDel->bind_param('i', $imgId);
+                $stmtDel->execute();
+                $stmtDel->close();
+            }
+            // Return JSON for AJAX
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => true]);
+            exit;
         }
 
         // ── Community Achievements ──────────────────────────────────────
@@ -406,52 +480,105 @@ try {
 
             if ($ach_title === '') throw new Exception('Title is required.');
 
-            // Handle image upload
-            $ach_image = trim($_POST['ach_image_existing'] ?? '');
-            if (!empty($_FILES['ach_image']['name'])) {
-                $uploadDir = '../../uploads/achievements/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
-                $ext = strtolower(pathinfo($_FILES['ach_image']['name'], PATHINFO_EXTENSION));
-                $allowed = ['jpg','jpeg','jfif','png','webp','gif','bmp','tiff','tif','heic','heif','avif'];
-                $allowedMimes = ['image/jpeg','image/png','image/webp','image/gif','image/bmp','image/tiff','image/heic','image/heif','image/avif'];
-                $detectedMime = mime_content_type($_FILES['ach_image']['tmp_name']);
-                if (!in_array($ext, $allowed) && !in_array($detectedMime, $allowedMimes)) {
-                    throw new Exception('Invalid image type. Allowed: JPG, PNG, WEBP, GIF, BMP, HEIC.');
-                }
-                // Normalize jfif/heic/etc to a web-safe extension
-                if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
-                if ($ext === 'avif') $ext = 'webp';
-                $fileName = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
-                if (!move_uploaded_file($_FILES['ach_image']['tmp_name'], $uploadDir . $fileName)) {
-                    throw new Exception('Failed to upload image.');
-                }
-                // Delete old image if editing
-                if ($action === 'edit_achievement' && $ach_image && file_exists('../../' . $ach_image)) {
-                    @unlink('../../' . $ach_image);
-                }
-                $ach_image = 'uploads/achievements/' . $fileName;
-            }
+            $uploadDir   = '../../uploads/achievements/';
+            if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+            $allowed      = ['jpg','jpeg','jfif','png','webp','gif','bmp','tiff','tif','heic','heif','avif'];
+            $allowedMimes = ['image/jpeg','image/png','image/webp','image/gif','image/bmp','image/tiff','image/heic','image/heif','image/avif'];
 
-            if ($ach_image === '' && $action === 'add_achievement') {
-                throw new Exception('An image is required.');
-            }
+            $hasNewImages = !empty($_FILES['ach_images']['name'][0]);
 
             if ($action === 'add_achievement') {
+                if (!$hasNewImages) throw new Exception('At least one image is required.');
+
+                // Insert achievement row (image_path is now just a placeholder)
+                $firstPath = '';
                 $stmt = $conn->prepare("INSERT INTO community_achievements (title, caption, tag, image_path, sort_order) VALUES (?, ?, ?, ?, ?)");
-                $stmt->bind_param('ssssi', $ach_title, $ach_caption, $ach_tag, $ach_image, $ach_sort);
-                $stmt->execute(); $stmt->close();
-                $alertType = 'success'; $alertMsg = 'Achievement added successfully.';
-            } else {
-                if ($ach_image === '') {
-                    $stmt = $conn->prepare("UPDATE community_achievements SET title=?, caption=?, tag=?, sort_order=? WHERE id=?");
-                    $stmt->bind_param('sssii', $ach_title, $ach_caption, $ach_tag, $ach_sort, $ach_id);
-                } else {
-                    $stmt = $conn->prepare("UPDATE community_achievements SET title=?, caption=?, tag=?, image_path=?, sort_order=? WHERE id=?");
-                    $stmt->bind_param('ssssii', $ach_title, $ach_caption, $ach_tag, $ach_image, $ach_sort, $ach_id);
+                $stmt->bind_param('ssssi', $ach_title, $ach_caption, $ach_tag, $firstPath, $ach_sort);
+                $stmt->execute();
+                $newAchId = $conn->insert_id;
+                $stmt->close();
+
+                // Upload images
+                $imgStmt = $conn->prepare("INSERT INTO community_achievement_images (achievement_id, image_path, sort_order) VALUES (?, ?, ?)");
+                foreach ($_FILES['ach_images']['name'] as $i => $fname) {
+                    if (empty($fname) || $_FILES['ach_images']['error'][$i] !== UPLOAD_ERR_OK) continue;
+                    $ext  = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
+                    $mime = mime_content_type($_FILES['ach_images']['tmp_name'][$i]);
+                    if (!in_array($ext, $allowed) && !in_array($mime, $allowedMimes)) continue;
+                    if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
+                    if ($ext === 'avif') $ext = 'webp';
+                    $fileName = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                    if (move_uploaded_file($_FILES['ach_images']['tmp_name'][$i], $uploadDir . $fileName)) {
+                        $imgPath = 'uploads/achievements/' . $fileName;
+                        $imgStmt->bind_param('isi', $newAchId, $imgPath, $i);
+                        $imgStmt->execute();
+                        if ($firstPath === '') {
+                            $firstPath = $imgPath;
+                            $upd = $conn->prepare("UPDATE community_achievements SET image_path=? WHERE id=?");
+                            $upd->bind_param('si', $firstPath, $newAchId);
+                            $upd->execute(); $upd->close();
+                        }
+                    }
                 }
+                $imgStmt->close();
+                $alertType = 'success'; $alertMsg = 'Achievement added successfully.';
+
+            } else {
+                // Edit: update main record
+                $stmt = $conn->prepare("UPDATE community_achievements SET title=?, caption=?, tag=?, sort_order=? WHERE id=?");
+                $stmt->bind_param('sssii', $ach_title, $ach_caption, $ach_tag, $ach_sort, $ach_id);
                 $stmt->execute(); $stmt->close();
+
+                // Append new images
+                if ($hasNewImages) {
+                    $sortRes  = $conn->query("SELECT COALESCE(MAX(sort_order),0) as mx FROM community_achievement_images WHERE achievement_id=$ach_id");
+                    $sortStart = $sortRes ? (int)$sortRes->fetch_assoc()['mx'] + 1 : 0;
+                    $imgStmt  = $conn->prepare("INSERT INTO community_achievement_images (achievement_id, image_path, sort_order) VALUES (?, ?, ?)");
+                    foreach ($_FILES['ach_images']['name'] as $i => $fname) {
+                        if (empty($fname) || $_FILES['ach_images']['error'][$i] !== UPLOAD_ERR_OK) continue;
+                        $ext  = strtolower(pathinfo($fname, PATHINFO_EXTENSION));
+                        $mime = mime_content_type($_FILES['ach_images']['tmp_name'][$i]);
+                        if (!in_array($ext, $allowed) && !in_array($mime, $allowedMimes)) continue;
+                        if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
+                        if ($ext === 'avif') $ext = 'webp';
+                        $fileName = time() . '_' . bin2hex(random_bytes(4)) . '.' . $ext;
+                        if (move_uploaded_file($_FILES['ach_images']['tmp_name'][$i], $uploadDir . $fileName)) {
+                            $imgPath = 'uploads/achievements/' . $fileName;
+                            $sortVal = $sortStart + $i;
+                            $imgStmt->bind_param('isi', $ach_id, $imgPath, $sortVal);
+                            $imgStmt->execute();
+                        }
+                    }
+                    $imgStmt->close();
+                    // Update image_path to first image if empty
+                    $conn->query("UPDATE community_achievements ca SET ca.image_path = (SELECT ci.image_path FROM community_achievement_images ci WHERE ci.achievement_id=ca.id ORDER BY ci.sort_order,ci.id LIMIT 1) WHERE ca.id=$ach_id AND (ca.image_path='' OR ca.image_path IS NULL)");
+                }
                 $alertType = 'success'; $alertMsg = 'Achievement updated successfully.';
             }
+        }
+
+        // Delete single achievement image (AJAX)
+        elseif ($action === 'delete_achievement_image') {
+            $imgId = (int)($_POST['img_id'] ?? 0);
+            $stmtSel = $conn->prepare("SELECT * FROM community_achievement_images WHERE id=?");
+            $stmtSel->bind_param('i', $imgId);
+            $stmtSel->execute();
+            $imgRow = $stmtSel->get_result()->fetch_assoc();
+            $stmtSel->close();
+            if ($imgRow) {
+                if ($imgRow['image_path'] && file_exists('../../' . $imgRow['image_path'])) {
+                    @unlink('../../' . $imgRow['image_path']);
+                }
+                $stmtDel = $conn->prepare("DELETE FROM community_achievement_images WHERE id=?");
+                $stmtDel->bind_param('i', $imgId);
+                $stmtDel->execute(); $stmtDel->close();
+                // Update main image_path to next available image
+                $achId = (int)$imgRow['achievement_id'];
+                $conn->query("UPDATE community_achievements ca SET ca.image_path = COALESCE((SELECT ci.image_path FROM community_achievement_images ci WHERE ci.achievement_id=$achId ORDER BY ci.sort_order,ci.id LIMIT 1),'') WHERE ca.id=$achId");
+            }
+            header('Content-Type: application/json');
+            echo json_encode(['ok' => true]);
+            exit;
         }
 
         elseif ($action === 'delete_achievement') {
@@ -567,15 +694,32 @@ while ($res && $row = $res->fetch_assoc()) {
     $programs[] = $row;
 }
 
+// Ensure multiple-images table exists (before querying it)
+$conn->query("CREATE TABLE IF NOT EXISTS transparency_donation_images (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    donation_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_donation_id (donation_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
 // Fetch assistance records
 $assistance = [];
-$res = $conn->query("SELECT d.*, c.name as program_name 
-    FROM transparency_donations d 
-    LEFT JOIN transparency_campaigns c ON d.campaign_id = c.id 
-    ORDER BY d.date_received DESC LIMIT 50");
+$res = $conn->query("SELECT d.* FROM transparency_donations d ORDER BY d.date_received DESC LIMIT 50");
 while ($res && $row = $res->fetch_assoc()) {
-    $assistance[] = $row;
+    $row['images'] = [];
+    $assistance[$row['id']] = $row;
 }
+// Fetch images for all loaded donations
+if (!empty($assistance)) {
+    $ids = implode(',', array_keys($assistance));
+    $imgRes = $conn->query("SELECT * FROM transparency_donation_images WHERE donation_id IN ($ids) ORDER BY sort_order, id");
+    while ($imgRes && $imgRow = $imgRes->fetch_assoc()) {
+        $assistance[$imgRow['donation_id']]['images'][] = $imgRow;
+    }
+}
+$assistance = array_values($assistance);
 
 // Fetch beneficiaries
 $beneficiaries = [];
@@ -601,13 +745,34 @@ $sourceTypes = ['DOLE', 'LGU', 'NGO', 'Private', 'Membership', 'Others'];
 $assistanceTypes = ['Livelihood', 'Relief Goods', 'Training', 'Equipment', 'Financial', 'Medical', 'Educational', 'Other'];
 $beneficiaryStatuses = ['served', 'in-progress', 'pending'];
 
+// Ensure image_path column exists in transparency_donations
+try {
+    $colCheck = $conn->query("SHOW COLUMNS FROM transparency_donations LIKE 'image_path'");
+    if ($colCheck && $colCheck->num_rows === 0) {
+        $conn->query("ALTER TABLE transparency_donations ADD COLUMN image_path VARCHAR(500) DEFAULT NULL");
+    }
+} catch (Throwable) {}
+
+// Migrate existing image_path rows that haven't been migrated yet
+try {
+    $migRes = $conn->query("SELECT id, image_path FROM transparency_donations WHERE image_path IS NOT NULL AND image_path != '' AND id NOT IN (SELECT DISTINCT donation_id FROM transparency_donation_images)");
+    if ($migRes) {
+        $migStmt = $conn->prepare("INSERT INTO transparency_donation_images (donation_id, image_path) VALUES (?, ?)");
+        while ($mRow = $migRes->fetch_assoc()) {
+            $migStmt->bind_param('is', $mRow['id'], $mRow['image_path']);
+            $migStmt->execute();
+        }
+        $migStmt->close();
+    }
+} catch (Throwable) {}
+
 // Ensure community_achievements table exists
 $conn->query("CREATE TABLE IF NOT EXISTS community_achievements (
     id INT PRIMARY KEY AUTO_INCREMENT,
     title VARCHAR(255) NOT NULL,
     caption TEXT DEFAULT NULL,
     tag VARCHAR(100) DEFAULT NULL,
-    image_path VARCHAR(500) NOT NULL,
+    image_path VARCHAR(500) NOT NULL DEFAULT '',
     sort_order INT NOT NULL DEFAULT 0,
     is_active TINYINT(1) NOT NULL DEFAULT 1,
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
@@ -626,12 +791,44 @@ $conn->query("CREATE TABLE IF NOT EXISTS community_achievements_archive (
     archived_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
-// Fetch achievements for admin table
+// Ensure community_achievement_images table exists (multi-image support)
+$conn->query("CREATE TABLE IF NOT EXISTS community_achievement_images (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    achievement_id INT NOT NULL,
+    image_path VARCHAR(500) NOT NULL,
+    sort_order INT NOT NULL DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_achievement_id (achievement_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+// Migrate existing single image_path to images table
+try {
+    $migRes = $conn->query("SELECT id, image_path FROM community_achievements WHERE image_path != '' AND id NOT IN (SELECT DISTINCT achievement_id FROM community_achievement_images)");
+    if ($migRes) {
+        $migStmt = $conn->prepare("INSERT INTO community_achievement_images (achievement_id, image_path) VALUES (?, ?)");
+        while ($mRow = $migRes->fetch_assoc()) {
+            $migStmt->bind_param('is', $mRow['id'], $mRow['image_path']);
+            $migStmt->execute();
+        }
+        $migStmt->close();
+    }
+} catch (Throwable) {}
+
+// Fetch achievements for admin table (with images)
 $achievements = [];
 $res = $conn->query("SELECT * FROM community_achievements ORDER BY sort_order ASC, created_at DESC");
 while ($res && $row = $res->fetch_assoc()) {
-    $achievements[] = $row;
+    $row['images'] = [];
+    $achievements[$row['id']] = $row;
 }
+if (!empty($achievements)) {
+    $achIds = implode(',', array_keys($achievements));
+    $imgRes = $conn->query("SELECT * FROM community_achievement_images WHERE achievement_id IN ($achIds) ORDER BY sort_order, id");
+    while ($imgRes && $imgRow = $imgRes->fetch_assoc()) {
+        $achievements[$imgRow['achievement_id']]['images'][] = $imgRow;
+    }
+}
+$achievements = array_values($achievements);
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -760,17 +957,6 @@ while ($res && $row = $res->fetch_assoc()) {
                 </div>
             </div>
         </div>
-        <div class="col-md-3">
-            <div class="stat-card d-flex align-items-center gap-3">
-                <div class="stat-icon bg-danger bg-opacity-10 text-danger">
-                    <i class="bi bi-star-fill"></i>
-                </div>
-                <div>
-                    <h4 class="mb-0"><?= number_format($stats['featured']) ?></h4>
-                    <small class="text-muted">Featured Stories</small>
-                </div>
-            </div>
-        </div>
     </div>
 
     <!-- Tabs Navigation -->
@@ -807,8 +993,8 @@ while ($res && $row = $res->fetch_assoc()) {
                                 <th>Source</th>
                                 <th>Type</th>
                                 <th>Amount</th>
-                                <th>Program</th>
                                 <th>Date</th>
+                                <th>Image</th>
                                 <?php if ($canEdit): ?><th>Actions</th><?php endif; ?>
                             </tr>
                         </thead>
@@ -818,8 +1004,22 @@ while ($res && $row = $res->fetch_assoc()) {
                                 <td><strong><?= e($a['donor_name']) ?></strong></td>
                                 <td><span class="badge bg-secondary"><?= e($a['donor_type']) ?></span></td>
                                 <td class="text-success fw-bold">₱<?= number_format($a['amount'], 0) ?></td>
-                                <td><?= e($a['program_name'] ?? '-') ?></td>
                                 <td><?= $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '-' ?></td>
+                                <td>
+                                    <?php if (!empty($a['images'])): ?>
+                                    <div class="d-flex flex-wrap gap-1">
+                                        <?php foreach ($a['images'] as $img): ?>
+                                        <a href="../../<?= e($img['image_path']) ?>" target="_blank">
+                                            <img src="../../<?= e($img['image_path']) ?>" alt="image"
+                                                 style="height:40px; width:48px; object-fit:cover; border-radius:5px; border:1px solid #dee2e6;"
+                                                 onerror="this.style.display='none'">
+                                        </a>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
                                 <?php if ($canEdit): ?>
                                 <td>
                                     <div class="d-flex gap-1">
@@ -865,14 +1065,25 @@ while ($res && $row = $res->fetch_assoc()) {
                 </div>
                 <?php else: ?>
                 <div class="row g-3">
-                    <?php foreach ($achievements as $ach): ?>
+                    <?php foreach ($achievements as $ach):
+                        $achImgs = $ach['images'];
+                        $firstImg = !empty($achImgs) ? $achImgs[0]['image_path'] : ($ach['image_path'] ?? '');
+                        $extraCount = max(0, count($achImgs) - 1);
+                    ?>
                     <div class="col-sm-6 col-md-4 col-lg-3">
                         <div class="card h-100 border-0 shadow-sm">
-                            <img src="../../<?= e($ach['image_path']) ?>"
-                                 class="card-img-top"
-                                 style="height:160px; object-fit:cover;"
-                                 alt="<?= e($ach['title']) ?>"
-                                 onerror="this.src='https://placehold.co/400x200?text=No+Image'">
+                            <div class="position-relative">
+                                <img src="../../<?= e($firstImg) ?>"
+                                     class="card-img-top"
+                                     style="height:160px; object-fit:cover;"
+                                     alt="<?= e($ach['title']) ?>"
+                                     onerror="this.src='https://placehold.co/400x200?text=No+Image'">
+                                <?php if ($extraCount > 0): ?>
+                                <span class="position-absolute bottom-0 end-0 m-1 badge bg-dark bg-opacity-75">
+                                    +<?= $extraCount ?> more
+                                </span>
+                                <?php endif; ?>
+                            </div>
                             <div class="card-body p-2">
                                 <?php if (!empty($ach['tag'])): ?>
                                 <span class="badge bg-success bg-opacity-10 text-success mb-1" style="font-size:.7rem;"><?= e($ach['tag']) ?></span>
@@ -909,7 +1120,7 @@ while ($res && $row = $res->fetch_assoc()) {
 <div class="modal fade" id="assistanceModal" tabindex="-1">
     <div class="modal-dialog">
         <div class="modal-content">
-            <form method="POST">
+            <form method="POST" enctype="multipart/form-data">
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                 <input type="hidden" name="action" id="assistanceAction" value="add_assistance">
                 <input type="hidden" name="id" id="assistanceId">
@@ -919,15 +1130,6 @@ while ($res && $row = $res->fetch_assoc()) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Link to Program (Optional)</label>
-                        <select name="program_id" id="assistanceProgram" class="form-select">
-                            <option value="0">-- Not linked --</option>
-                            <?php foreach ($programs as $p): ?>
-                            <option value="<?= $p['id'] ?>"><?= e($p['name']) ?></option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
                     <div class="mb-3">
                         <label class="form-label">Source Name</label>
                         <input type="text" name="source_name" id="assistanceSource" class="form-control" placeholder="e.g., DOLE Region IV" required>
@@ -958,6 +1160,14 @@ while ($res && $row = $res->fetch_assoc()) {
                         <label class="form-label">Notes</label>
                         <textarea name="notes" id="assistanceNotes" class="form-control" rows="2"></textarea>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label">Photos / Images <small class="text-muted">(Optional — pwedeng marami, e.g., goods, tools, equipment)</small></label>
+                        <input type="file" name="assistance_images[]" id="assistanceImageInput" class="form-control" accept="image/*" multiple>
+                        <!-- Preview for newly selected files -->
+                        <div id="assistanceNewPreviewWrap" class="d-flex flex-wrap gap-2 mt-2"></div>
+                        <!-- Existing images (edit mode) -->
+                        <div id="assistanceExistingImages" class="d-flex flex-wrap gap-2 mt-2"></div>
+                    </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
@@ -976,7 +1186,6 @@ while ($res && $row = $res->fetch_assoc()) {
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                 <input type="hidden" name="action" id="achAction" value="add_achievement">
                 <input type="hidden" name="ach_id" id="achId">
-                <input type="hidden" name="ach_image_existing" id="achImageExisting">
                 <input type="hidden" name="active_tab" value="achievements">
                 <div class="modal-header">
                     <h5 class="modal-title" id="achModalTitle">Add Community Achievement</h5>
@@ -984,11 +1193,12 @@ while ($res && $row = $res->fetch_assoc()) {
                 </div>
                 <div class="modal-body">
                     <div class="mb-3">
-                        <label class="form-label fw-semibold">Photo / Image *</label>
-                        <input type="file" name="ach_image" id="achImageInput" class="form-control" accept="image/*">
-                        <div id="achImagePreviewWrap" class="mt-2" style="display:none;">
-                            <img id="achImagePreview" src="" class="rounded" style="max-height:160px; object-fit:cover; width:100%;">
-                        </div>
+                        <label class="form-label fw-semibold">Photos / Images <small class="text-muted">(pwedeng marami)</small></label>
+                        <input type="file" name="ach_images[]" id="achImagesInput" class="form-control" accept="image/*" multiple>
+                        <!-- New file previews -->
+                        <div id="achNewPreviewWrap" class="d-flex flex-wrap gap-2 mt-2"></div>
+                        <!-- Existing images (edit mode) -->
+                        <div id="achExistingImages" class="d-flex flex-wrap gap-2 mt-2"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label fw-semibold">Title *</label>
@@ -1025,27 +1235,67 @@ function resetAssistanceForm() {
     document.getElementById('assistanceAction').value = 'add_assistance';
     document.getElementById('assistanceId').value = '';
     document.getElementById('assistanceModalTitle').textContent = 'Record Assistance';
-    document.getElementById('assistanceProgram').value = '0';
     document.getElementById('assistanceSource').value = '';
     document.getElementById('assistanceType').value = 'DOLE';
     document.getElementById('assistanceAmount').value = '';
     document.getElementById('assistanceDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('assistanceRef').value = '';
     document.getElementById('assistanceNotes').value = '';
+    document.getElementById('assistanceImageInput').value = '';
+    document.getElementById('assistanceNewPreviewWrap').innerHTML = '';
+    document.getElementById('assistanceExistingImages').innerHTML = '';
 }
 
 function editAssistance(data) {
     document.getElementById('assistanceAction').value = 'edit_assistance';
     document.getElementById('assistanceId').value = data.id;
     document.getElementById('assistanceModalTitle').textContent = 'Edit Assistance';
-    document.getElementById('assistanceProgram').value = data.campaign_id || '0';
     document.getElementById('assistanceSource').value = data.donor_name;
     document.getElementById('assistanceType').value = data.donor_type || 'DOLE';
     document.getElementById('assistanceAmount').value = data.amount;
     document.getElementById('assistanceDate').value = data.date_received;
     document.getElementById('assistanceRef').value = data.reference_code || '';
     document.getElementById('assistanceNotes').value = data.notes || '';
+    document.getElementById('assistanceImageInput').value = '';
+    document.getElementById('assistanceNewPreviewWrap').innerHTML = '';
+
+    // Show existing images with delete button
+    const existingWrap = document.getElementById('assistanceExistingImages');
+    existingWrap.innerHTML = '';
+    if (data.images && data.images.length > 0) {
+        data.images.forEach(img => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'position-relative';
+            wrapper.id = 'img-wrap-' + img.id;
+            wrapper.innerHTML = `
+                <img src="../../${img.image_path}" style="height:72px;width:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6;" onerror="this.style.display='none'">
+                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 lh-1"
+                    style="width:20px;height:20px;font-size:11px;border-radius:50%;"
+                    onclick="deleteDonationImage(${img.id}, this)">
+                    <i class="bi bi-x"></i>
+                </button>`;
+            existingWrap.appendChild(wrapper);
+        });
+    }
+
     new bootstrap.Modal(document.getElementById('assistanceModal')).show();
+}
+
+function deleteDonationImage(imgId, btn) {
+    if (!confirm('Remove this image?')) return;
+    const formData = new FormData();
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    formData.append('action', 'delete_donation_image');
+    formData.append('img_id', imgId);
+    fetch('', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) {
+                const wrap = document.getElementById('img-wrap-' + imgId);
+                if (wrap) wrap.remove();
+            }
+        })
+        .catch(() => alert('Failed to delete image.'));
 }
 
 function confirmArchive(type, id, name) {
@@ -1090,49 +1340,103 @@ function confirmDelete(type, id, name) {
 function resetAchievementForm() {
     document.getElementById('achAction').value = 'add_achievement';
     document.getElementById('achId').value = '';
-    document.getElementById('achImageExisting').value = '';
     document.getElementById('achModalTitle').textContent = 'Add Community Achievement';
     document.getElementById('achTitle').value = '';
     document.getElementById('achCaption').value = '';
     document.getElementById('achTag').value = '';
     document.getElementById('achSort').value = '0';
-    document.getElementById('achImageInput').value = '';
-    document.getElementById('achImagePreviewWrap').style.display = 'none';
-    document.getElementById('achImagePreview').src = '';
+    document.getElementById('achImagesInput').value = '';
+    document.getElementById('achNewPreviewWrap').innerHTML = '';
+    document.getElementById('achExistingImages').innerHTML = '';
 }
 
 function editAchievement(data) {
     document.getElementById('achAction').value = 'edit_achievement';
     document.getElementById('achId').value = data.id;
-    document.getElementById('achImageExisting').value = data.image_path || '';
     document.getElementById('achModalTitle').textContent = 'Edit Achievement';
     document.getElementById('achTitle').value = data.title || '';
     document.getElementById('achCaption').value = data.caption || '';
     document.getElementById('achTag').value = data.tag || '';
     document.getElementById('achSort').value = data.sort_order || 0;
-    document.getElementById('achImageInput').value = '';
-    if (data.image_path) {
-        document.getElementById('achImagePreview').src = '../../' + data.image_path;
-        document.getElementById('achImagePreviewWrap').style.display = 'block';
-    } else {
-        document.getElementById('achImagePreviewWrap').style.display = 'none';
+    document.getElementById('achImagesInput').value = '';
+    document.getElementById('achNewPreviewWrap').innerHTML = '';
+
+    // Show existing images with delete button
+    const existingWrap = document.getElementById('achExistingImages');
+    existingWrap.innerHTML = '';
+    if (data.images && data.images.length > 0) {
+        data.images.forEach(img => {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'position-relative';
+            wrapper.id = 'ach-img-wrap-' + img.id;
+            wrapper.innerHTML = `
+                <img src="../../${img.image_path}" style="height:72px;width:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6;" onerror="this.style.display='none'">
+                <button type="button" class="btn btn-danger btn-sm position-absolute top-0 end-0 p-0 lh-1"
+                    style="width:20px;height:20px;font-size:11px;border-radius:50%;"
+                    onclick="deleteAchievementImage(${img.id}, this)">
+                    <i class="bi bi-x"></i>
+                </button>`;
+            existingWrap.appendChild(wrapper);
+        });
     }
+
     new bootstrap.Modal(document.getElementById('achievementModal')).show();
+}
+
+function deleteAchievementImage(imgId, btn) {
+    if (!confirm('Remove this image?')) return;
+    const formData = new FormData();
+    formData.append('csrf_token', document.querySelector('input[name="csrf_token"]').value);
+    formData.append('action', 'delete_achievement_image');
+    formData.append('img_id', imgId);
+    fetch('', { method: 'POST', body: formData })
+        .then(r => r.json())
+        .then(res => {
+            if (res.ok) {
+                const wrap = document.getElementById('ach-img-wrap-' + imgId);
+                if (wrap) wrap.remove();
+            } else {
+                alert('Failed to delete image.');
+            }
+        })
+        .catch(() => alert('Failed to delete image.'));
 }
 
 // Live image preview
 document.addEventListener('DOMContentLoaded', function() {
-    const achInput = document.getElementById('achImageInput');
+    const achInput = document.getElementById('achImagesInput');
     if (achInput) {
         achInput.addEventListener('change', function() {
-            if (this.files && this.files[0]) {
+            const wrap = document.getElementById('achNewPreviewWrap');
+            wrap.innerHTML = '';
+            Array.from(this.files).forEach(file => {
                 const reader = new FileReader();
                 reader.onload = e => {
-                    document.getElementById('achImagePreview').src = e.target.result;
-                    document.getElementById('achImagePreviewWrap').style.display = 'block';
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'height:72px;width:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6;';
+                    wrap.appendChild(img);
                 };
-                reader.readAsDataURL(this.files[0]);
-            }
+                reader.readAsDataURL(file);
+            });
+        });
+    }
+
+    const assistanceInput = document.getElementById('assistanceImageInput');
+    if (assistanceInput) {
+        assistanceInput.addEventListener('change', function() {
+            const wrap = document.getElementById('assistanceNewPreviewWrap');
+            wrap.innerHTML = '';
+            Array.from(this.files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = document.createElement('img');
+                    img.src = e.target.result;
+                    img.style.cssText = 'height:72px;width:88px;object-fit:cover;border-radius:6px;border:1px solid #dee2e6;';
+                    wrap.appendChild(img);
+                };
+                reader.readAsDataURL(file);
+            });
         });
     }
 });

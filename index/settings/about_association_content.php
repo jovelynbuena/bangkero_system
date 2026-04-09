@@ -96,6 +96,20 @@ $conn->query("CREATE TABLE IF NOT EXISTS downloadable_resources (
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
 
+// Ensure transparency_hero_settings table exists
+$conn->query("CREATE TABLE IF NOT EXISTS transparency_hero_settings (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    setting_key VARCHAR(100) NOT NULL UNIQUE,
+    setting_value LONGTEXT,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+// Seed default values if empty
+$conn->query("INSERT IGNORE INTO transparency_hero_settings (setting_key, setting_value) VALUES
+    ('title', 'Transparency & Association Progress'),
+    ('subtitle', 'Promoting accountability through transparent reporting of assistance received, programs implemented, and sustainable initiatives that empower our fishing community.'),
+    ('bg_image', '')
+");
+
 // ==================== ARCHIVE TABLES FOR WEBSITE CONTENT ====================
 // Archive for Who We Are entries
 $conn->query("CREATE TABLE IF NOT EXISTS who_we_are_archive (
@@ -197,6 +211,8 @@ $carousel_error = '';
 $carousel_success = '';
 $resources_error = '';
 $resources_success = '';
+$transp_hero_error = '';
+$transp_hero_success = '';
 
 
 
@@ -221,6 +237,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $activeTab = 'carousel';
     } elseif (isset($_POST['resources_action'])) {
         $activeTab = 'resources';
+    } elseif (isset($_POST['transp_hero_action'])) {
+        $activeTab = 'transp_hero';
     } elseif (isset($_POST['who_action'])) {
         $activeTab = 'who';
     }
@@ -229,6 +247,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
 
+
+// Handle Transparency Hero Settings
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['transp_hero_action'])) {
+    $th_title    = trim($_POST['transp_hero_title'] ?? '');
+    $th_subtitle = trim($_POST['transp_hero_subtitle'] ?? '');
+
+    if ($th_title === '') {
+        $transp_hero_error = 'Title is required.';
+    } else {
+        // Handle background image upload
+        $th_bg = null;
+        if (isset($_FILES['transp_hero_bg']) && $_FILES['transp_hero_bg']['error'] === UPLOAD_ERR_OK) {
+            $allowedMime = ['image/jpeg','image/png','image/webp','image/gif'];
+            $fileMime = mime_content_type($_FILES['transp_hero_bg']['tmp_name']);
+            if (!in_array($fileMime, $allowedMime)) {
+                $transp_hero_error = 'Only JPG, PNG, WEBP, or GIF images are allowed.';
+            } elseif ($_FILES['transp_hero_bg']['size'] > 5 * 1024 * 1024) {
+                $transp_hero_error = 'Image must not exceed 5 MB.';
+            } else {
+                $uploadDir = dirname(__DIR__, 2) . '/uploads/hero_bg/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                $ext = pathinfo($_FILES['transp_hero_bg']['name'], PATHINFO_EXTENSION);
+                $newFile = 'transparency_hero_' . time() . '.' . $ext;
+                if (move_uploaded_file($_FILES['transp_hero_bg']['tmp_name'], $uploadDir . $newFile)) {
+                    $th_bg = 'uploads/hero_bg/' . $newFile;
+                } else {
+                    $transp_hero_error = 'Failed to upload image.';
+                }
+            }
+        }
+
+        if (empty($transp_hero_error)) {
+            $stmt = $conn->prepare("INSERT INTO transparency_hero_settings (setting_key, setting_value) VALUES (?, ?) ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)");
+            $stmt->bind_param('ss', $k, $v);
+
+            $k = 'title'; $v = $th_title; $stmt->execute();
+            $k = 'subtitle'; $v = $th_subtitle; $stmt->execute();
+
+            if ($th_bg !== null) {
+                // Delete old bg image file
+                $oldRes = $conn->query("SELECT setting_value FROM transparency_hero_settings WHERE setting_key = 'bg_image'");
+                if ($oldRes && $oldRow = $oldRes->fetch_assoc()) {
+                    $oldPath = dirname(__DIR__, 2) . '/' . $oldRow['setting_value'];
+                    if (!empty($oldRow['setting_value']) && file_exists($oldPath)) @unlink($oldPath);
+                }
+                $k = 'bg_image'; $v = $th_bg; $stmt->execute();
+            }
+            $stmt->close();
+            $transp_hero_success = 'Transparency page header updated successfully.';
+        }
+    }
+}
+
+// Fetch current transparency hero settings for the form
+$transp_hero = ['title' => 'Transparency & Association Progress', 'subtitle' => '', 'bg_image' => ''];
+$thRes = $conn->query("SELECT setting_key, setting_value FROM transparency_hero_settings");
+while ($thRes && $thRow = $thRes->fetch_assoc()) {
+    $transp_hero[$thRow['setting_key']] = $thRow['setting_value'];
+}
 
 // Handle Who We Are form submissions
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['who_action'])) {
@@ -1011,23 +1088,23 @@ body {
 
 .page-header {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-radius: 16px;
-    padding: 30px;
-    margin-bottom: 30px;
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    border-radius: 12px;
+    padding: 28px 32px;
+    margin-bottom: 24px;
     color: white;
 }
 
-.page-header h2 {
+.page-header h4 {
     font-weight: 700;
-    margin: 0 0 10px 0;
-    font-size: 2rem;
+    color: #fff;
+    margin-bottom: 6px;
+    font-size: 1.4rem;
 }
 
 .page-header p {
+    color: rgba(255,255,255,0.82);
+    font-size: 0.9rem;
     margin: 0;
-    opacity: 0.95;
-    font-size: 1.05rem;
 }
 
 .content-card {
@@ -1050,9 +1127,9 @@ body {
 }
 
 .nav-pills .nav-link.active {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
     color: #fff;
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(46, 134, 171, 0.3);
 }
 
 .form-label {
@@ -1071,8 +1148,8 @@ body {
 }
 
 .form-control:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.12);
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.12);
     outline: none;
 }
 
@@ -1082,8 +1159,8 @@ body {
 }
 
 .badge-section-key {
-    background: rgba(102, 126, 234, 0.08);
-    color: #4f46e5;
+    background: rgba(46, 134, 171, 0.1);
+    color: #1B4F72;
     border-radius: 999px;
     padding: 4px 10px;
     font-size: 0.75rem;
@@ -1104,8 +1181,8 @@ body {
 <div class="main-content">
     <!-- Page Header -->
     <div class="page-header mb-4">
-        <h2><i class="bi bi-globe2 me-2"></i>About the Association Content</h2>
-        <p class="mb-0">Draft layout only (no backend yet) for managing your public "About" sections.</p>
+        <h4><i class="bi bi-globe2 me-2"></i>About the Association Content</h4>
+        <p>Manage all public-facing "About" sections — who you are, your mission, programs, and partners.</p>
     </div>
 
     <div class="container-fluid">
@@ -1155,6 +1232,12 @@ body {
                 <li class="nav-item" role="presentation">
                     <button class="nav-link <?= ($activeTab === 'resources') ? 'active' : '' ?>" id="resources-tab" data-bs-toggle="tab" data-bs-target="#resourcesSection" type="button" role="tab">
                         Resources
+                    </button>
+                </li>
+
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?= ($activeTab === 'transp_hero') ? 'active' : '' ?>" id="transp-hero-tab" data-bs-toggle="tab" data-bs-target="#transpHeroSection" type="button" role="tab">
+                        <i class="bi bi-image me-1"></i>Transparency Header
                     </button>
                 </li>
             </ul>
@@ -2019,8 +2102,54 @@ body {
                     <?php endif; ?>
                 </div>
             </div>
-        </div>
 
+                <!-- Transparency Header -->
+                <div class="tab-pane fade <?= ($activeTab === 'transp_hero') ? 'show active' : '' ?>" id="transpHeroSection" role="tabpanel" aria-labelledby="transp-hero-tab">
+                    <h5 class="mb-2"><i class="bi bi-image me-1"></i>Transparency Page Header</h5>
+                    <p class="section-hint mb-3">Edit the title, subtitle, and background image of the <strong>Transparency &amp; Association Progress</strong> hero section.</p>
+
+                    <?php if ($transp_hero_error): ?>
+                        <div class="alert alert-danger py-2 px-3 mb-3 small"><?= htmlspecialchars($transp_hero_error) ?></div>
+                    <?php endif; ?>
+                    <?php if ($transp_hero_success): ?>
+                        <div class="alert alert-success py-2 px-3 mb-3 small"><?= htmlspecialchars($transp_hero_success) ?></div>
+                    <?php endif; ?>
+
+                    <form method="POST" enctype="multipart/form-data">
+                        <input type="hidden" name="transp_hero_action" value="save">
+
+                        <div class="mb-3">
+                            <label class="form-label">Page Title</label>
+                            <input type="text" name="transp_hero_title" class="form-control"
+                                value="<?= htmlspecialchars($transp_hero['title']) ?>" required>
+                            <div class="form-text">Shown as the large heading in the hero section.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Subtitle / Description</label>
+                            <textarea name="transp_hero_subtitle" class="form-control" rows="3"><?= htmlspecialchars($transp_hero['subtitle']) ?></textarea>
+                            <div class="form-text">The paragraph below the title.</div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Background Image <span class="text-muted fw-normal">(optional, max 5MB — JPG/PNG/WEBP)</span></label>
+                            <?php if (!empty($transp_hero['bg_image'])): ?>
+                                <div class="mb-2">
+                                    <img src="<?= htmlspecialchars('../../' . $transp_hero['bg_image']) ?>"
+                                        alt="Current BG" style="max-height:120px;border-radius:8px;object-fit:cover;width:100%;max-width:400px;border:1px solid #dee2e6;">
+                                    <div class="form-text">Current background image. Upload a new one to replace it.</div>
+                                </div>
+                            <?php endif; ?>
+                            <input type="file" name="transp_hero_bg" class="form-control" accept="image/jpeg,image/png,image/webp,image/gif">
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-save me-1"></i>Save Changes
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
 
 
     </div>
@@ -2386,6 +2515,12 @@ function resetCarouselForm() {
         imagePathInput.value = '';
     }
 }
+
+
+</script>
+
+
+</script>
 
 </script>
 </body>
