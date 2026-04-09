@@ -727,17 +727,6 @@ while ($res && $row = $res->fetch_assoc()) {
 
     <!-- Statistics Cards -->
     <div class="row g-3 mb-4">
-        <div class="col-md-2">
-            <div class="stat-card d-flex align-items-center gap-3">
-                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
-                    <i class="bi bi-folder"></i>
-                </div>
-                <div>
-                    <h4 class="mb-0"><?= number_format($stats['programs']) ?></h4>
-                    <small class="text-muted">Programs</small>
-                </div>
-            </div>
-        </div>
         <div class="col-md-3">
             <div class="stat-card d-flex align-items-center gap-3">
                 <div class="stat-icon bg-info bg-opacity-10 text-info">
@@ -787,12 +776,7 @@ while ($res && $row = $res->fetch_assoc()) {
     <!-- Tabs Navigation -->
     <ul class="nav nav-tabs mb-4" id="mainTab" role="tablist">
         <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="programs-tab" data-bs-toggle="tab" data-bs-target="#programs" type="button">
-                <i class="bi bi-bullseye me-1"></i> Programs
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="assistance-tab" data-bs-toggle="tab" data-bs-target="#assistance" type="button">
+            <button class="nav-link active" id="assistance-tab" data-bs-toggle="tab" data-bs-target="#assistance" type="button">
                 <i class="bi bi-cash-coin me-1"></i> Assistance
             </button>
         </li>
@@ -805,72 +789,8 @@ while ($res && $row = $res->fetch_assoc()) {
 
     <!-- Tab Content -->
     <div class="tab-content" id="mainTabContent">
-        <!-- Programs Tab -->
-        <div class="tab-pane fade show active" id="programs" role="tabpanel">
-            <div class="table-container">
-                <div class="d-flex justify-content-between align-items-center mb-3">
-                    <h5 class="mb-0"><i class="bi bi-bullseye me-2"></i>Programs & Projects</h5>
-                    <?php if ($canEdit): ?>
-                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#programModal" onclick="resetProgramForm()">
-                        <i class="bi bi-plus"></i> Add Program
-                    </button>
-                    <?php endif; ?>
-                </div>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Program</th>
-                                <th>Budget</th>
-                                <th>Received</th>
-                                <th>Progress</th>
-                                <th>Status</th>
-                                <?php if ($canEdit): ?><th>Actions</th><?php endif; ?>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($programs as $p): 
-                                $progress = $p['goal_amount'] > 0 ? min(100, ($p['received'] / $p['goal_amount']) * 100) : 0;
-                            ?>
-                            <tr>
-                                <td>
-                                    <strong><?= e($p['name']) ?></strong>
-                                    <br><small class="text-muted"><?= e(substr($p['description'] ?? '', 0, 50)) ?><?= strlen($p['description'] ?? '') > 50 ? '...' : '' ?></small>
-                                </td>
-                                <td>₱<?= number_format($p['goal_amount'], 0) ?></td>
-                                <td>₱<?= number_format($p['received'], 0) ?></td>
-                                <td style="min-width: 120px;">
-                                    <div class="progress">
-                                        <div class="progress-bar bg-success" style="width: <?= $progress ?>%"></div>
-                                    </div>
-                                    <small class="text-muted"><?= number_format($progress, 0) ?>%</small>
-                                </td>
-                                <td><span class="badge-status badge-<?= $p['status'] ?>"><?= ucfirst($p['status']) ?></span></td>
-                                <?php if ($canEdit): ?>
-                                <td>
-                                    <div class="d-flex gap-1">
-                                        <button class="btn btn-sm btn-outline-primary" onclick="editProgram(<?= htmlspecialchars(json_encode($p)) ?>)" title="Edit">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
-                                        <button class="btn btn-sm btn-outline-warning" onclick="confirmArchive('program', <?= $p['id'] ?>, '<?= addslashes($p['name']) ?>')" title="Archive">
-                                            <i class="bi bi-archive"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                                <?php endif; ?>
-                            </tr>
-                            <?php endforeach; ?>
-                            <?php if (empty($programs)): ?>
-                            <tr><td colspan="<?= $canEdit ? 6 : 5 ?>" class="text-center text-muted py-4">No programs yet</td></tr>
-                            <?php endif; ?>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
         <!-- Assistance Tab -->
-        <div class="tab-pane fade" id="assistance" role="tabpanel">
+        <div class="tab-pane fade show active" id="assistance" role="tabpanel">
             <div class="table-container">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h5 class="mb-0"><i class="bi bi-cash-coin me-2"></i>Assistance Received</h5>
@@ -985,62 +905,6 @@ while ($res && $row = $res->fetch_assoc()) {
 </div>
 
 <?php if ($canEdit): ?>
-<!-- Program Modal -->
-<div class="modal fade" id="programModal" tabindex="-1">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <form method="POST">
-                <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                <input type="hidden" name="action" id="programAction" value="add_program">
-                <input type="hidden" name="id" id="programId">
-                <input type="hidden" name="active_tab" value="programs">
-                <div class="modal-header">
-                    <h5 class="modal-title" id="programModalTitle">Add Program</h5>
-                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                </div>
-                <div class="modal-body">
-                    <div class="mb-3">
-                        <label class="form-label">Program Name</label>
-                        <input type="text" name="name" id="programName" class="form-control" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Description</label>
-                        <textarea name="description" id="programDesc" class="form-control" rows="2"></textarea>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Budget Allocation</label>
-                            <input type="number" name="budget" id="programBudget" class="form-control" min="0" step="0.01">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Status</label>
-                            <select name="status" id="programStatus" class="form-select">
-                                <option value="active">Active</option>
-                                <option value="planned">Planned</option>
-                                <option value="completed">Completed</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Start Date</label>
-                            <input type="date" name="start_date" id="programStart" class="form-control">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">End Date</label>
-                            <input type="date" name="end_date" id="programEnd" class="form-control">
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
 <!-- Assistance Modal -->
 <div class="modal fade" id="assistanceModal" tabindex="-1">
     <div class="modal-dialog">
@@ -1156,32 +1020,6 @@ while ($res && $row = $res->fetch_assoc()) {
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
-// Program functions
-function resetProgramForm() {
-    document.getElementById('programAction').value = 'add_program';
-    document.getElementById('programId').value = '';
-    document.getElementById('programModalTitle').textContent = 'Add Program';
-    document.getElementById('programName').value = '';
-    document.getElementById('programDesc').value = '';
-    document.getElementById('programBudget').value = '';
-    document.getElementById('programStatus').value = 'active';
-    document.getElementById('programStart').value = '';
-    document.getElementById('programEnd').value = '';
-}
-
-function editProgram(data) {
-    document.getElementById('programAction').value = 'edit_program';
-    document.getElementById('programId').value = data.id;
-    document.getElementById('programModalTitle').textContent = 'Edit Program';
-    document.getElementById('programName').value = data.name;
-    document.getElementById('programDesc').value = data.description || '';
-    document.getElementById('programBudget').value = data.goal_amount;
-    document.getElementById('programStatus').value = data.status;
-    document.getElementById('programStart').value = data.start_date || '';
-    document.getElementById('programEnd').value = data.end_date || '';
-    new bootstrap.Modal(document.getElementById('programModal')).show();
-}
-
 // Assistance functions
 function resetAssistanceForm() {
     document.getElementById('assistanceAction').value = 'add_assistance';
@@ -1221,7 +1059,7 @@ function confirmArchive(type, id, name) {
         confirmButtonText: 'Yes, Archive'
     }).then((result) => {
         if (result.isConfirmed) {
-            const tabMap = { program: 'programs', assistance: 'assistance', beneficiary: 'impact' };
+            const tabMap = { assistance: 'assistance', beneficiary: 'assistance' };
             document.getElementById('archiveType').value = 'archive_' + type;
             document.getElementById('archiveId').value = id;
             document.getElementById('archiveTab').value = tabMap[type] || 'programs';
@@ -1324,7 +1162,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // Restore active tab after form submission
 (function () {
     const tab = <?= json_encode($_POST['active_tab'] ?? '') ?>;
-    if (tab) {
+    if (tab && tab !== 'programs') {
         const tabEl = document.querySelector('#' + tab + '-tab');
         if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show();
     }

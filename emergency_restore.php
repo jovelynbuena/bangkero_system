@@ -25,11 +25,23 @@ if ($conn->connect_error) {
 
 echo "✓ Database connected\n";
 
-// Find the backup file
-$backupFile = __DIR__ . '/index/utilities/backups/backup_2026-03-05_18-31-02.sql';
+// Find the latest backup file
+$backupDir = __DIR__ . '/index/utilities/backups/';
+$latestBackup = null;
+$latestTime = 0;
 
-if (!file_exists($backupFile)) {
-    die("Backup file not found: " . $backupFile);
+foreach (glob($backupDir . '*.sql') as $file) {
+    $fileTime = filemtime($file);
+    if ($fileTime > $latestTime) {
+        $latestTime = $fileTime;
+        $latestBackup = $file;
+    }
+}
+
+$backupFile = $latestBackup;
+
+if (!$backupFile || !file_exists($backupFile)) {
+    die("No backup file found in: " . $backupDir);
 }
 
 echo "✓ Found backup file: " . basename($backupFile) . "\n";
