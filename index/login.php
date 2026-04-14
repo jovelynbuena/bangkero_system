@@ -142,10 +142,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         :root {
             --primary: #2367b7;
             --primary-dark: #1c5498;
-            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-bg: rgba(255, 255, 255, 0.18);
             --shadow: rgba(0, 0, 0, 0.15);
-            --text-primary: #0b3f69;
-            --text-secondary: #2b4b60;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(220, 240, 255, 0.88);
         }
         
         * {
@@ -160,7 +160,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         body {
-            background: linear-gradient(160deg, #0d4f6c 0%, #1a7a9a 35%, #1B4F72 65%, #0d2d45 100%);
+            background: #041e2e;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             align-items: center;
@@ -171,53 +171,124 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             position: relative;
         }
 
-        /* Dot grid texture overlay */
-        body::before {
-            content: '';
+        /* ── Coral image background with depth effect ── */
+        .ocean-bg {
             position: fixed;
             inset: 0;
-            background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
-            background-size: 30px 30px;
-            pointer-events: none;
             z-index: 0;
+            overflow: hidden;
         }
 
-        /* Floating light blobs */
-        body::after {
+        /* The coral image itself */
+        .ocean-bg-img {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            object-position: center;
+            filter: brightness(0.75) saturate(1.1);
+        }
+
+        /* Deep blue underwater tint overlay */
+        .ocean-bg::before {
             content: '';
-            position: fixed;
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(180deg,
+                rgba(0, 30, 60, 0.55) 0%,
+                rgba(0, 50, 90, 0.35) 40%,
+                rgba(0, 20, 50, 0.50) 100%);
+            z-index: 1;
+        }
+
+        /* Caustic light rays from surface */
+        .ocean-bg::after {
+            content: '';
+            position: absolute;
             inset: 0;
             background:
-                radial-gradient(ellipse 600px 400px at 15% 30%, rgba(168, 218, 220, 0.18) 0%, transparent 70%),
-                radial-gradient(ellipse 500px 350px at 85% 70%, rgba(244, 162, 97, 0.10) 0%, transparent 70%);
+                repeating-linear-gradient(
+                    108deg,
+                    transparent 0px,
+                    transparent 55px,
+                    rgba(120, 210, 255, 0.06) 56px,
+                    rgba(120, 210, 255, 0.06) 72px
+                ),
+                repeating-linear-gradient(
+                    82deg,
+                    transparent 0px,
+                    transparent 80px,
+                    rgba(80, 180, 230, 0.04) 81px,
+                    rgba(80, 180, 230, 0.04) 98px
+                );
+            z-index: 2;
+            animation: causticShift 9s ease-in-out infinite alternate;
+        }
+
+        @keyframes causticShift {
+            0%   { transform: translateX(0) scaleX(1);    opacity: 0.7; }
+            100% { transform: translateX(25px) scaleX(1.03); opacity: 1; }
+        }
+
+        /* Vignette — darker edges, brighter center */
+        .ocean-vignette {
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(ellipse at 50% 50%,
+                transparent 30%,
+                rgba(0, 10, 25, 0.55) 100%);
+            z-index: 3;
+        }
+
+        /* Rising bubbles */
+        .bubbles {
+            position: absolute;
+            inset: 0;
             pointer-events: none;
-            z-index: 0;
-            animation: blobDrift 12s ease-in-out infinite alternate;
+            z-index: 4;
         }
 
-        @keyframes blobDrift {
-            0%   { transform: translateY(0) scale(1); }
-            100% { transform: translateY(-18px) scale(1.03); }
+        .bubble {
+            position: absolute;
+            bottom: -20px;
+            border-radius: 50%;
+            background: radial-gradient(circle at 35% 35%,
+                rgba(255,255,255,0.55),
+                rgba(140,220,240,0.15));
+            border: 1px solid rgba(255,255,255,0.25);
+            animation: bubbleRise linear infinite;
         }
 
-        /* Animated wave at the bottom */
-        .bg-wave {
-            position: fixed;
+        .bubble:nth-child(1)  { width:6px;  height:6px;  left:8%;   animation-duration:9s;  animation-delay:0s;   }
+        .bubble:nth-child(2)  { width:10px; height:10px; left:18%;  animation-duration:13s; animation-delay:2s;   }
+        .bubble:nth-child(3)  { width:4px;  height:4px;  left:28%;  animation-duration:8s;  animation-delay:5s;   }
+        .bubble:nth-child(4)  { width:7px;  height:7px;  left:40%;  animation-duration:11s; animation-delay:1s;   }
+        .bubble:nth-child(5)  { width:5px;  height:5px;  left:55%;  animation-duration:10s; animation-delay:3.5s; }
+        .bubble:nth-child(6)  { width:9px;  height:9px;  left:65%;  animation-duration:14s; animation-delay:0.5s; }
+        .bubble:nth-child(7)  { width:4px;  height:4px;  left:75%;  animation-duration:7s;  animation-delay:4s;   }
+        .bubble:nth-child(8)  { width:8px;  height:8px;  left:85%;  animation-duration:12s; animation-delay:2.5s; }
+        .bubble:nth-child(9)  { width:5px;  height:5px;  left:92%;  animation-duration:9s;  animation-delay:6s;   }
+        .bubble:nth-child(10) { width:6px;  height:6px;  left:48%;  animation-duration:11s; animation-delay:1.5s; }
+
+        @keyframes bubbleRise {
+            0%   { transform: translateY(0) translateX(0); opacity: 0; }
+            10%  { opacity: 0.7; }
+            90%  { opacity: 0.4; }
+            100% { transform: translateY(-110vh) translateX(18px); opacity: 0; }
+        }
+
+        /* Dark overlay at bottom to ground the scene */
+        .ocean-bottom {
+            position: absolute;
             bottom: 0;
             left: 0;
             width: 100%;
-            line-height: 0;
-            z-index: 0;
-            opacity: 0.18;
-            animation: waveShift 8s ease-in-out infinite alternate;
+            height: 18%;
+            background: linear-gradient(180deg, transparent 0%, rgba(0,5,15,0.6) 100%);
+            z-index: 4;
         }
 
-        .bg-wave svg { display: block; width: 100%; }
-
-        @keyframes waveShift {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(-40px); }
-        }
 
         @keyframes float {
             0%, 100% { transform: translateY(0px); }
@@ -246,10 +317,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: var(--card-bg);
             padding: 40px 36px;
             border-radius: 20px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.22);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255,255,255,0.25);
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(18px) saturate(1.6);
+            -webkit-backdrop-filter: blur(18px) saturate(1.6);
             position: relative;
             z-index: 10;
             animation: fadeInUp 0.6s ease-out;
@@ -313,21 +385,25 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .form-control {
             border-radius: 12px;
             height: 48px;
-            border: 1.5px solid #e5e7eb;
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
             font-size: 0.95rem;
             padding: 12px 16px;
             transition: all 0.3s ease;
-            background: white;
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
         }
         
         .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(35, 103, 183, 0.1);
-            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(120, 200, 255, 0.25);
+            border-color: rgba(120, 200, 255, 0.7);
             outline: none;
+            background: rgba(255, 255, 255, 0.22);
         }
         
         .form-control::placeholder {
-            color: #9ca3af;
+            color: rgba(200, 225, 255, 0.6);
         }
         
         .input-group {
@@ -348,7 +424,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             transform: translateY(-50%);
             background: transparent;
             border: none;
-            color: #6b7280;
+            color: rgba(200, 225, 255, 0.8);
             font-size: 1.1rem;
             width: 36px;
             height: 36px;
@@ -364,7 +440,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         .btn-toggle-pass:hover {
-            color: var(--primary);
+            color: #ffffff;
         }
         
         .btn-toggle-pass:focus {
@@ -434,14 +510,14 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         .options-row a {
-            color: var(--primary);
+            color: rgba(160, 210, 255, 1);
             text-decoration: none;
             font-weight: 600;
             transition: all 0.2s ease;
         }
         
         .options-row a:hover {
-            color: var(--primary-dark);
+            color: #ffffff;
             text-decoration: underline;
         }
         
@@ -449,9 +525,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             margin-top: 16px;
             padding: 12px;
             border-radius: 12px;
-            border: 2px solid rgba(35, 103, 183, 0.2);
-            background: transparent;
-            color: var(--primary);
+            border: 2px solid rgba(255, 255, 255, 0.35);
+            background: rgba(255, 255, 255, 0.1);
+            color: #ffffff;
             font-weight: 700;
             text-decoration: none;
             display: block;
@@ -459,8 +535,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         .btn-register-link:hover {
-            border-color: var(--primary);
-            background: rgba(35, 103, 183, 0.05);
+            border-color: rgba(255, 255, 255, 0.7);
+            background: rgba(255, 255, 255, 0.2);
             transform: translateY(-2px);
         }
         
@@ -469,7 +545,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             align-items: center;
             text-align: center;
             margin: 20px 0;
-            color: #9ca3af;
+            color: rgba(200, 225, 255, 0.7);
             font-size: 0.85rem;
         }
         
@@ -477,7 +553,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .divider::after {
             content: '';
             flex: 1;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.25);
         }
         
         .divider span {
@@ -516,12 +592,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body>
-    <!-- Animated wave background -->
-    <div class="bg-wave">
-        <svg viewBox="0 0 1440 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-            <path d="M0,60 C240,110 480,10 720,60 C960,110 1200,10 1440,60 L1440,120 L0,120 Z" fill="#A8DADC"/>
-        </svg>
+
+    <!-- ══ Coral image background ══ -->
+    <div class="ocean-bg">
+        <!-- Coral photo -->
+        <img class="ocean-bg-img" src="images/coral_bg.jpg" alt="">
+        <!-- Vignette for depth -->
+        <div class="ocean-vignette"></div>
+        <!-- Rising bubbles -->
+        <div class="bubbles">
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+        </div>
+        <!-- Bottom ground shadow -->
+        <div class="ocean-bottom"></div>
     </div>
+
+
 
     <div class="login-card">
         <div class="logo-wrap">

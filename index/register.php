@@ -84,10 +84,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         :root {
             --primary: #2367b7;
             --primary-dark: #1c5498;
-            --card-bg: rgba(255, 255, 255, 0.95);
+            --card-bg: rgba(255, 255, 255, 0.18);
             --shadow: rgba(0, 0, 0, 0.15);
-            --text-primary: #0b3f69;
-            --text-secondary: #2b4b60;
+            --text-primary: #ffffff;
+            --text-secondary: rgba(220, 240, 255, 0.88);
             --success: #10b981;
             --warning: #f59e0b;
             --danger: #ef4444;
@@ -105,7 +105,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         body {
-            background: linear-gradient(160deg, #0d4f6c 0%, #1a7a9a 35%, #1B4F72 65%, #0d2d45 100%);
+            background: #0d2d45;
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             display: flex;
             align-items: center;
@@ -114,59 +114,96 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
             position: relative;
+            min-height: 100vh;
         }
 
-        /* Dot grid texture */
-        body::before {
-            content: '';
+        /* Ocean background */
+        .ocean-bg {
             position: fixed;
             inset: 0;
-            background-image: radial-gradient(rgba(255,255,255,0.06) 1px, transparent 1px);
-            background-size: 30px 30px;
-            pointer-events: none;
             z-index: 0;
+            overflow: hidden;
         }
 
-        /* Floating light blobs */
-        body::after {
+        .ocean-bg-img {
+            position: absolute; inset: 0;
+            width: 100%; height: 100%;
+            object-fit: cover; object-position: center;
+            filter: brightness(0.75) saturate(1.1);
+        }
+
+        /* Blue depth tint */
+        .ocean-bg::before {
             content: '';
-            position: fixed;
-            inset: 0;
-            background:
-                radial-gradient(ellipse 600px 400px at 15% 30%, rgba(168, 218, 220, 0.18) 0%, transparent 70%),
-                radial-gradient(ellipse 500px 350px at 85% 70%, rgba(244, 162, 97, 0.10) 0%, transparent 70%);
+            position: absolute; inset: 0;
+            background: linear-gradient(
+                to bottom,
+                rgba(5, 30, 60, 0.45) 0%,
+                rgba(10, 60, 100, 0.30) 40%,
+                rgba(5, 20, 45, 0.55) 100%
+            );
+            z-index: 1;
+        }
+
+        /* Caustic light rays */
+        .ocean-bg::after {
+            content: '';
+            position: absolute; inset: 0;
+            background: repeating-linear-gradient(
+                105deg,
+                transparent 0px,
+                transparent 60px,
+                rgba(120, 200, 255, 0.045) 60px,
+                rgba(120, 200, 255, 0.045) 80px
+            );
+            z-index: 2;
+            animation: causticShift 8s ease-in-out infinite alternate;
+        }
+
+        @keyframes causticShift {
+            0%   { transform: skewX(0deg) translateX(0); opacity: 0.7; }
+            100% { transform: skewX(2deg) translateX(30px); opacity: 1; }
+        }
+
+        .ocean-vignette {
+            position: absolute; inset: 0;
+            background: radial-gradient(ellipse at center, transparent 40%, rgba(0,10,30,0.55) 100%);
+            z-index: 3;
             pointer-events: none;
-            z-index: 0;
-            animation: blobDrift 12s ease-in-out infinite alternate;
         }
 
-        @keyframes blobDrift {
-            0%   { transform: translateY(0) scale(1); }
-            100% { transform: translateY(-18px) scale(1.03); }
+        .ocean-bottom {
+            position: absolute; bottom: 0; left: 0; right: 0; height: 180px;
+            background: linear-gradient(to top, rgba(0,10,25,0.65) 0%, transparent 100%);
+            z-index: 3;
+            pointer-events: none;
         }
 
-        /* Animated wave at the bottom */
-        .bg-wave {
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            line-height: 0;
-            z-index: 0;
-            opacity: 0.18;
-            animation: waveShift 8s ease-in-out infinite alternate;
+        /* Bubbles */
+        .bubbles { position: absolute; inset: 0; z-index: 4; pointer-events: none; overflow: hidden; }
+        .bubble {
+            position: absolute; bottom: -20px;
+            width: 6px; height: 6px;
+            background: rgba(180, 230, 255, 0.35);
+            border-radius: 50%;
+            border: 1px solid rgba(255,255,255,0.25);
+            animation: bubbleRise linear infinite;
         }
-
-        .bg-wave svg { display: block; width: 100%; }
-
-        @keyframes waveShift {
-            0%   { transform: translateX(0); }
-            100% { transform: translateX(-40px); }
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-20px); }
+        .bubble:nth-child(1)  { left:  8%; width: 5px;  height: 5px;  animation-duration: 9s;  animation-delay: 0s; }
+        .bubble:nth-child(2)  { left: 18%; width: 8px;  height: 8px;  animation-duration: 12s; animation-delay: 2s; }
+        .bubble:nth-child(3)  { left: 30%; width: 4px;  height: 4px;  animation-duration: 8s;  animation-delay: 4s; }
+        .bubble:nth-child(4)  { left: 42%; width: 7px;  height: 7px;  animation-duration: 11s; animation-delay: 1s; }
+        .bubble:nth-child(5)  { left: 55%; width: 5px;  height: 5px;  animation-duration: 10s; animation-delay: 3s; }
+        .bubble:nth-child(6)  { left: 65%; width: 9px;  height: 9px;  animation-duration: 13s; animation-delay: 0.5s; }
+        .bubble:nth-child(7)  { left: 75%; width: 4px;  height: 4px;  animation-duration: 7s;  animation-delay: 5s; }
+        .bubble:nth-child(8)  { left: 83%; width: 6px;  height: 6px;  animation-duration: 9s;  animation-delay: 2.5s; }
+        .bubble:nth-child(9)  { left: 90%; width: 5px;  height: 5px;  animation-duration: 11s; animation-delay: 1.5s; }
+        .bubble:nth-child(10) { left: 96%; width: 7px;  height: 7px;  animation-duration: 14s; animation-delay: 3.5s; }
+        @keyframes bubbleRise {
+            0%   { transform: translateY(0)   translateX(0);   opacity: 0; }
+            10%  { opacity: 0.7; }
+            90%  { opacity: 0.4; }
+            100% { transform: translateY(-100vh) translateX(15px); opacity: 0; }
         }
         
         @keyframes fadeInUp {
@@ -186,10 +223,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             background: var(--card-bg);
             padding: 40px 36px;
             border-radius: 20px;
-            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.22);
+            box-shadow: 0 8px 40px rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255,255,255,0.25);
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.5);
-            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            backdrop-filter: blur(18px) saturate(1.6);
+            -webkit-backdrop-filter: blur(18px) saturate(1.6);
             position: relative;
             z-index: 10;
             animation: fadeInUp 0.6s ease-out;
@@ -202,12 +240,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         .register-card::-webkit-scrollbar-track {
-            background: #f1f1f1;
+            background: rgba(255,255,255,0.1);
             border-radius: 10px;
         }
         
         .register-card::-webkit-scrollbar-thumb {
-            background: #888;
+            background: rgba(255,255,255,0.3);
             border-radius: 10px;
         }
         
@@ -247,12 +285,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         
         .info-text {
             font-size: 0.85rem;
-            color: var(--text-secondary);
-            opacity: 0.85;
-            background: rgba(35, 103, 183, 0.05);
+            color: rgba(200, 230, 255, 0.9);
+            background: rgba(255, 255, 255, 0.1);
             padding: 10px;
             border-radius: 8px;
             margin-bottom: 20px;
+            border: 1px solid rgba(255,255,255,0.15);
         }
         
         .form-label {
@@ -267,29 +305,33 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .form-control {
             border-radius: 12px;
             height: 48px;
-            border: 1.5px solid #e5e7eb;
+            border: 1.5px solid rgba(255, 255, 255, 0.35);
             font-size: 0.95rem;
             padding: 12px 16px;
             transition: all 0.3s ease;
-            background: white;
+            background: rgba(255, 255, 255, 0.15);
+            color: #ffffff;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
         }
         
         .form-control:focus {
-            box-shadow: 0 0 0 3px rgba(35, 103, 183, 0.1);
-            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(120, 200, 255, 0.25);
+            border-color: rgba(120, 200, 255, 0.7);
             outline: none;
+            background: rgba(255, 255, 255, 0.22);
         }
         
         .form-control.is-invalid {
-            border-color: var(--danger);
+            border-color: rgba(239, 68, 68, 0.8);
         }
         
         .form-control.is-valid {
-            border-color: var(--success);
+            border-color: rgba(16, 185, 129, 0.8);
         }
         
         .form-control::placeholder {
-            color: #9ca3af;
+            color: rgba(200, 225, 255, 0.6);
         }
         
         .input-group {
@@ -310,7 +352,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             transform: translateY(-50%);
             background: transparent;
             border: none;
-            color: #6b7280;
+            color: rgba(200, 225, 255, 0.8);
             font-size: 1.1rem;
             width: 36px;
             height: 36px;
@@ -326,7 +368,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         .btn-toggle-pass:hover {
-            color: var(--primary);
+            color: #ffffff;
         }
         
         .btn-toggle-pass:focus {
@@ -342,7 +384,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .strength-bar {
             height: 4px;
             border-radius: 2px;
-            background: #e5e7eb;
+            background: rgba(255,255,255,0.2);
             margin-top: 6px;
             overflow: hidden;
         }
@@ -405,7 +447,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             align-items: center;
             text-align: center;
             margin: 20px 0;
-            color: #9ca3af;
+            color: rgba(200, 225, 255, 0.7);
             font-size: 0.85rem;
         }
         
@@ -413,7 +455,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         .divider::after {
             content: '';
             flex: 1;
-            border-bottom: 1px solid #e5e7eb;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.25);
         }
         
         .divider span {
@@ -421,7 +463,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         .back-link {
-            color: var(--primary);
+            color: rgba(160, 210, 255, 1);
             text-decoration: none;
             font-weight: 600;
             font-size: 0.95rem;
@@ -430,7 +472,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         }
         
         .back-link:hover {
-            color: var(--primary-dark);
+            color: #ffffff;
             transform: translateX(-3px);
         }
         
@@ -464,11 +506,23 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     </style>
 </head>
 <body>
-    <!-- Animated wave background -->
-    <div class="bg-wave">
-        <svg viewBox="0 0 1440 120" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
-            <path d="M0,60 C240,110 480,10 720,60 C960,110 1200,10 1440,60 L1440,120 L0,120 Z" fill="#A8DADC"/>
-        </svg>
+    <!-- Coral ocean background -->
+    <div class="ocean-bg">
+        <img class="ocean-bg-img" src="images/coral_bg.jpg" alt="">
+        <div class="ocean-vignette"></div>
+        <div class="bubbles">
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+            <div class="bubble"></div>
+        </div>
+        <div class="ocean-bottom"></div>
     </div>
 
     <div class="register-card">
