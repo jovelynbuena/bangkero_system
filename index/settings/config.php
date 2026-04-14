@@ -476,6 +476,7 @@ textarea.form-control {
                               placeholder="Enter complete address including barangay, city, province"><?= htmlspecialchars($assocAddress) ?></textarea>
                 </div>
 
+                <?php /* AUTO BACKUP SETTINGS - temporarily hidden
                 <hr class="my-4">
 
                 <!-- Auto Backup Settings -->
@@ -502,6 +503,7 @@ textarea.form-control {
                     </div>
                     <small class="text-muted d-block mt-1">You still control the actual schedule via Windows Task Scheduler. This switch only allows or blocks auto backups.</small>
                 </div>
+                */ ?>
 
                 <!-- Submit Button -->
                 <div class="text-end">

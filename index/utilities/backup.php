@@ -1211,6 +1211,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 </div>
             </div>
 
+            <?php /* AUTO BACKUP STATUS CARD - temporarily hidden
             <div class="summary-card">
                 <div class="summary-icon <?= $autoBackupStatus ? 'green' : 'purple' ?>">
                     <i class="<?= $autoBackupStatus ? 'bi bi-cloud-check' : 'bi bi-cloud-slash' ?>"></i>
@@ -1237,6 +1238,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                     </div>
                 </div>
             </div>
+            */ ?>
 
         </div>
 
