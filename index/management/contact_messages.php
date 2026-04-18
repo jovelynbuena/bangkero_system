@@ -21,6 +21,32 @@ if (!in_array($role, ['admin', 'officer'])) {
 $successMsg = $errorMsg = "";
 
 // ========================================
+// MARK AS REPLIED ACTION (AJAX)
+// ========================================
+if (isset($_GET['action']) && $_GET['action'] == 'mark_replied') {
+    ob_end_clean();
+    header('Content-Type: application/json');
+
+    $id = intval($_GET['id'] ?? 0);
+    if ($id <= 0) {
+        echo json_encode(['success' => false, 'message' => 'Invalid message ID']);
+        exit;
+    }
+
+    $stmt = $conn->prepare("UPDATE contact_messages SET status='replied' WHERE id=?");
+    if (!$stmt) {
+        echo json_encode(['success' => false, 'message' => $conn->error]);
+        exit;
+    }
+    $stmt->bind_param("i", $id);
+    $stmt->execute();
+    $stmt->close();
+
+    echo json_encode(['success' => true]);
+    exit;
+}
+
+// ========================================
 // MARK AS READ ACTION (AJAX - single ID only)
 // ========================================
 if (isset($_GET['action']) && $_GET['action'] == 'mark_read') {
@@ -84,6 +110,11 @@ if (isset($_GET['action']) && $_GET['action'] == 'archive' && isset($_GET['id'])
 }
 
 // ========================================
+// ENSURE 'replied' IS A VALID ENUM VALUE
+// ========================================
+$conn->query("ALTER TABLE contact_messages MODIFY status ENUM('unread','read','replied') NOT NULL DEFAULT 'unread'");
+
+// ========================================
 // FETCH STATISTICS
 // ========================================
 $totalMessagesQuery = $conn->query("SELECT COUNT(*) as count FROM contact_messages");
@@ -92,13 +123,13 @@ $totalMessages = $totalMessagesQuery->fetch_assoc()['count'];
 $unreadMessagesQuery = $conn->query("SELECT COUNT(*) as count FROM contact_messages WHERE status='unread'");
 $unreadMessages = $unreadMessagesQuery->fetch_assoc()['count'];
 
-$readMessages = $totalMessages - $unreadMessages;
+$readMessages = $conn->query("SELECT COUNT(*) as count FROM contact_messages WHERE status IN ('read','replied')")->fetch_assoc()['count'];
 
 // ========================================
 // FETCH ALL MESSAGES
 // ========================================
 $msgResult = $conn->query("SELECT id, name, email, message, status, created_at FROM contact_messages ORDER BY 
-    CASE WHEN status='unread' THEN 0 ELSE 1 END, created_at DESC");
+    CASE WHEN status='unread' THEN 0 WHEN status='replied' THEN 1 ELSE 2 END, created_at DESC");
 ?>
 
 <!DOCTYPE html>
@@ -314,6 +345,10 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
         background: #f59e0b; 
         color: white;
     }
+    .badge-replied {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+    }
 
     /* Button Styles */
     .btn { 
@@ -341,6 +376,19 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
         box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
     }
     
+    .btn-primary {
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        color: white;
+        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    }
+
+    .btn-primary:hover {
+        background: linear-gradient(135deg, #5a6fd6 0%, #6a4295 100%);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        color: white;
+    }
+
     .btn-danger {
         background: #ef4444;
         color: white;
@@ -461,6 +509,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
                     <option value="">All Status</option>
                     <option value="unread">Unread</option>
                     <option value="read">Read</option>
+                    <option value="replied">Replied</option>
                 </select>
                 
                 <div class="input-group" style="width: 280px;">
@@ -494,7 +543,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
                 <tbody id="tableBody">
                     <?php if ($msgResult && $msgResult->num_rows > 0): ?>
                         <?php while ($msgRow = $msgResult->fetch_assoc()): ?>
-                            <tr data-status="<?= htmlspecialchars($msgRow['status']) ?>">
+                            <tr data-status="<?= htmlspecialchars($msgRow['status']) ?>" data-prev-status="<?= htmlspecialchars($msgRow['status']) ?>">
                                 <td style="font-weight: 600;"><?= htmlspecialchars($msgRow['id']) ?></td>
                                 <td style="font-weight: 600;"><?= htmlspecialchars($msgRow['name']) ?></td>
                                 <td><?= htmlspecialchars($msgRow['email']) ?></td>
@@ -502,6 +551,8 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
                                 <td>
                                     <?php if ($msgRow['status'] == 'read'): ?>
                                         <span class="badge badge-read"><i class="bi bi-check-circle me-1"></i>Read</span>
+                                    <?php elseif ($msgRow['status'] == 'replied'): ?>
+                                        <span class="badge badge-replied"><i class="bi bi-reply-fill me-1"></i>Replied</span>
                                     <?php else: ?>
                                         <span class="badge badge-unread"><i class="bi bi-exclamation-circle me-1"></i>Unread</span>
                                     <?php endif; ?>
@@ -513,6 +564,14 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
                                             <i class="bi bi-envelope-open"></i>
                                         </button>
                                     <?php endif; ?>
+                                    <button class="btn btn-primary btn-sm reply-message"
+                                        data-id="<?= (int)$msgRow['id'] ?>"
+                                        data-name="<?= htmlspecialchars($msgRow['name'], ENT_QUOTES) ?>"
+                                        data-email="<?= htmlspecialchars($msgRow['email'], ENT_QUOTES) ?>"
+                                        data-message="<?= htmlspecialchars($msgRow['message'], ENT_QUOTES) ?>"
+                                        title="Reply">
+                                        <i class="bi bi-reply-fill"></i>
+                                    </button>
                                     <button class="btn btn-warning btn-sm archive-message" data-id="<?= (int)$msgRow['id'] ?>" title="Archive Message">
                                         <i class="bi bi-archive"></i>
                                     </button>
@@ -534,6 +593,83 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
     <nav>
         <ul class="pagination justify-content-center" id="pagination"></ul>
     </nav>
+</div>
+
+<!-- Reply Modal -->
+<div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 18px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+      <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 18px 18px 0 0; color: white; border: none;">
+        <h5 class="modal-title fw-bold" id="replyModalLabel">
+          <i class="bi bi-reply-fill me-2"></i>Reply to Message
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body p-4">
+        <!-- Original Message Preview -->
+        <div class="mb-3 p-3" style="background: #f8f9ff; border-radius: 12px; border-left: 4px solid #667eea;">
+          <div class="d-flex align-items-center gap-2 mb-1">
+            <i class="bi bi-person-fill text-primary"></i>
+            <strong id="replyOriginalName" class="text-primary"></strong>
+            <span class="text-muted" style="font-size: 13px;">wrote:</span>
+          </div>
+          <p id="replyOriginalMessage" class="mb-0 text-muted" style="font-size: 13px; font-style: italic;"></p>
+        </div>
+
+        <!-- Reply Form -->
+        <div class="mb-3">
+          <label class="form-label fw-semibold">To:</label>
+          <input type="email" id="replyToEmail" class="form-control" readonly
+                 style="background: #f8f9ff; border-radius: 10px;">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Subject:</label>
+          <input type="text" id="replySubject" class="form-control"
+                 style="border-radius: 10px;"
+                 value="Re: Your message to Bankero & Fishermen Association">
+        </div>
+        <div class="mb-3">
+          <label class="form-label fw-semibold">Message:</label>
+          <textarea id="replyBody" class="form-control" rows="6"
+                    style="border-radius: 10px; resize: vertical;"
+                    placeholder="Type your reply here..."></textarea>
+          <small class="text-muted mt-1 d-block">
+            <i class="bi bi-info-circle me-1"></i>
+            Your reply will be auto-formatted with the association's signature before sending.
+          </small>
+        </div>
+
+        <!-- Step 2: Confirmation panel (hidden by default) -->
+        <div id="replyConfirmPanel" style="display:none; border-radius: 12px; border: 2px solid #667eea; background: #f0f2ff; padding: 16px; margin-top: 4px;">
+          <p class="fw-semibold mb-1" style="color: #667eea; font-size: 14px;">
+            <i class="bi bi-send-check me-2"></i>Ready to send this reply?
+          </p>
+          <p class="mb-3 text-muted" style="font-size: 13px;">
+            Gmail will open in a new tab with your message pre-filled.<br>
+            Please click <strong>Send</strong> inside Gmail to complete the delivery.
+          </p>
+          <div class="d-flex gap-2 flex-wrap">
+            <button type="button" id="confirmSendGmailBtn" class="btn btn-sm fw-semibold"
+                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px; min-width: 160px;">
+              <i class="bi bi-google me-1"></i><span id="gmailBtnLabel">Send via Gmail</span>
+            </button>
+            <button type="button" id="cancelConfirmBtn" class="btn btn-sm btn-outline-secondary fw-semibold" style="border-radius: 10px;">
+              <i class="bi bi-arrow-left me-1"></i>Go Back
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer" style="border: none; padding: 16px 24px 20px;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px;">
+          <i class="bi bi-x-circle me-1"></i>Cancel
+        </button>
+        <button type="button" id="sendReplyBtn" class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px; min-width: 140px;">
+          <i class="bi bi-send-fill me-1"></i>Send Reply
+        </button>
+      </div>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -661,6 +797,123 @@ document.getElementById('entriesPerPage').addEventListener('change', function() 
 
 // Initial load
 filterAndPaginate();
+
+// ========================================
+// REPLY MESSAGE — IMPROVED FLOW
+// ========================================
+let currentReplyId   = null;
+let currentReplyRow  = null;
+
+function resetReplyModal() {
+    document.getElementById('replyConfirmPanel').style.display = 'none';
+    document.getElementById('sendReplyBtn').style.display      = '';
+    document.getElementById('replyBody').disabled              = false;
+    document.getElementById('replySubject').disabled           = false;
+    const lbl = document.getElementById('gmailBtnLabel');
+    if (lbl) lbl.textContent = 'Send via Gmail';
+    const btn = document.getElementById('confirmSendGmailBtn');
+    if (btn) btn.disabled = false;
+}
+
+// Reset modal state when closed
+document.getElementById('replyModal').addEventListener('hidden.bs.modal', resetReplyModal);
+
+// Open modal on Reply button click
+document.querySelectorAll('.reply-message').forEach(btn => {
+    btn.addEventListener('click', function() {
+        const name    = this.getAttribute('data-name');
+        const email   = this.getAttribute('data-email');
+        const message = this.getAttribute('data-message');
+        currentReplyId  = this.getAttribute('data-id');
+        currentReplyRow = this.closest('tr');
+
+        document.getElementById('replyOriginalName').textContent    = name;
+        document.getElementById('replyOriginalMessage').textContent = message;
+        document.getElementById('replyToEmail').value               = email;
+        document.getElementById('replyBody').value                  = '';
+        resetReplyModal();
+
+        new bootstrap.Modal(document.getElementById('replyModal')).show();
+    });
+});
+
+// Step 1 — "Send Reply" validates and shows confirmation panel
+document.getElementById('sendReplyBtn').addEventListener('click', function() {
+    const body = document.getElementById('replyBody').value.trim();
+    if (!body) {
+        Swal.fire({ icon: 'warning', title: 'Empty Reply', text: 'Please type your reply message before sending.', confirmButtonColor: '#667eea' });
+        return;
+    }
+
+    // Show confirmation panel, hide the Send Reply button
+    document.getElementById('replyConfirmPanel').style.display = 'block';
+    document.getElementById('sendReplyBtn').style.display      = 'none';
+    document.getElementById('replyBody').disabled              = true;
+    document.getElementById('replySubject').disabled           = true;
+
+    // Scroll confirmation into view smoothly
+    document.getElementById('replyConfirmPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+});
+
+// Step 1b — "Go Back" hides confirmation panel
+document.getElementById('cancelConfirmBtn').addEventListener('click', function() {
+    document.getElementById('replyConfirmPanel').style.display = 'none';
+    document.getElementById('sendReplyBtn').style.display      = '';
+    document.getElementById('replyBody').disabled              = false;
+    document.getElementById('replySubject').disabled           = false;
+});
+
+// Step 2 — "Send via Gmail" opens Gmail, marks as replied, updates UI
+document.getElementById('confirmSendGmailBtn').addEventListener('click', function() {
+    const to      = document.getElementById('replyToEmail').value;
+    const subject = document.getElementById('replySubject').value.trim();
+    const rawBody = document.getElementById('replyBody').value.trim();
+
+    // Auto-format email with association signature template
+    const formattedBody = `Hello,\n\n${rawBody}\n\nRegards,\nBangkero & Fishermen Association`;
+
+    // Loading state
+    const btn = document.getElementById('confirmSendGmailBtn');
+    btn.disabled = true;
+    document.getElementById('gmailBtnLabel').textContent = 'Opening Gmail...';
+
+    // Build Gmail compose link (fs=1 forces full compose window)
+    const gmailLink = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}&su=${encodeURIComponent(subject)}&body=${encodeURIComponent(formattedBody)}`;
+    window.open(gmailLink, '_blank');
+
+    // Mark message as "replied" in the database via AJAX
+    if (currentReplyId && currentReplyRow) {
+        const row = currentReplyRow;
+        fetch(`contact_messages.php?action=mark_replied&id=${currentReplyId}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    const badgeCell = row.querySelector('td:nth-child(5)');
+                    if (badgeCell) badgeCell.innerHTML = '<span class="badge badge-replied"><i class="bi bi-reply-fill me-1"></i>Replied</span>';
+                    row.dataset.status = 'replied';
+                    // Remove "Mark as Read" button if present (no longer needed)
+                    const markReadBtn = row.querySelector('.mark-read');
+                    if (markReadBtn) markReadBtn.remove();
+                    // Update stat counters
+                    const unreadEl = document.getElementById('stat-unread');
+                    const readEl   = document.getElementById('stat-read');
+                    if (unreadEl && row.dataset.prevStatus === 'unread')
+                        unreadEl.textContent = Math.max(0, parseInt(unreadEl.textContent) - 1);
+                    if (readEl) readEl.textContent = parseInt(readEl.textContent) + 1;
+                }
+            }).catch(() => {});
+    }
+
+    // Close modal, show success feedback
+    bootstrap.Modal.getInstance(document.getElementById('replyModal')).hide();
+    Swal.fire({
+        icon: 'success',
+        title: 'Redirecting to Gmail...',
+        html: 'Your reply has been pre-filled.<br><small class="text-muted">Click <strong>Send</strong> inside Gmail to complete delivery.</small>',
+        confirmButtonColor: '#667eea',
+        confirmButtonText: 'Got it'
+    });
+});
 
 // ========================================
 // SWEETALERT ACTIONS

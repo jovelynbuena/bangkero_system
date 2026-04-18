@@ -675,6 +675,111 @@ body.sidebar-open { overflow: hidden; }
 </head>
 <body>
 
+<!-- ========== PAGE LOADER ========== -->
+<div id="pageLoader">
+  <div class="loader-wrap">
+    <img src="<?= $assocLogo ?>" class="loader-logo" alt="Logo">
+    <div class="loader-ripple"></div>
+  </div>
+</div>
+
+<style>
+#pageLoader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+#pageLoader.hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loader-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 160px;
+}
+.loader-logo {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  position: relative;
+  z-index: 2;
+  animation: heartbeat 1.2s ease-in-out infinite;
+}
+@keyframes heartbeat {
+  0%   { transform: scale(1);    }
+  14%  { transform: scale(1.2);  }
+  28%  { transform: scale(1);    }
+  42%  { transform: scale(1.15); }
+  56%  { transform: scale(1);    }
+  100% { transform: scale(1);    }
+}
+.loader-ripple {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  animation: ripple 1.2s ease-out infinite;
+  z-index: 1;
+}
+@keyframes ripple {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+</style>
+
+<script>
+(function() {
+  var loader = document.getElementById('pageLoader');
+
+  // Hide loader once page fully loads
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      loader.classList.add('hide');
+    }, 300); // tiny buffer so it doesn't flicker
+  });
+
+  // Show loader on any internal link click (navigation)
+  document.addEventListener('click', function(e) {
+    var anchor = e.target.closest('a');
+    if (!anchor) return;
+    var href = anchor.getAttribute('href') || '';
+    // Skip: anchors, js links, mailto, blank target
+    if (!href || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('mailto') || anchor.target === '_blank') return;
+    // Skip: file downloads / export links (CSV, PDF, Excel)
+    if (/[?&]export=/.test(href)) return;
+    // Skip: print triggers
+    if (anchor.hasAttribute('data-print') || anchor.getAttribute('onclick') === 'window.print()') return;
+    loader.classList.remove('hide');
+    loader.style.opacity = '1';
+    loader.style.visibility = 'visible';
+  });
+
+  // Show loader on form submits (except AJAX/modal/filter forms)
+  document.addEventListener('submit', function(e) {
+    // Skip AJAX forms
+    if (e.target.hasAttribute('data-ajax')) return;
+    // Skip filter/search forms (method GET, no page navigation intended)
+    if (e.target.id === 'filterForm') return;
+    loader.classList.remove('hide');
+    loader.style.opacity = '1';
+    loader.style.visibility = 'visible';
+  });
+})();
+</script>
+<!-- ========== END PAGE LOADER ========== -->
+
 <!-- Overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
