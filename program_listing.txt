@@ -1,0 +1,1147 @@
+================================================================================
+                       APPENDIX E - PROGRAM LISTINGS
+             Bangkero & Fishermen Association Management System
+================================================================================
+
+
+--------------------------------------------------------------------------------
+1. config/db_connect_local.php - Database Connection
+--------------------------------------------------------------------------------
+
+<?php
+$servername = "localhost";
+$username   = "root";
+$password   = "";          // XAMPP default (blank)
+$dbname     = "bangkero_local";
+$port       = 3306;
+
+// Create primary connection
+$conn = new mysqli($servername, $username, $password, $dbname, $port);
+
+// Check connection
+if ($conn->connect_error) {
+    die("Local database connection failed: " . $conn->connect_error);
+}
+
+// Set charset to UTF-8
+$conn->set_charset("utf8");
+
+// If DB looks empty, try to bootstrap once (members table as indicator)
+try {
+    if (!local_table_exists($conn, 'members')) {
+        $latestSql = local_find_latest_backup_sql();
+        if ($latestSql) {
+            local_restore_from_sql_file($conn, $latestSql);
+        }
+    }
+} catch (Throwable $e) {
+    die('Local database is missing required tables and auto-restore failed: '
+        . $e->getMessage());
+}
+
+// Secondary connection for activity logs
+$connLog = new mysqli($servername, $username, $password, $dbname, $port);
+if (!$connLog->connect_error) {
+    $connLog->set_charset("utf8");
+}
+?>
+
+
+--------------------------------------------------------------------------------
+2. index/login.php - User Authentication
+--------------------------------------------------------------------------------
+
+<?php
+date_default_timezone_set('Asia/Manila');
+session_start();
+require '../config/db_connect.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username = trim($_POST["username"]);
+    $password = trim($_POST["password"]);
+    $remember = isset($_POST['remember']);
+
+    $stmt = $conn->prepare("SELECT id, username, password_hash, role, status,
+                            first_name, last_name FROM users WHERE username = ?");
+    $stmt->bind_param("s", $username);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    $ip_address = $_SERVER['REMOTE_ADDR'];
+
+    if ($result->num_rows === 1) {
+        $row = $result->fetch_assoc();
+
+        // Check account approval
+        if (strtolower($row['status']) !== 'approved') {
+            header("Location: login.php?login=failed&message=Account pending approval");
+            exit();
+        }
+
+        // Password verification
+        if (password_verify($password, $row["password_hash"])) {
+            $_SESSION["user_id"]   = $row["id"];
+            $_SESSION["username"]  = $row["username"];
+            $_SESSION["role"]      = $row["role"];
+            $_SESSION["fullname"]  = ucfirst($row["first_name"]);
+
+            // Log successful login
+            $action   = "Logged in";
+            $log_stmt = $conn->prepare("INSERT INTO activity_logs
+                        (user_id, action, ip_address) VALUES (?, ?, ?)");
+            $log_stmt->bind_param("iss", $row['id'], $action, $ip_address);
+            $log_stmt->execute();
+
+            // Remember me cookie (30 days)
+            if ($remember) {
+                setcookie("remembered_user", $username, time() + (86400 * 30), "/");
+            }
+
+            // Redirect to dashboard
+            header("Location: admin.php?login=success");
+            exit();
+        } else {
+            header("Location: login.php?login=failed&message=Incorrect password");
+            exit();
+        }
+    } else {
+        header("Location: login.php?login=failed&message=User not found");
+        exit();
+    }
+}
+?>
+
+
+--------------------------------------------------------------------------------
+3. index/logout.php - Session Destruction
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+session_unset();    // Remove all session variables
+session_destroy();  // Destroy the session data
+header("Location: login.php");
+exit();
+?>
+
+
+--------------------------------------------------------------------------------
+4. index/register.php - Officer Registration
+--------------------------------------------------------------------------------
+
+<?php
+date_default_timezone_set('Asia/Manila');
+session_start();
+require '../config/db_connect.php';
+
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $username         = trim($_POST["username"]);
+    $email            = trim($_POST["email"]);
+    $password         = trim($_POST["password"]);
+    $confirm_password = trim($_POST["confirm_password"]);
+
+    // Server-side validation
+    if (empty($username) || empty($email) || empty($password) || empty($confirm_password)) {
+        header("Location: register.php?status=error&message=All fields are required");
+        exit();
+    }
+
+    if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        header("Location: register.php?status=error&message=Invalid email address");
+        exit();
+    }
+
+    if (strlen($password) < 6) {
+        header("Location: register.php?status=error&message=Password must be at least 6 characters");
+        exit();
+    }
+
+    if ($password !== $confirm_password) {
+        header("Location: register.php?status=error&message=Passwords do not match");
+        exit();
+    }
+
+    // Check if username or email already exists
+    $stmt = $conn->prepare("SELECT id FROM users WHERE username = ? OR email = ?");
+    $stmt->bind_param("ss", $username, $email);
+    $stmt->execute();
+    $stmt->store_result();
+
+    if ($stmt->num_rows > 0) {
+        $stmt->close();
+        header("Location: register.php?status=error&message=Username or email already exists");
+        exit();
+    }
+
+    // Hash password and create account
+    $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+    $role       = 'officer';
+    $status     = 'pending';
+    $created_at = date('Y-m-d H:i:s');
+
+    $insert = $conn->prepare("INSERT INTO users
+                (username, password_hash, email, role, status, created_at)
+                VALUES (?, ?, ?, ?, ?, ?)");
+    $insert->bind_param("ssssss", $username, $hashed_password,
+                        $email, $role, $status, $created_at);
+
+    if ($insert->execute()) {
+        header("Location: login.php?status=info&message=Registration successful. Please wait for approval.");
+        exit();
+    }
+}
+?>
+
+
+--------------------------------------------------------------------------------
+5. index/admin.php - Admin Dashboard (Backend Logic)
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (!isset($_SESSION['username'])) {
+    header('location: login.php');
+    exit;
+}
+
+include('../config/db_connect.php');
+
+$role     = $_SESSION['role'] ?? 'member';
+$username = $_SESSION['username'] ?? '';
+$fullname = $_SESSION['fullname'] ?? ucfirst($role);
+
+// Fetch active events
+$eventSql    = "SELECT * FROM events WHERE is_archived = 0 ORDER BY date ASC";
+$eventResult = $conn->query($eventSql);
+
+// Dashboard statistics
+$members      = $conn->query("SELECT COUNT(*) AS total FROM members")
+                    ->fetch_assoc()['total'];
+$officers     = $conn->query("SELECT COUNT(DISTINCT member_id) AS total FROM officers")
+                    ->fetch_assoc()['total'];
+$announcements = $conn->query("SELECT COUNT(*) AS total FROM announcements")
+                    ->fetch_assoc()['total'];
+$eventsTotal  = $conn->query("SELECT COUNT(*) AS total FROM events")
+                    ->fetch_assoc()['total'];
+$eventsUpcoming = $conn->query("SELECT COUNT(*) AS total FROM events
+                  WHERE is_archived=0 AND date >= CURDATE()")
+                    ->fetch_assoc()['total'];
+?>
+
+
+--------------------------------------------------------------------------------
+6. index/management/memberlist.php - Member List with Add/Search
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('location: ../login.php');
+    exit;
+}
+
+require_once('../../config/db_connect.php');
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+// Helper functions
+function old($field, $default = '') {
+    return isset($_POST[$field]) ? htmlspecialchars($_POST[$field]) : $default;
+}
+function selected($field, $value) {
+    return (isset($_POST[$field]) && $_POST[$field] === $value) ? 'selected' : '';
+}
+function checked($field) {
+    return isset($_POST[$field]) ? 'checked' : '';
+}
+
+/* ---- ADD MEMBER HANDLER ---- */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_member'])) {
+    $first_name     = trim($_POST['first_name'] ?? '');
+    $middle_initial = trim($_POST['middle_initial'] ?? '');
+    $last_name      = trim($_POST['last_name'] ?? '');
+    $name           = trim("$first_name $middle_initial $last_name");
+    $dob            = $_POST['dob'] ?? '';
+    $gender         = $_POST['gender'] ?? '';
+    $civil_status   = $_POST['civil_status'] ?? '';
+    $phone          = trim($_POST['phone'] ?? '');
+    $email          = trim($_POST['email'] ?? '');
+    $street         = trim($_POST['street'] ?? '');
+    $barangay       = trim($_POST['barangay'] ?? '');
+    $municipality   = trim($_POST['municipality'] ?? '');
+    $province       = trim($_POST['province'] ?? '');
+    $region         = $_POST['region'] ?? '';
+    $zip_code       = trim($_POST['zip_code'] ?? '');
+    $address        = trim("$street, $barangay, $municipality, $province, $region $zip_code");
+    $work_type      = $_POST['work_type'] ?? '';
+    $license_number = trim($_POST['license_number'] ?? '');
+    $boat_name      = trim($_POST['boat_name'] ?? '');
+    $fishing_area   = trim($_POST['fishing_area'] ?? '');
+    $emergency_name = trim($_POST['emergency_name'] ?? '');
+    $emergency_phone= trim($_POST['emergency_phone'] ?? '');
+    $agreement      = isset($_POST['agreement']) ? 1 : 0;
+
+    // Validate required fields
+    $required_fields = [
+        'First Name' => $first_name, 'Last Name' => $last_name,
+        'Date of Birth' => $dob, 'Gender' => $gender,
+        'Civil Status' => $civil_status, 'Phone Number' => $phone,
+        'Email Address' => $email, 'Barangay' => $barangay,
+        'Municipality/City' => $municipality, 'Province' => $province,
+        'Region' => $region, 'Type of Work' => $work_type,
+        'Emergency Contact Name' => $emergency_name,
+        'Emergency Contact Phone' => $emergency_phone
+    ];
+
+    $missing = [];
+    foreach ($required_fields as $field => $value) {
+        if (empty($value)) $missing[] = $field;
+    }
+
+    if (!empty($missing)) {
+        $alertType = "error";
+        $alertMsg  = "Please fill in all required fields: " . implode(", ", $missing);
+    } elseif (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $alertType = "error";
+        $alertMsg  = "Please enter a valid email address!";
+    } elseif (!empty($dob)) {
+        // Validate age (must be at least 18)
+        $age = (new DateTime())->diff(new DateTime($dob))->y;
+        if ($age < 18) {
+            $alertType = "error";
+            $alertMsg  = "Member must be at least 18 years old!";
+        }
+    } elseif (!preg_match('/^(09|\+639)\d{9}$/', str_replace(['-',' '], '', $phone))) {
+        $alertType = "error";
+        $alertMsg  = "Please enter a valid Philippine mobile number (e.g., 09XX-XXX-XXXX)!";
+    }
+
+    if (empty($alertMsg)) {
+        // Check duplicate email
+        $checkEmail = $conn->prepare("SELECT id FROM members WHERE LOWER(email) = LOWER(?)");
+        $checkEmail->bind_param("s", $email);
+        $checkEmail->execute();
+        $checkEmail->store_result();
+
+        if ($checkEmail->num_rows > 0) {
+            $alertType = "error";
+            $alertMsg  = "Email already exists! Please use a different email address.";
+        } else {
+            // Handle image upload
+            $imgDir    = __DIR__ . '/../../uploads/members/';
+            $imageName = 'default_member.png';
+
+            if (!empty($_FILES['image']['name']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+                $allowed = ['image/jpeg', 'image/png', 'image/gif'];
+                if (in_array($_FILES['image']['type'], $allowed)
+                    && $_FILES['image']['size'] <= 2 * 1024 * 1024) {
+                    $imageName = uniqid('member_', true) . '_'
+                        . preg_replace('/[^A-Za-z0-9_\-\.]/', '',
+                            basename($_FILES['image']['name']));
+                    move_uploaded_file($_FILES['image']['tmp_name'], $imgDir . $imageName);
+                }
+            }
+
+            // Insert member record
+            $stmt = $conn->prepare("INSERT INTO members
+                (name, dob, gender, civil_status, phone, email, address,
+                 work_type, license_number, boat_name, fishing_area,
+                 emergency_name, emergency_phone, agreement, image)
+                VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)");
+            $stmt->bind_param("sssssssssssssss",
+                $name, $dob, $gender, $civil_status, $phone, $email, $address,
+                $work_type, $license_number, $boat_name, $fishing_area,
+                $emergency_name, $emergency_phone, $agreement, $imageName);
+
+            if ($stmt->execute()) {
+                $alertType = "success";
+                $alertMsg  = "Member added successfully!";
+            } else {
+                $alertType = "error";
+                $alertMsg  = "Error inserting member: " . $stmt->error;
+            }
+            $stmt->close();
+        }
+    }
+}
+?>
+
+
+--------------------------------------------------------------------------------
+7. index/edit_member.php - Edit Member Record
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('location: ../login.php');
+    exit;
+}
+
+include('../config/db_connect.php');
+
+if (!isset($_GET['id']) || !is_numeric($_GET['id'])) {
+    die("Invalid or missing member ID.");
+}
+
+$memberId = intval($_GET['id']);
+$stmt = $conn->prepare("SELECT * FROM members WHERE id = ?");
+$stmt->bind_param("i", $memberId);
+$stmt->execute();
+$member = $stmt->get_result()->fetch_assoc();
+
+if (!$member) { die("Member not found."); }
+
+$updateSuccess = false;
+$errorMessage  = "";
+
+if ($_SERVER["REQUEST_METHOD"] === "POST") {
+    $firstName     = trim($_POST['first_name']);
+    $middleInitial = trim($_POST['middle_initial']);
+    $lastName      = trim($_POST['last_name']);
+    $fullName      = "$firstName $middleInitial $lastName";
+    $dob           = $_POST['dob'];
+    $gender        = $_POST['gender'];
+    $phone         = $_POST['phone'];
+    $email         = $_POST['email'];
+    $address       = $_POST['address'];
+    $workType      = $_POST['work_type'];
+    $licenseNumber = $_POST['license_number'];
+    $boatName      = $_POST['boat_name'];
+    $fishingArea   = $_POST['fishing_area'];
+    $emergencyName = $_POST['emergency_name'];
+    $emergencyPhone= $_POST['emergency_phone'];
+    $agreement     = isset($_POST['agreement']) ? 1 : 0;
+
+    $imageFileName = $member['image'];
+    $imgDir = "../uploads/members/";
+    if (!is_dir($imgDir)) { mkdir($imgDir, 0777, true); }
+
+    // Handle new image upload
+    if (!empty($_FILES['image']['name']) && $_FILES['image']['error'] === UPLOAD_ERR_OK) {
+        $allowed_types = ['image/jpeg', 'image/png', 'image/gif'];
+        if (!in_array($_FILES['image']['type'], $allowed_types)) {
+            $errorMessage = "Only JPG, PNG, and GIF files are allowed.";
+        } elseif ($_FILES['image']['size'] > 2 * 1024 * 1024) {
+            $errorMessage = "Image size must be less than 2MB.";
+        } else {
+            $originalName  = preg_replace('/[^A-Za-z0-9_\-\.]/', '',
+                                basename($_FILES['image']['name']));
+            $imageFileName = uniqid('member_', true) . '_' . $originalName;
+            if (move_uploaded_file($_FILES['image']['tmp_name'], $imgDir . $imageFileName)) {
+                // Delete old image if not default
+                if (!empty($member['image']) && $member['image'] !== 'default_member.png'
+                    && file_exists($imgDir . $member['image'])) {
+                    @unlink($imgDir . $member['image']);
+                }
+            } else {
+                $errorMessage = "Failed to upload image.";
+            }
+        }
+    }
+
+    if (empty($errorMessage)) {
+        $update = $conn->prepare("UPDATE members SET
+            name=?, dob=?, gender=?, phone=?, email=?, address=?,
+            work_type=?, license_number=?, boat_name=?, fishing_area=?,
+            emergency_name=?, emergency_phone=?, agreement=?, image=?
+            WHERE id=?");
+        $update->bind_param("ssssssssssssssi",
+            $fullName, $dob, $gender, $phone, $email, $address,
+            $workType, $licenseNumber, $boatName, $fishingArea,
+            $emergencyName, $emergencyPhone, $agreement, $imageFileName, $memberId);
+
+        if ($update->execute()) {
+            $updateSuccess = true;
+        } else {
+            $errorMessage = "Error updating member: " . $update->error;
+        }
+    }
+}
+?>
+
+
+--------------------------------------------------------------------------------
+8. index/management/officerslist.php - Add & List Officers
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('location: ../login.php');
+    exit;
+}
+
+require_once('../../config/db_connect.php');
+
+// Auto-create officer_roles table if missing
+$checkTable = $conn->query("SHOW TABLES LIKE 'officer_roles'");
+if ($checkTable->num_rows === 0) {
+    $conn->query("CREATE TABLE IF NOT EXISTS `officer_roles` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `role_name` varchar(100) NOT NULL,
+        `description` text,
+        `display_order` int(11) DEFAULT '0',
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+
+    // Insert default roles
+    $stmt = $conn->prepare("INSERT INTO officer_roles (role_name, display_order) VALUES (?, ?)");
+    foreach ([['President',1],['Vice President',2],['Secretary',3],
+              ['Treasurer',4],['Board of Director',0]] as $role) {
+        $stmt->bind_param("si", $role[0], $role[1]);
+        $stmt->execute();
+    }
+    $stmt->close();
+}
+
+$alertType = $alertMsg = "";
+
+/* ---- ADD OFFICER HANDLER ---- */
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['add_officer'])) {
+    $member_id   = $_POST['member_id'] ?? '';
+    $role_id     = $_POST['role_id'] ?? '';
+    $term_start  = $_POST['term_start'] ?? '';
+    $term_end    = $_POST['term_end'] ?? '';
+    $description = $_POST['description'] ?? '';
+
+    if (!$member_id || !$role_id || !$term_start || !$term_end) {
+        $alertType = "error";
+        $alertMsg  = "All required fields must be filled!";
+    } elseif (strtotime($term_end) <= strtotime($term_start)) {
+        $alertType = "error";
+        $alertMsg  = "Term end date must be after term start date!";
+    } else {
+        // Check if position is already filled during overlapping terms
+        $checkPosition = $conn->prepare("
+            SELECT COUNT(*) as count FROM officers
+            WHERE role_id = ?
+            AND ((term_start <= ? AND term_end >= ?)
+              OR (term_start <= ? AND term_end >= ?)
+              OR (term_start >= ? AND term_end <= ?))");
+        $checkPosition->bind_param("issssss", $role_id,
+            $term_start, $term_start, $term_end, $term_end, $term_start, $term_end);
+        $checkPosition->execute();
+        $checkPosition->bind_result($positionCount);
+        $checkPosition->fetch();
+        $checkPosition->close();
+
+        if ($positionCount > 0) {
+            $alertType = "error";
+            $alertMsg  = "This position is already assigned during the selected term period!";
+        } else {
+            // Check if member already has a role during this term
+            $checkMember = $conn->prepare("
+                SELECT COUNT(*) as count FROM officers
+                WHERE member_id = ?
+                AND ((term_start <= ? AND term_end >= ?)
+                  OR (term_start <= ? AND term_end >= ?)
+                  OR (term_start >= ? AND term_end <= ?))");
+            $checkMember->bind_param("issssss", $member_id,
+                $term_start, $term_start, $term_end, $term_end, $term_start, $term_end);
+            $checkMember->execute();
+            $checkMember->bind_result($memberCount);
+            $checkMember->fetch();
+            $checkMember->close();
+
+            if ($memberCount > 0) {
+                $alertType = "error";
+                $alertMsg  = "This member is already assigned to a position during the selected term!";
+            } else {
+                // Handle image upload
+                $imageName = "";
+                if (!empty($_FILES['image']['name'])) {
+                    $targetDir = "../../uploads/officers/";
+                    if (!is_dir($targetDir)) mkdir($targetDir, 0777, true);
+                    $fileType = strtolower(pathinfo($_FILES["image"]["name"], PATHINFO_EXTENSION));
+                    if (in_array($fileType, ['jpg','jpeg','png','gif'])
+                        && $_FILES["image"]["size"] <= 2 * 1024 * 1024
+                        && getimagesize($_FILES["image"]["tmp_name"]) !== false) {
+                        $imageName = time() . '_' . basename($_FILES["image"]["name"]);
+                        move_uploaded_file($_FILES["image"]["tmp_name"],
+                            $targetDir . $imageName);
+                    }
+                }
+
+                // Insert officer record
+                $stmt = $conn->prepare("INSERT INTO officers
+                    (member_id, role_id, term_start, term_end, image, description)
+                    VALUES (?, ?, ?, ?, ?, ?)");
+                $stmt->bind_param("iissss",
+                    $member_id, $role_id, $term_start, $term_end, $imageName, $description);
+
+                if ($stmt->execute()) {
+                    $alertType = "success";
+                    $alertMsg  = "Officer assigned successfully!";
+                } else {
+                    $alertType = "error";
+                    $alertMsg  = "Error: " . $conn->error;
+                }
+                $stmt->close();
+            }
+        }
+    }
+}
+?>
+
+
+--------------------------------------------------------------------------------
+9. index/management/archives_officers.php - Officers Archive & Restore
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('Location: ../login.php');
+    exit;
+}
+
+require_once('../../config/db_connect.php');
+$userId = $_SESSION['user_id'] ?? 0;
+
+// Handle restore from archive
+if (isset($_GET['retrieve']) && $userId) {
+    $oid = intval($_GET['retrieve']);
+    if ($oid > 0) {
+        // Fetch officer details before restoring
+        $stmt_get = $conn->prepare("
+            SELECT o.id, m.name AS member_name
+            FROM officers_archive o
+            JOIN members m ON o.member_id = m.id
+            WHERE o.id = ?");
+        $stmt_get->bind_param("i", $oid);
+        $stmt_get->execute();
+        $officer = $stmt_get->get_result()->fetch_assoc();
+        $stmt_get->close();
+
+        // Copy record back to active officers table
+        $stmt_insert = $conn->prepare("
+            INSERT INTO officers (member_id, role_id, term_start, term_end, image)
+            SELECT member_id, role_id, term_start, term_end, image
+            FROM officers_archive WHERE id = ?");
+        $stmt_insert->bind_param("i", $oid);
+
+        if ($stmt_insert->execute()) {
+            $stmt_insert->close();
+
+            // Remove from archive
+            $stmt_delete = $conn->prepare("DELETE FROM officers_archive WHERE id = ?");
+            $stmt_delete->bind_param("i", $oid);
+            $stmt_delete->execute();
+            $stmt_delete->close();
+
+            // Log the action
+            $actionText = "Restored officer: {$officer['member_name']}";
+            $stmt_log = $conn->prepare("INSERT INTO activity_logs
+                (user_id, action, description) VALUES (?, ?, ?)");
+            $stmt_log->bind_param("iss", $userId, $actionText, $actionText);
+            $stmt_log->execute();
+            $stmt_log->close();
+
+            header('Location: officerslist.php?retrieved=1');
+            exit();
+        } else {
+            $stmt_insert->close();
+            header('Location: officerslist.php?error=1');
+            exit();
+        }
+    }
+}
+
+// Search & sort
+$search  = $_GET['search'] ?? '';
+$sort    = $_GET['sort']   ?? 'position';
+$search_safe  = $conn->real_escape_string($search);
+$conditions   = [];
+
+if ($search !== '') {
+    $conditions[] = "(m.name LIKE '%$search_safe%'
+                      OR r.role_name LIKE '%$search_safe%')";
+}
+$where_clause = !empty($conditions) ? "WHERE " . implode(" AND ", $conditions) : "";
+
+$order_by = "r.role_name ASC";
+if ($sort === 'newest')  $order_by = "o.term_end DESC";
+elseif ($sort === 'oldest') $order_by = "o.term_end ASC";
+elseif ($sort === 'name_a') $order_by = "m.name ASC";
+elseif ($sort === 'name_z') $order_by = "m.name DESC";
+
+$sql = "SELECT o.id, o.term_start, o.term_end, o.image,
+               r.role_name AS position, m.name AS member_name
+        FROM officers_archive o
+        JOIN members m ON o.member_id = m.id
+        JOIN officer_roles r ON o.role_id = r.id
+        $where_clause
+        ORDER BY $order_by";
+
+$result = $conn->query($sql);
+?>
+
+
+--------------------------------------------------------------------------------
+10. index/event.php - Events Management (Add / Edit / Delete)
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('location: ../login.php');
+    exit;
+}
+
+include('../config/db_connect.php');
+
+// Handle Add / Edit POST
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $event_id    = isset($_POST['event_id']) && $_POST['event_id'] !== ''
+                   ? intval($_POST['event_id']) : null;
+    $event_name  = trim($_POST['event_name']        ?? '');
+    $category    = trim($_POST['event_category']    ?? 'General');
+    $date        = $_POST['event_date']             ?? '';
+    $time        = $_POST['event_time']             ?? '';
+    $location    = trim($_POST['event_location']    ?? '');
+    $description = trim($_POST['event_description'] ?? '');
+
+    // Handle poster upload
+    if (isset($_FILES['event_poster'])
+        && $_FILES['event_poster']['error'] !== UPLOAD_ERR_NO_FILE) {
+        $file    = $_FILES['event_poster'];
+        $allowed = ['jpg','jpeg','png','gif','webp'];
+        $ext     = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (in_array($ext, $allowed) && $file['size'] <= 5 * 1024 * 1024) {
+            $newName = 'event_' . time() . '_' . uniqid() . '.' . $ext;
+            move_uploaded_file($file['tmp_name'], '../uploads/' . $newName);
+            $uploadedPoster = $newName;
+        }
+    }
+
+    if ($event_id) {
+        // Update existing event
+        $stmt = $conn->prepare("UPDATE events SET event_name=?, category=?,
+                    date=?, time=?, location=?, description=? WHERE id=?");
+        $stmt->bind_param("ssssssi", $event_name, $category,
+                    $date, $time, $location, $description, $event_id);
+    } else {
+        // Insert new event
+        $stmt = $conn->prepare("INSERT INTO events
+                    (event_name, category, date, time, location, description)
+                    VALUES (?, ?, ?, ?, ?, ?)");
+        $stmt->bind_param("ssssss", $event_name, $category,
+                    $date, $time, $location, $description);
+    }
+    $stmt->execute();
+}
+
+// Fetch all active events ordered by date
+$events = $conn->query("SELECT * FROM events WHERE is_archived = 0 ORDER BY date ASC");
+?>
+
+
+--------------------------------------------------------------------------------
+11. index/event_attendance.php - Record Event Attendance
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('location: ../login.php');
+    exit;
+}
+
+require_once('../config/db_connect.php');
+
+$eventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : 0;
+if ($eventId <= 0) { die('Invalid event id'); }
+
+// Fetch event details
+$eventStmt = $conn->prepare("SELECT id, event_name, date, time, location, description
+                              FROM events WHERE id = ? AND is_archived = 0");
+$eventStmt->bind_param('i', $eventId);
+$eventStmt->execute();
+$event = $eventStmt->get_result()->fetch_assoc();
+$eventStmt->close();
+
+if (!$event) { die('Event not found.'); }
+
+$alert = ['type' => '', 'message' => ''];
+
+// Handle POST - save attendance records
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $attendanceDate = $_POST['attendance_date'] ?? $event['date'];
+    $presentIds     = isset($_POST['present']) && is_array($_POST['present'])
+                      ? array_map('intval', $_POST['present']) : [];
+    $timeIns        = $_POST['time_in']  ?? [];
+    $timeOuts       = $_POST['time_out'] ?? [];
+    $remarks        = $_POST['remarks']  ?? [];
+
+    // Delete existing records for this event & date, then re-insert
+    $delStmt = $conn->prepare("DELETE FROM member_attendance
+                               WHERE event_id = ? AND attendance_date = ?");
+    $delStmt->bind_param('is', $eventId, $attendanceDate);
+    $delStmt->execute();
+    $delStmt->close();
+
+    if (!empty($presentIds)) {
+        $insStmt = $conn->prepare("INSERT INTO member_attendance
+            (member_id, event_id, attendance_date, time_in, time_out, status, remarks, encoded_by)
+            VALUES (?,?,?,?,?,'present',?,?)");
+        $encodedBy = $_SESSION['user_id'] ?? 0;
+
+        foreach ($presentIds as $memberId) {
+            $timeInVal  = trim($timeIns[$memberId]  ?? '') !== '' ? $timeIns[$memberId]  : null;
+            $timeOutVal = trim($timeOuts[$memberId] ?? '') !== '' ? $timeOuts[$memberId] : null;
+            $remarkVal  = trim($remarks[$memberId]  ?? '');
+            $insStmt->bind_param('iissssi', $memberId, $eventId,
+                $attendanceDate, $timeInVal, $timeOutVal, $remarkVal, $encodedBy);
+            $insStmt->execute();
+        }
+        $insStmt->close();
+    }
+
+    $alert = ['type' => 'success', 'message' => 'Attendance saved successfully.'];
+}
+
+// Fetch all members
+$membersRes = $conn->query("SELECT id, name FROM members ORDER BY name ASC");
+$members    = [];
+while ($row = $membersRes->fetch_assoc()) { $members[] = $row; }
+
+// Fetch existing attendance for default date
+$attStmt = $conn->prepare("SELECT member_id, time_in, time_out, remarks
+                            FROM member_attendance
+                            WHERE event_id = ? AND attendance_date = ?");
+$attStmt->bind_param('is', $eventId, $event['date']);
+$attStmt->execute();
+$attRes  = $attStmt->get_result();
+$existing = [];
+while ($row = $attRes->fetch_assoc()) {
+    $existing[(int)$row['member_id']] = $row;
+}
+$attStmt->close();
+?>
+
+
+--------------------------------------------------------------------------------
+12. index/attendance_reports.php - Attendance Reports & Summary
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('location: ../login.php');
+    exit;
+}
+
+require_once('../config/db_connect.php');
+
+// Auto-create events and attendance tables if not yet existing
+$checkTable = $conn->query("SHOW TABLES LIKE 'events'");
+if ($checkTable->num_rows === 0) {
+    $conn->query("CREATE TABLE IF NOT EXISTS `events` (
+        `id` int(11) NOT NULL AUTO_INCREMENT,
+        `event_name` varchar(255) NOT NULL,
+        `date` date NOT NULL,
+        `time` time DEFAULT NULL,
+        `location` varchar(255) DEFAULT NULL,
+        `description` text,
+        `is_archived` tinyint(1) DEFAULT '0',
+        `created_by` int(11) DEFAULT NULL,
+        `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (`id`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+}
+
+// Fetch events list for selector
+$events = [];
+$evRes  = $conn->query("SELECT id, event_name, date, time, location
+                         FROM events WHERE is_archived = 0
+                         ORDER BY date DESC, time DESC");
+if ($evRes) {
+    while ($row = $evRes->fetch_assoc()) { $events[] = $row; }
+}
+
+$selectedEventId = isset($_GET['event_id']) ? (int)$_GET['event_id'] : 0;
+$selectedDate    = isset($_GET['attendance_date']) ? trim($_GET['attendance_date']) : '';
+
+if ($selectedEventId <= 0 && !empty($events)) {
+    $selectedEventId = (int)$events[0]['id'];
+}
+
+$eventDetails = null;
+$dateOptions  = [];
+
+if ($selectedEventId > 0) {
+    // Fetch event details
+    $evtStmt = $conn->prepare("SELECT id, event_name, date, time, location,
+                                description, category FROM events WHERE id = ?");
+    $evtStmt->bind_param('i', $selectedEventId);
+    $evtStmt->execute();
+    $eventDetails = $evtStmt->get_result()->fetch_assoc();
+    $evtStmt->close();
+
+    // Fetch distinct attendance dates
+    $dateStmt = $conn->prepare("SELECT DISTINCT attendance_date
+                                 FROM member_attendance
+                                 WHERE event_id = ?
+                                 ORDER BY attendance_date DESC");
+    $dateStmt->bind_param('i', $selectedEventId);
+    $dateStmt->execute();
+    $dateRes = $dateStmt->get_result();
+    while ($d = $dateRes->fetch_assoc()) {
+        if (!empty($d['attendance_date'])) $dateOptions[] = $d['attendance_date'];
+    }
+    $dateStmt->close();
+
+    // Fallback to event date if no records yet
+    if (empty($dateOptions) && !empty($eventDetails['date'])) {
+        $dateOptions[] = $eventDetails['date'];
+    }
+
+    if (empty($selectedDate) && !empty($dateOptions)) {
+        $selectedDate = $dateOptions[0];
+    }
+}
+?>
+
+
+--------------------------------------------------------------------------------
+13. index/admin_users.php - Admin User Management
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
+    header('Location: login.php');
+    exit;
+}
+
+require_once('../config/db_connect.php');
+
+$message = '';
+$error   = '';
+
+// Handle password reset
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['reset_password'])) {
+    $user_id      = intval($_POST['user_id']);
+    $temp_password = $_POST['temp_password'] ?? '';
+
+    if (empty($temp_password) || strlen($temp_password) < 6) {
+        $error = 'Temporary password must be at least 6 characters.';
+    } else {
+        $temp_hash = password_hash($temp_password, PASSWORD_DEFAULT);
+
+        $stmt = $conn->prepare("UPDATE users
+                               SET temp_password = ?,
+                                   force_password_change = 1,
+                                   reset_token_hash = NULL,
+                                   reset_token_expires_at = NULL
+                               WHERE id = ?");
+        $stmt->bind_param("si", $temp_hash, $user_id);
+
+        if ($stmt->execute()) {
+            $user_stmt = $conn->prepare("SELECT username FROM users WHERE id = ?");
+            $user_stmt->bind_param("i", $user_id);
+            $user_stmt->execute();
+            $user_info = $user_stmt->get_result()->fetch_assoc();
+
+            $message = "Password reset successful for: "
+                . htmlspecialchars($user_info['username'])
+                . ". Temp password: " . htmlspecialchars($temp_password)
+                . ". User will be required to change on next login.";
+        } else {
+            $error = 'Failed to reset password. Please try again.';
+        }
+    }
+}
+
+// Filters
+$search      = isset($_GET['search'])      ? trim($_GET['search'])      : '';
+$role_filter = isset($_GET['role_filter']) ? $_GET['role_filter']        : '';
+$current_user_id = $_SESSION['user_id'];
+$params = [$current_user_id];
+$types  = "i";
+
+$sql = "SELECT id, username, email, first_name, last_name, role, status,
+               force_password_change, created_at
+        FROM users
+        WHERE id != ? AND status = 'approved'
+        AND role IN ('admin', 'officer')";
+
+if (!empty($role_filter) && in_array($role_filter, ['admin','officer'])) {
+    $sql    .= " AND role = ?";
+    $params[] = $role_filter;
+    $types  .= "s";
+}
+
+if (!empty($search)) {
+    $sql .= " AND (first_name LIKE ? OR last_name LIKE ?
+                   OR username LIKE ? OR email LIKE ?)";
+    $p    = "%$search%";
+    $params = array_merge($params, [$p, $p, $p, $p]);
+    $types .= "ssss";
+}
+
+$sql .= " ORDER BY created_at DESC";
+$stmt = $conn->prepare($sql);
+$stmt->bind_param($types, ...$params);
+$stmt->execute();
+$users_result = $stmt->get_result();
+?>
+
+
+--------------------------------------------------------------------------------
+14. index/management/transparency.php - Transparency Dashboard
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+require_once('../../config/db_connect.php');
+
+if (empty($_SESSION['username'])) {
+    header('Location: ../login.php');
+    exit;
+}
+
+$role    = strtolower($_SESSION['role'] ?? 'guest');
+$isAdmin = ($role === 'admin');
+
+// Determine officer position for access control
+function currentOfficerPosition(mysqli $conn): string {
+    $userId = (int)($_SESSION['user_id'] ?? 0);
+    if ($userId <= 0) return '';
+
+    try {
+        $stmt = $conn->prepare("SELECT member_id FROM users WHERE id = ? LIMIT 1");
+        $stmt->bind_param('i', $userId);
+        $stmt->execute();
+        $row = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+
+        $memberId = (int)($row['member_id'] ?? 0);
+        if ($memberId <= 0) return '';
+
+        $today = date('Y-m-d');
+        $stmt  = $conn->prepare("SELECT COALESCE(r.role_name, NULLIF(o.position,'')) AS position
+            FROM officers o
+            LEFT JOIN officer_roles r ON r.id = o.role_id
+            WHERE o.member_id = ?
+            ORDER BY (? BETWEEN o.term_start AND o.term_end) DESC,
+                     o.term_end DESC, o.id DESC
+            LIMIT 1");
+        $stmt->bind_param('is', $memberId, $today);
+        $stmt->execute();
+        $posRow = $stmt->get_result()->fetch_assoc();
+        $stmt->close();
+        return strtolower(trim((string)($posRow['position'] ?? '')));
+    } catch (Throwable) {
+        return '';
+    }
+}
+
+// Check transparency_role column exists
+$hasTransparencyRoleCol = false;
+try {
+    $colRes = $conn->query("SHOW COLUMNS FROM users LIKE 'transparency_role'");
+    $hasTransparencyRoleCol = ($colRes && $colRes->num_rows > 0);
+} catch (Throwable) {}
+
+$transRole      = strtolower(trim((string)($_SESSION['transparency_role'] ?? '')));
+$officerPosition = $hasTransparencyRoleCol ? '' : currentOfficerPosition($conn);
+
+// Access control — only admin, treasurer, or secretary can access
+$canAccess = $isAdmin
+    || ($role === 'officer' && in_array($transRole, ['treasurer','secretary','both'], true))
+    || ($role === 'officer' && !$hasTransparencyRoleCol && $transRole === ''
+        && in_array($officerPosition, ['treasurer','secretary'], true));
+
+if (!$canAccess) {
+    header('Location: ../admin.php?error=transparency_access');
+    exit;
+}
+
+// Edit permission — only admin and treasurer can edit
+$canEdit = $isAdmin
+    || ($role === 'officer' && in_array($transRole, ['treasurer','both'], true))
+    || ($role === 'officer' && !$hasTransparencyRoleCol && $transRole === ''
+        && $officerPosition === 'treasurer');
+
+mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
+
+// Sanitize output helper
+function e($value) {
+    return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
+}
+
+// CSRF token
+if (empty($_SESSION['csrf_token'])) {
+    $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+}
+$csrfToken = $_SESSION['csrf_token'];
+?>
+
+
+--------------------------------------------------------------------------------
+15. index/management/logs.php - Activity Logs
+--------------------------------------------------------------------------------
+
+<?php
+session_start();
+if (empty($_SESSION['username'])) {
+    header('location: ../login.php');
+    exit;
+}
+require_once('../../config/db_connect.php');
+
+// Pagination
+$page     = isset($_GET['page']) ? max(1, intval($_GET['page'])) : 1;
+$per_page = 25;
+$offset   = ($page - 1) * $per_page;
+
+// Filters
+$search        = isset($_GET['search'])      ? $conn->real_escape_string($_GET['search'])        : '';
+$filter_action = isset($_GET['action'])      ? $conn->real_escape_string($_GET['action'])        : '';
+$date_from     = isset($_GET['date_from'])   ? $_GET['date_from']  : '';
+$date_to       = isset($_GET['date_to'])     ? $_GET['date_to']    : '';
+
+// Build WHERE clause
+$where = [];
+if ($search) {
+    $where[] = "(username LIKE '%$search%' OR action LIKE '%$search%'
+                 OR description LIKE '%$search%' OR ip_address LIKE '%$search%')";
+}
+if ($filter_action) {
+    $where[] = "action LIKE '%$filter_action%'";
+}
+if ($date_from && $date_to) {
+    $where[] = "DATE(created_at) BETWEEN '$date_from' AND '$date_to'";
+} elseif ($date_from) {
+    $where[] = "DATE(created_at) >= '$date_from'";
+} elseif ($date_to) {
+    $where[] = "DATE(created_at) <= '$date_to'";
+}
+
+$whereSQL = count($where) > 0 ? 'WHERE ' . implode(' AND ', $where) : '';
+
+// Count total for pagination
+$count_result  = $conn->query("SELECT COUNT(*) as total FROM activity_logs $whereSQL");
+$total_records = $count_result->fetch_assoc()['total'];
+$total_pages   = ceil($total_records / $per_page);
+
+// Fetch paginated logs
+$sql    = "SELECT * FROM activity_logs $whereSQL
+           ORDER BY created_at DESC
+           LIMIT $per_page OFFSET $offset";
+$result = $conn->query($sql);
+
+// Fetch distinct action types for filter dropdown
+$actions_result = $conn->query("SELECT DISTINCT action FROM activity_logs ORDER BY action ASC");
+$action_types   = [];
+while ($row = $actions_result->fetch_assoc()) {
+    $action_types[] = $row['action'];
+}
+?>
+
+
+--------------------------------------------------------------------------------
+                           END OF PROGRAM LISTINGS
+================================================================================

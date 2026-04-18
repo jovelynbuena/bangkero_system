@@ -46,13 +46,14 @@ if ($result && $row = $result->fetch_assoc()) {
 
 // Fetch recent assistance records with their images
 $assistanceList = [];
-$aRes = $conn->query("SELECT d.id, d.donor_name, d.donor_type, d.amount, d.date_received, d.notes
+$aRes = $conn->query("SELECT d.id, d.donor_name, d.donor_type, d.donation_type, d.amount, d.date_received, d.notes
     FROM transparency_donations d
     WHERE d.status = 'confirmed'
     ORDER BY d.date_received DESC
     LIMIT 20");
 while ($aRes && $aRow = $aRes->fetch_assoc()) {
     $aRow['images'] = [];
+    $aRow['items']  = [];
     $assistanceList[$aRow['id']] = $aRow;
 }
 if (!empty($assistanceList)) {
@@ -61,6 +62,13 @@ if (!empty($assistanceList)) {
     while ($imgRes && $imgRow = $imgRes->fetch_assoc()) {
         $assistanceList[$imgRow['donation_id']]['images'][] = $imgRow;
     }
+    // Fetch in-kind items
+    try {
+        $itmRes = $conn->query("SELECT * FROM transparency_donation_items WHERE donation_id IN ($ids) ORDER BY id");
+        while ($itmRes && $itmRow = $itmRes->fetch_assoc()) {
+            $assistanceList[$itmRow['donation_id']]['items'][] = $itmRow;
+        }
+    } catch (Throwable) {}
 }
 $assistanceList = array_values($assistanceList);
 
@@ -331,65 +339,87 @@ function getSourceTypeBadge($type) {
       border-radius: 20px;
       padding: 28px 24px 24px;
       box-shadow: 0 8px 30px rgba(46,134,171,0.13);
-      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-      border: 1px solid rgba(46,134,171,0.1);
+      transition: all 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      border: 1.5px solid rgba(46,134,171,0.10);
       height: 100%;
       position: relative;
       overflow: hidden;
       text-align: center;
     }
 
-    /* Soft tinted background circle behind icon */
+    /* Soft gradient wash per card */
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(145deg, rgba(46,134,171,0.04) 0%, rgba(255,255,255,0) 60%);
+      pointer-events: none;
+      border-radius: 20px;
+    }
+
+    /* Decorative circle behind icon */
     .stat-card::after {
       content: '';
       position: absolute;
-      top: -20px; right: -20px;
-      width: 100px; height: 100px;
+      top: -28px; right: -28px;
+      width: 120px; height: 120px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(46,134,171,0.07) 0%, transparent 70%);
+      background: radial-gradient(circle, rgba(46,134,171,0.09) 0%, transparent 70%);
       pointer-events: none;
     }
 
     .stat-card:hover {
-      transform: translateY(-7px);
-      box-shadow: 0 20px 50px rgba(46,134,171,0.18);
-      border-color: rgba(46,134,171,0.25);
+      transform: translateY(-8px) scale(1.01);
+      box-shadow: 0 22px 52px rgba(46,134,171,0.20);
+      border-color: rgba(46,134,171,0.28);
     }
 
     .stat-icon {
-      width: 60px;
-      height: 60px;
-      border-radius: 16px;
-      background: linear-gradient(135deg, rgba(46,134,171,0.12) 0%, rgba(27,79,114,0.1) 100%);
+      width: 64px;
+      height: 64px;
+      border-radius: 18px;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
       display: flex;
       align-items: center;
       justify-content: center;
-      margin: 0 auto 16px;
-      border: 1.5px solid rgba(46,134,171,0.18);
+      margin: 0 auto 18px;
+      box-shadow: 0 6px 18px rgba(46,134,171,0.30);
+      position: relative;
+      z-index: 1;
     }
 
     .stat-icon i {
-      font-size: 1.55rem;
-      color: var(--primary-color);
+      font-size: 1.65rem;
+      color: #fff;
     }
 
     .stat-value {
-      font-size: 2.4rem;
+      font-size: 2.5rem;
       font-weight: 800;
       color: var(--dark);
       font-family: 'Poppins', sans-serif;
-      margin-bottom: 6px;
+      margin-bottom: 8px;
       line-height: 1;
+      letter-spacing: -1px;
+      position: relative;
+      z-index: 1;
     }
 
     .stat-label {
-      font-size: 0.8rem;
+      font-size: 0.78rem;
       color: var(--gray);
       font-weight: 600;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.7px;
       line-height: 1.4;
+      position: relative;
+      z-index: 1;
     }
+
+    /* Thin colored bottom border per card for variety */
+    .stat-card.card-total { border-bottom: 3px solid #2E86AB; }
+    .stat-card.card-partners { border-bottom: 3px solid #198754; }
+    .stat-card.card-achievements { border-bottom: 3px solid #F4A261; }
 
     /* ==================== SECTION HEADERS ==================== */
     .section-header {
@@ -443,23 +473,25 @@ function getSourceTypeBadge($type) {
 
     .search-box {
       position: relative;
-      max-width: 350px;
+      max-width: 360px;
       flex: 1;
     }
 
     .search-box input {
       width: 100%;
-      padding: 12px 20px 12px 45px;
+      padding: 12px 20px 12px 46px;
       border: 2px solid var(--border);
       border-radius: 50px;
-      font-size: 0.95rem;
+      font-size: 0.92rem;
       transition: all 0.3s ease;
+      background: #fff;
+      color: var(--dark);
     }
 
     .search-box input:focus {
       outline: none;
       border-color: var(--primary-color);
-      box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.15);
+      box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.12);
     }
 
     .search-box i {
@@ -468,7 +500,49 @@ function getSourceTypeBadge($type) {
       top: 50%;
       transform: translateY(-50%);
       color: var(--gray);
-      font-size: 1.1rem;
+      font-size: 1rem;
+      pointer-events: none;
+    }
+
+    /* ── Filter chips ── */
+    .filter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .filter-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 14px;
+      border-radius: 50px;
+      font-size: 0.75rem;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      cursor: pointer;
+      border: 1.5px solid transparent;
+      transition: all 0.2s ease;
+      user-select: none;
+    }
+
+    .filter-chip.all    { background:#eef2f7; color:#475569; border-color:#cbd5e1; }
+    .filter-chip.dole   { background:#dbeafe; color:#1d4ed8; border-color:#bfdbfe; }
+    .filter-chip.ngo    { background:#dcfce7; color:#15803d; border-color:#bbf7d0; }
+    .filter-chip.lgu    { background:#ede9fe; color:#6d28d9; border-color:#ddd6fe; }
+    .filter-chip.others { background:#f1f5f9; color:#475569; border-color:#e2e8f0; }
+
+    .filter-chip:hover,
+    .filter-chip.active {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.10);
+      filter: brightness(0.95);
+    }
+
+    .filter-chip.active {
+      font-weight: 800;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.13);
     }
 
     .table-container {
@@ -519,36 +593,51 @@ function getSourceTypeBadge($type) {
     }
 
     .source-type-badge {
-      padding: 4px 10px;
+      padding: 4px 12px;
       border-radius: 50px;
-      font-size: 0.75rem;
-      font-weight: 600;
-      display: inline-block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      letter-spacing: 0.3px;
+      border: 1px solid transparent;
     }
 
     .source-type-badge.DOLE {
-      background: #e3f2fd;
-      color: #1565c0;
+      background: #dbeafe;
+      color: #1d4ed8;
+      border-color: #bfdbfe;
     }
 
     .source-type-badge.LGU {
-      background: #f3e5f5;
-      color: #7b1fa2;
+      background: #ede9fe;
+      color: #6d28d9;
+      border-color: #ddd6fe;
     }
 
     .source-type-badge.NGO {
-      background: #e8f5e9;
-      color: #2e7d32;
+      background: #dcfce7;
+      color: #15803d;
+      border-color: #bbf7d0;
     }
 
     .source-type-badge.PRIVATE {
-      background: #fff3e0;
-      color: #ef6c00;
+      background: #ffedd5;
+      color: #c2410c;
+      border-color: #fed7aa;
     }
 
     .source-type-badge.MEMBERSHIP {
-      background: #fce4ec;
-      color: #c2185b;
+      background: #fce7f3;
+      color: #be185d;
+      border-color: #fbcfe8;
+    }
+
+    .source-type-badge.OTHER {
+      background: #f1f5f9;
+      color: #475569;
+      border-color: #e2e8f0;
     }
 
     .amount-cell {
@@ -568,45 +657,49 @@ function getSourceTypeBadge($type) {
     #assistanceGrid {
       display: grid;
       grid-template-columns: repeat(2, 1fr);
-      gap: 20px;
+      gap: 24px;
+      align-items: start;
     }
 
     @media (max-width: 767px) {
       #assistanceGrid { grid-template-columns: 1fr; }
     }
 
-    /* ── Compact card ── */
+    /* ── Unified card ── */
     .assistance-card {
       background: #fff;
-      border-radius: 14px;
+      border-radius: 16px;
       border: 1px solid var(--border);
-      box-shadow: 0 4px 18px rgba(46,134,171,0.09);
+      box-shadow: 0 4px 20px rgba(46,134,171,0.10);
       overflow: hidden;
       display: flex;
       flex-direction: column;
       transition: transform 0.25s ease, box-shadow 0.25s ease;
+      height: 100%;
     }
 
     .assistance-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 12px 32px rgba(46,134,171,0.16);
+      transform: translateY(-5px);
+      box-shadow: 0 14px 36px rgba(46,134,171,0.17);
     }
 
     /* ── Top accent bar ── */
     .assistance-card-accent {
       height: 4px;
       background: linear-gradient(90deg, var(--primary-color) 0%, var(--accent-color) 100%);
+      flex-shrink: 0;
     }
 
     /* ── Image strip (only when images exist) ── */
     .assistance-img-strip {
       width: 100%;
-      height: 160px;
+      height: 190px;
       display: grid;
       grid-template-columns: 2fr 1fr;
       gap: 4px;
       padding: 10px 10px 0;
       box-sizing: border-box;
+      flex-shrink: 0;
     }
 
     .assistance-img-strip.one-img {
@@ -614,7 +707,7 @@ function getSourceTypeBadge($type) {
     }
 
     .astrip-primary {
-      border-radius: 8px;
+      border-radius: 10px;
       overflow: hidden;
       cursor: pointer;
       position: relative;
@@ -632,7 +725,7 @@ function getSourceTypeBadge($type) {
     .astrip-primary-overlay {
       position: absolute; inset: 0;
       background: linear-gradient(to top, rgba(0,0,0,0.55) 0%, transparent 60%);
-      border-radius: 8px;
+      border-radius: 10px;
       pointer-events: none;
     }
 
@@ -644,7 +737,7 @@ function getSourceTypeBadge($type) {
 
     .astrip-thumb {
       flex: 1;
-      border-radius: 8px;
+      border-radius: 10px;
       overflow: hidden;
       cursor: pointer;
     }
@@ -658,7 +751,31 @@ function getSourceTypeBadge($type) {
 
     .astrip-thumb:hover img { transform: scale(1.05); }
 
-    /* ── Cash-only icon banner (no images) ── */
+    /* ── No-image placeholder banner (same height as img strip) ── */
+    .assistance-no-img-banner {
+      width: 100%;
+      height: 190px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #eaf4fb 0%, #d8eef8 100%);
+      flex-shrink: 0;
+    }
+
+    .assistance-no-img-banner .anim-icon {
+      width: 72px; height: 72px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--primary-color) 0%, var(--secondary-color) 100%);
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 6px 20px rgba(46,134,171,0.30);
+    }
+
+    .assistance-no-img-banner .anim-icon i {
+      font-size: 2rem;
+      color: #fff;
+    }
+
+    /* ── Cash-only icon banner (no images) — KEPT for fallback ── */
     .assistance-cash-banner {
       display: flex;
       align-items: center;
@@ -706,7 +823,7 @@ function getSourceTypeBadge($type) {
 
     /* ── Card body ── */
     .assistance-body {
-      padding: 14px 16px 16px;
+      padding: 16px 18px 18px;
       display: flex;
       flex-direction: column;
       gap: 0;
@@ -716,18 +833,18 @@ function getSourceTypeBadge($type) {
     .assistance-body .src-name {
       font-family: 'Poppins', sans-serif;
       font-weight: 700;
-      font-size: 0.95rem;
+      font-size: 1rem;
       color: var(--dark);
-      margin-bottom: 6px;
-      line-height: 1.3;
+      margin-bottom: 8px;
+      line-height: 1.35;
     }
 
     .assistance-meta {
       display: flex;
       align-items: center;
       flex-wrap: wrap;
-      gap: 5px;
-      margin-bottom: 10px;
+      gap: 6px;
+      margin-bottom: 12px;
     }
 
     /* Amount shown inside body when images are present */
@@ -735,7 +852,7 @@ function getSourceTypeBadge($type) {
       font-family: 'Poppins', sans-serif;
       font-weight: 800;
       color: var(--primary-color);
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       margin-bottom: 2px;
     }
 
@@ -748,38 +865,54 @@ function getSourceTypeBadge($type) {
     .assistance-divider {
       border: none;
       border-top: 1px solid var(--border);
-      margin: 8px 0;
+      margin: 10px 0;
     }
 
     .assistance-detail-row {
       display: flex;
-      align-items: flex-start;
-      gap: 8px;
-      margin-bottom: 4px;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 5px;
     }
 
     .assistance-detail-row .det-label {
-      font-size: 0.67rem;
+      font-size: 0.65rem;
       font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
-      color: var(--gray);
-      min-width: 38px;
-      padding-top: 1px;
+      letter-spacing: 0.6px;
+      color: #94a3b8;
+      min-width: 36px;
     }
 
     .assistance-detail-row .det-value {
-      font-size: 0.8rem;
+      font-size: 0.82rem;
       color: var(--dark);
+      font-weight: 500;
       line-height: 1.4;
-      opacity: 0.85;
+    }
+
+    /* Date pill style */
+    .det-date-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      background: var(--pale-blue);
+      color: var(--primary-color);
+      font-size: 0.72rem;
+      font-weight: 600;
+      padding: 3px 10px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
     }
 
     .assistance-notes-text {
-      font-size: 0.77rem;
+      font-size: 0.78rem;
       color: var(--gray);
-      line-height: 1.5;
+      line-height: 1.6;
       margin-top: 4px;
+      border-left: 3px solid var(--border);
+      padding-left: 10px;
+      font-style: italic;
     }
 
     /* Lightbox overlay */
@@ -1364,7 +1497,7 @@ function getSourceTypeBadge($type) {
     <div class="row g-4">
       <!-- Stat 1: Total Assistance Received -->
       <div class="col-lg col-md-6">
-        <div class="stat-card">
+        <div class="stat-card card-total">
           <div class="stat-icon">
             <i class="bi bi-cash-stack"></i>
           </div>
@@ -1375,7 +1508,7 @@ function getSourceTypeBadge($type) {
 
       <!-- Stat 2: Partner Organizations -->
       <div class="col-lg col-md-6">
-        <div class="stat-card">
+        <div class="stat-card card-partners">
           <div class="stat-icon">
             <i class="bi bi-building"></i>
           </div>
@@ -1386,7 +1519,7 @@ function getSourceTypeBadge($type) {
 
       <!-- Stat 3: Community Achievements -->
       <div class="col-lg col-md-6">
-        <div class="stat-card">
+        <div class="stat-card card-achievements">
           <div class="stat-icon">
             <i class="bi bi-images"></i>
           </div>
@@ -1406,25 +1539,34 @@ function getSourceTypeBadge($type) {
       <p>Support from government agencies, NGOs, and partners — including goods, tools, and financial aid</p>
     </div>
 
-    <!-- Search -->
+    <!-- Search + Filter chips -->
     <div class="table-controls">
       <div class="search-box">
         <i class="bi bi-search"></i>
         <input type="text" id="searchInput" placeholder="Search by source or type..." />
+      </div>
+      <div class="filter-chips" id="filterChips">
+        <span class="filter-chip all active" data-filter="all"><i class="bi bi-grid-fill"></i> All</span>
+        <span class="filter-chip dole"   data-filter="dole"><i class="bi bi-bank2"></i> DOLE</span>
+        <span class="filter-chip ngo"    data-filter="ngo"><i class="bi bi-globe2"></i> NGO</span>
+        <span class="filter-chip lgu"    data-filter="lgu"><i class="bi bi-building"></i> LGU</span>
+        <span class="filter-chip others" data-filter="private"><i class="bi bi-person-workspace"></i> Private</span>
       </div>
     </div>
 
     <?php if (!empty($assistanceList)): ?>
     <div id="assistanceGrid">
       <?php foreach ($assistanceList as $a):
-        $badge     = getSourceTypeBadge($a['donor_type']);
-        $hasAmount = (float)$a['amount'] > 0;
-        $imgs      = $a['images'];
+        $badge      = getSourceTypeBadge($a['donor_type']);
+        $isInKind   = ($a['donation_type'] ?? 'cash') === 'in_kind';
+        $hasAmount  = (float)$a['amount'] > 0;
+        $imgs       = $a['images'];
+        $items      = $a['items'] ?? [];
         $primaryImg    = $imgs[0]['image_path'] ?? '';
         $secondaryImg1 = $imgs[1]['image_path'] ?? '';
         $secondaryImg2 = $imgs[2]['image_path'] ?? '';
-        $imgCount  = count($imgs);
-        $dateLabel = $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '';
+        $imgCount   = count($imgs);
+        $dateLabel  = $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '';
       ?>
       <div class="assistance-item"
            data-name="<?= htmlspecialchars(strtolower($a['donor_name'])) ?>"
@@ -1435,7 +1577,7 @@ function getSourceTypeBadge($type) {
           <div class="assistance-card-accent"></div>
 
           <?php if ($primaryImg): ?>
-          <!-- ── Image strip (compact, fixed height) ── -->
+          <!-- ── Image strip (fixed height, same as no-img banner) ── -->
           <div class="assistance-img-strip <?= $imgCount === 1 ? 'one-img' : '' ?>">
 
             <!-- Primary -->
@@ -1444,6 +1586,16 @@ function getSourceTypeBadge($type) {
                    alt="<?= htmlspecialchars($a['donor_name']) ?>"
                    onerror="this.parentElement.style.background='var(--pale-blue)'; this.style.display='none';">
               <div class="astrip-primary-overlay"></div>
+              <!-- Label overlay -->
+              <span style="position:absolute;top:8px;left:8px;background:rgba(0,0,0,0.52);color:#fff;font-size:0.65rem;font-weight:700;padding:2px 9px;border-radius:20px;pointer-events:none;letter-spacing:0.4px;backdrop-filter:blur(4px);">
+                <i class="bi bi-camera-fill me-1"></i>Documentation
+              </span>
+              <!-- Photo count badge -->
+              <?php if ($imgCount > 1): ?>
+              <span style="position:absolute;bottom:8px;right:8px;background:rgba(0,0,0,0.55);color:#fff;font-size:0.68rem;font-weight:600;padding:2px 9px;border-radius:20px;pointer-events:none;">
+                <i class="bi bi-images me-1"></i><?= $imgCount ?> photos
+              </span>
+              <?php endif; ?>
             </div>
 
             <?php if ($imgCount > 1): ?>
@@ -1465,23 +1617,37 @@ function getSourceTypeBadge($type) {
             <?php endif; ?>
 
           </div>
-          <?php elseif ($hasAmount): ?>
-          <!-- ── Cash-only banner (no images) ── -->
-          <div class="assistance-cash-banner">
-            <div class="acash-icon"><i class="bi bi-cash-stack"></i></div>
-            <div class="acash-amount-wrap">
-              <div class="acash-label">Amount Received</div>
-              <div class="acash-value"><?= formatCurrency($a['amount']) ?></div>
-            </div>
-          </div>
           <?php else: ?>
-          <!-- ── Goods/Tools banner (no images, no amount) ── -->
-          <div class="assistance-cash-banner">
-            <div class="acash-icon"><i class="bi bi-box-seam"></i></div>
-            <div class="acash-amount-wrap">
-              <div class="acash-label">Assistance Type</div>
-              <div class="acash-goods">Goods / Tools</div>
+          <!-- ── No-image banner (same height as image strip) ── -->
+          <div class="assistance-no-img-banner">
+            <?php if ($isInKind): ?>
+            <div class="text-center">
+              <div class="anim-icon mx-auto mb-3"><i class="bi bi-box-seam"></i></div>
+              <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--primary-color);opacity:0.8;">In-Kind / Gamit</div>
+              <?php if (!empty($items)): ?>
+              <div style="margin-top:8px;font-size:0.78rem;color:#444;line-height:1.6;max-width:180px;">
+                <?php foreach (array_slice($items,0,3) as $it): ?>
+                <div>• <?= htmlspecialchars($it['item_name']) ?>
+                  <?php if ((float)$it['quantity'] > 0): ?>
+                    <span style="color:#888">(<?= rtrim(rtrim(number_format((float)$it['quantity'],2,'.',','),'0'),'.') ?> <?= htmlspecialchars($it['unit'] ?? '') ?>)</span>
+                  <?php endif; ?>
+                </div>
+                <?php endforeach; ?>
+                <?php if (count($items) > 3): ?>
+                <div style="color:#888">+<?= count($items)-3 ?> more…</div>
+                <?php endif; ?>
+              </div>
+              <?php endif; ?>
             </div>
+            <?php else: ?>
+            <div class="text-center">
+              <div class="anim-icon mx-auto mb-3"><i class="bi bi-cash-stack"></i></div>
+              <div style="font-size:0.75rem;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;color:var(--primary-color);opacity:0.8;">Amount Received</div>
+              <?php if ($hasAmount): ?>
+              <div style="font-family:'Poppins',sans-serif;font-weight:800;font-size:1.4rem;color:var(--primary-color);margin-top:4px;"><?= formatCurrency($a['amount']) ?></div>
+              <?php endif; ?>
+            </div>
+            <?php endif; ?>
           </div>
           <?php endif; ?>
 
@@ -1492,23 +1658,22 @@ function getSourceTypeBadge($type) {
 
             <div class="assistance-meta">
               <span class="source-type-badge <?= htmlspecialchars($badge['class']) ?>">
+                <i class="bi bi-circle-fill" style="font-size:0.45rem;opacity:0.7;"></i>
                 <?= htmlspecialchars($badge['label']) ?>
               </span>
+              <?php if ($primaryImg && $hasAmount && !$isInKind): ?>
+              <span class="assistance-amount" style="margin-left:4px;"><?= formatCurrency($a['amount']) ?></span>
+              <?php elseif ($primaryImg && $isInKind): ?>
+              <span class="assistance-amount zero" style="margin-left:4px;"><i class="bi bi-box-seam me-1"></i>In-Kind</span>
+              <?php endif; ?>
             </div>
 
-            <?php if ($primaryImg): ?>
-              <?php if ($hasAmount): ?>
-              <span class="assistance-amount"><?= formatCurrency($a['amount']) ?></span>
-              <?php else: ?>
-              <span class="assistance-amount zero"><i class="bi bi-box-seam me-1"></i>Goods / Tools</span>
-              <?php endif; ?>
-              <hr class="assistance-divider">
-            <?php endif; ?>
+            <hr class="assistance-divider">
 
             <?php if ($dateLabel): ?>
-            <div class="assistance-detail-row">
+            <div class="assistance-detail-row" style="margin-bottom:7px;">
               <span class="det-label">Date</span>
-              <span class="det-value"><?= $dateLabel ?></span>
+              <span class="det-date-pill"><i class="bi bi-calendar3"></i><?= $dateLabel ?></span>
             </div>
             <?php endif; ?>
 
@@ -1714,33 +1879,69 @@ function getSourceTypeBadge($type) {
 
 <script>
 document.addEventListener('DOMContentLoaded', function() {
-  // ── Search ──────────────────────────────────────────────
+  // ── Search + Filter chips ────────────────────────────────
   const searchInput = document.getElementById('searchInput');
-  const items = document.querySelectorAll('.assistance-item');
-  const noResults = document.getElementById('noResults');
+  const items       = document.querySelectorAll('.assistance-item');
+  const noResults   = document.getElementById('noResults');
+  const chips       = document.querySelectorAll('.filter-chip');
+  let activeFilter  = 'all';
 
-  if (searchInput) {
-    searchInput.addEventListener('input', function() {
-      const q = this.value.toLowerCase().trim();
-      let visible = 0;
-      items.forEach(item => {
-        const match = item.dataset.name.includes(q) || item.dataset.type.includes(q);
-        item.style.display = match ? '' : 'none';
-        if (match) visible++;
-      });
-      if (noResults) noResults.style.display = (visible === 0 && q !== '') ? '' : 'none';
+  function applyFilters() {
+    const q = searchInput ? searchInput.value.toLowerCase().trim() : '';
+    let visible = 0;
+    items.forEach(item => {
+      const name  = item.dataset.name  || '';
+      const type  = item.dataset.type  || '';
+      const matchSearch = !q || name.includes(q) || type.includes(q);
+      const matchChip   = activeFilter === 'all' || type.includes(activeFilter);
+      const show = matchSearch && matchChip;
+      item.style.display = show ? '' : 'none';
+      if (show) visible++;
     });
+    if (noResults) noResults.style.display = (visible === 0 && (q !== '' || activeFilter !== 'all')) ? '' : 'none';
   }
 
+  if (searchInput) {
+    searchInput.addEventListener('input', applyFilters);
+  }
+
+  chips.forEach(chip => {
+    chip.addEventListener('click', function() {
+      chips.forEach(c => c.classList.remove('active'));
+      this.classList.add('active');
+      activeFilter = this.dataset.filter;
+      applyFilters();
+    });
+  });
+
   // ── Animate stat cards ───────────────────────────────────
-  document.querySelectorAll('.stat-value').forEach((el, i) => {
+  document.querySelectorAll('.stat-card').forEach((el, i) => {
     el.style.opacity = '0';
-    el.style.transform = 'translateY(20px)';
+    el.style.transform = 'translateY(24px)';
     setTimeout(() => {
-      el.style.transition = 'all 0.6s ease';
+      el.style.transition = 'opacity 0.55s ease, transform 0.55s ease';
       el.style.opacity = '1';
       el.style.transform = 'translateY(0)';
-    }, i * 100);
+    }, 80 + i * 100);
+  });
+
+  // ── Animate assistance cards on scroll ──────────────────
+  const cards = document.querySelectorAll('.assistance-card');
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach((entry, idx) => {
+      if (entry.isIntersecting) {
+        entry.target.style.transition = 'opacity 0.5s ease, transform 0.5s ease';
+        entry.target.style.opacity = '1';
+        entry.target.style.transform = 'translateY(0)';
+        observer.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.08 });
+
+  cards.forEach((card, i) => {
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    observer.observe(card);
   });
 });
 
