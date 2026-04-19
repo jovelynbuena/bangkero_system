@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if ($_SESSION['role'] !== 'admin') {
     header('location: ../login.php');
@@ -303,7 +303,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
-    <style>
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Inter', sans-serif; 
@@ -319,12 +320,12 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
 
         /* Page Header */
         .page-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             padding: 24px 32px;
             border-radius: 16px;
             color: white;
             margin-bottom: 24px;
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 10px 25px rgba(46, 134, 171, 0.20);
         }
         .page-header h2 {
             font-size: 26px;
@@ -372,7 +373,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         
         .card-header i {
             margin-right: 8px;
-            color: #667eea;
+            color: #2E86AB;
         }
         
         .card-body { 
@@ -391,8 +392,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .form-select:focus, .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+            border-color: #2E86AB;
+            box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
             outline: none;
         }
         
@@ -421,15 +422,15 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .btn-primary { 
-            background: #667eea;
+            background: #2E86AB;
             color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+            box-shadow: 0 4px 12px rgba(46, 134, 171, 0.20);
         }
         
         .btn-primary:hover { 
             background: #5a6fd6;
             transform: translateY(-1px);
-            box-shadow: 0 6px 16px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 6px 16px rgba(46, 134, 171, 0.30);
             color: white;
         }
         
@@ -539,7 +540,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
 
         .admin-row { 
             background: rgba(102, 126, 234, 0.04) !important;
-            border-left: 4px solid #667eea;
+            border-left: 4px solid #2E86AB;
         }
 
         .action-btn-group {
@@ -568,7 +569,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         .stats-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08);
-            border-color: rgba(102, 126, 234, 0.2);
+            border-color: rgba(46, 134, 171, 0.20);
         }
         
         .stats-card .icon {
@@ -614,7 +615,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .input-group .form-control:focus {
-            border-color: #667eea;
+            border-color: #2E86AB;
             box-shadow: none;
         }
         
@@ -625,8 +626,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .form-select-sm:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #2E86AB;
+            box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.10);
         }
         
         .form-control-sm {
@@ -641,7 +642,7 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         
         .pagination .page-item .page-link {
             border: 2px solid #e0e0e0;
-            color: #667eea;
+            color: #2E86AB;
             font-weight: 600;
             border-radius: 8px;
             padding: 8px 14px;
@@ -650,17 +651,17 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         }
         
         .pagination .page-item .page-link:hover {
-            background: #667eea;
+            background: #2E86AB;
             color: white;
-            border-color: #667eea;
+            border-color: #2E86AB;
             transform: translateY(-2px);
         }
         
         .pagination .page-item.active .page-link {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            border-color: #667eea;
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+            border-color: #2E86AB;
             color: white;
-            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 4px 12px rgba(46, 134, 171, 0.40);
         }
         
         .pagination .page-item.disabled .page-link {
@@ -744,8 +745,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
         $total_admins = $conn->query("SELECT COUNT(*) as count FROM users WHERE role IN ('officer', 'admin') AND is_admin=1")->fetch_assoc()['count'];
         ?>
         <div class="col-xl-3 col-md-6">
-            <div class="stats-card" style="border-top: 3px solid #667eea;">
-                <div class="icon" style="color: #667eea; background: rgba(102, 126, 234, 0.1);">
+            <div class="stats-card" style="border-top: 3px solid #2E86AB;">
+                <div class="icon" style="color: #2E86AB; background: rgba(46, 134, 171, 0.10);">
                     <i class="bi bi-people"></i>
                 </div>
                 <h3><?= $total_officers ?></h3>
@@ -771,8 +772,8 @@ $approved_officers = $conn->query("SELECT id, username FROM users WHERE role='of
             </div>
         </div>
         <div class="col-xl-3 col-md-6">
-            <div class="stats-card" style="border-top: 3px solid #764ba2;">
-                <div class="icon" style="color: #764ba2; background: rgba(118, 75, 162, 0.1);">
+            <div class="stats-card" style="border-top: 3px solid #1B4F72;">
+                <div class="icon" style="color: #1B4F72; background: rgba(118, 75, 162, 0.1);">
                     <i class="bi bi-shield-check"></i>
                 </div>
                 <h3><?= $total_admins ?></h3>
@@ -1001,7 +1002,7 @@ document.getElementById('promoteForm').addEventListener('submit', function(e) {
             icon: 'warning',
             title: 'No Officer Selected',
             text: 'Please select an officer to promote.',
-            confirmButtonColor: '#667eea'
+            confirmButtonColor: '#2E86AB'
         });
         return;
     }
@@ -1011,7 +1012,7 @@ document.getElementById('promoteForm').addEventListener('submit', function(e) {
         html: `Are you sure you want to promote <strong>${userName}</strong> to Admin?<br><small class="text-muted">This will grant full administrative privileges.</small>`,
         icon: 'question',
         showCancelButton: true,
-        confirmButtonColor: '#667eea',
+        confirmButtonColor: '#2E86AB',
         cancelButtonColor: '#6c757d',
         confirmButtonText: '<i class="bi bi-arrow-up-circle me-1"></i>Yes, Promote',
         cancelButtonText: 'Cancel'
@@ -1043,7 +1044,7 @@ document.getElementById('promoteForm').addEventListener('submit', function(e) {
                         icon: 'success',
                         title: 'Success!',
                         text: data.message,
-                        confirmButtonColor: '#667eea'
+                        confirmButtonColor: '#2E86AB'
                     }).then(() => {
                         location.reload();
                     });
@@ -1052,7 +1053,7 @@ document.getElementById('promoteForm').addEventListener('submit', function(e) {
                         icon: 'error',
                         title: 'Failed',
                         text: data.message,
-                        confirmButtonColor: '#667eea'
+                        confirmButtonColor: '#2E86AB'
                     });
                 }
             })
@@ -1061,7 +1062,7 @@ document.getElementById('promoteForm').addEventListener('submit', function(e) {
                     icon: 'error',
                     title: 'Error',
                     text: 'An error occurred. Please try again.',
-                    confirmButtonColor: '#667eea'
+                    confirmButtonColor: '#2E86AB'
                 });
                 console.error('Error:', error);
             });
@@ -1086,7 +1087,7 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
                 icon: 'error',
                 title: 'Cannot Archive Active Account',
                 html: `<strong>${username.trim()}</strong> has an <span class="text-success fw-bold">approved/active</span> account.<br><br>Please <strong>reject</strong> their account first before archiving.`,
-                confirmButtonColor: '#667eea',
+                confirmButtonColor: '#2E86AB',
                 confirmButtonText: 'Understood'
             });
             return;
@@ -1097,7 +1098,7 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
         let html = '';
         let icon = 'warning';
         let confirmButton = 'Yes';
-        let confirmColor = '#667eea';
+        let confirmColor = '#2E86AB';
 
         switch(action) {
             case 'approve':
@@ -1165,7 +1166,7 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
                             icon: 'success',
                             title: 'Success!',
                             text: data.message,
-                            confirmButtonColor: '#667eea',
+                            confirmButtonColor: '#2E86AB',
                             timer: 2000,
                             showConfirmButton: false
                         }).then(() => {
@@ -1176,7 +1177,7 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
                             icon: 'error',
                             title: 'Failed',
                             text: data.message,
-                            confirmButtonColor: '#667eea'
+                            confirmButtonColor: '#2E86AB'
                         });
                     }
                 })
@@ -1185,7 +1186,7 @@ document.querySelectorAll('.actionBtn').forEach(btn => {
                         icon: 'error',
                         title: 'Error',
                         text: 'An error occurred. Please try again.',
-                        confirmButtonColor: '#667eea'
+                        confirmButtonColor: '#2E86AB'
                     });
                     console.error('Error:', error);
                 });
@@ -1214,7 +1215,7 @@ document.querySelectorAll('.transRoleSelect').forEach(sel => {
                 icon: 'info',
                 title: 'Not allowed yet',
                 text: 'Approve the account first before setting Transparency access.',
-                confirmButtonColor: '#667eea'
+                confirmButtonColor: '#2E86AB'
             });
             this.value = oldValue;
             return;
@@ -1232,7 +1233,7 @@ document.querySelectorAll('.transRoleSelect').forEach(sel => {
             html: `Set <strong>${username}</strong> to <strong>${labelMap[newValue] ?? newValue}</strong>?`,
             icon: 'question',
             showCancelButton: true,
-            confirmButtonColor: '#667eea',
+            confirmButtonColor: '#2E86AB',
             cancelButtonColor: '#6c757d',
             confirmButtonText: 'Yes, apply',
             cancelButtonText: 'Cancel'
@@ -1270,7 +1271,7 @@ document.querySelectorAll('.transRoleSelect').forEach(sel => {
                         icon: 'error',
                         title: 'Failed',
                         text: data.message,
-                        confirmButtonColor: '#667eea'
+                        confirmButtonColor: '#2E86AB'
                     });
                 }
             })
@@ -1280,7 +1281,7 @@ document.querySelectorAll('.transRoleSelect').forEach(sel => {
                     icon: 'error',
                     title: 'Error',
                     text: 'An error occurred. Please try again.',
-                    confirmButtonColor: '#667eea'
+                    confirmButtonColor: '#2E86AB'
                 });
             });
         });

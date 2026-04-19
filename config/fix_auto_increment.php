@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * FIX AUTO INCREMENT FOR ALL TABLES
  * This script will fix the auto_increment issue on all tables
@@ -21,7 +21,7 @@ echo "<!DOCTYPE html>
         body { 
             font-family: 'Inter', Arial, sans-serif; 
             padding: 40px 20px; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             min-height: 100vh;
         }
         .container {
@@ -33,7 +33,7 @@ echo "<!DOCTYPE html>
             box-shadow: 0 20px 60px rgba(0,0,0,0.3);
         }
         h2 { 
-            color: #667eea; 
+            color: #2E86AB; 
             margin-bottom: 10px; 
             font-size: 2rem;
             display: flex;
@@ -100,7 +100,7 @@ echo "<!DOCTYPE html>
             gap: 10px;
         }
         .summary {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
             padding: 24px;
             border-radius: 12px;
@@ -135,18 +135,18 @@ echo "<!DOCTYPE html>
         .btn {
             display: inline-block;
             padding: 14px 32px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
             text-decoration: none;
             border-radius: 10px;
             font-weight: 600;
             transition: all 0.3s ease;
-            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 4px 16px rgba(46, 134, 171, 0.20);
             margin-top: 20px;
         }
         .btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 24px rgba(46, 134, 171, 0.20);
         }
         .icon {
             font-size: 1.2em;

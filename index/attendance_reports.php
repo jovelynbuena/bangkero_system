@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -190,10 +190,11 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-  <style>
+  <link rel="stylesheet" href="../css/admin-theme.css">
+<style>
     body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f9fafb; }
     .main-content { margin-left: 270px; padding: 32px; min-height: 100vh; }
-    .page-header { background: linear-gradient(135deg, #0f766e 0%, #0e7490 100%); padding: 24px 28px; border-radius: 18px; color: #fff; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(14, 116, 144, 0.25); }
+    .page-header { background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%); padding: 24px 28px; border-radius: 18px; color: #fff; margin-bottom: 24px; box-shadow: 0 10px 30px rgba(14, 116, 144, 0.25); }
     .page-header h3 { margin: 0; display: flex; align-items: center; gap: 10px; }
     .page-header p { margin: 0; opacity: 0.9; font-size: 0.9rem; }
 
@@ -224,7 +225,7 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
       .table { font-size: 0.85rem; }
       .print-header { display: block !important; }
     }
-    .print-header { display: none; margin-bottom: 20px; border-bottom: 3px solid #0e7490; padding-bottom: 15px; }
+    .print-header { display: none; margin-bottom: 20px; border-bottom: 3px solid #2E86AB; padding-bottom: 15px; }
     .print-logo { width: 60px; height: 60px; object-fit: contain; margin-right: 15px; }
   </style>
 </head>
@@ -235,13 +236,14 @@ if ($selectedEventId > 0 && !empty($selectedDate)) {
   <div class="print-header">
     <div style="display: flex; align-items: center;">
       <?php
-      $logoPath = __DIR__ . '/../images/logo1.png';
-      if (file_exists($logoPath)) {
-          echo '<img src="data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) . '" class="print-logo">';
+      require_once __DIR__ . '/../config/logo_helper.php';
+      if ($assocLogoB64) {
+          $ext = pathinfo($assocLogoPath, PATHINFO_EXTENSION) ?: 'png';
+          echo '<img src="data:image/' . $ext . ';base64,' . $assocLogoB64 . '" class="print-logo">';
       }
       ?>
       <div>
-        <h2 style="margin: 0; color: #0e7490; font-size: 20px;">Bangkero & Fishermen Association</h2>
+        <h2 style="margin: 0; color: #2E86AB; font-size: 20px;">Bangkero & Fishermen Association</h2>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Attendance Report</p>
         <p style="margin: 3px 0 0 0; color: #999; font-size: 11px;">Generated: <?= date('Y-m-d h:i A') ?></p>
       </div>

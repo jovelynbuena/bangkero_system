@@ -109,8 +109,8 @@ $impactStats = [
 $r = $conn->query("SELECT COALESCE(SUM(amount),0) AS total FROM transparency_donations WHERE status='confirmed'");
 if ($r && $row = $r->fetch_assoc()) { $impactStats['total_donations'] = (float)$row['total']; }
 
-// Total beneficiaries
-$r = $conn->query("SELECT COUNT(*) AS total FROM transparency_beneficiaries WHERE status='served'");
+// Partner Organizations count (distinct donors from confirmed assistance)
+$r = $conn->query("SELECT COUNT(DISTINCT donor_name) AS total FROM transparency_donations WHERE status='confirmed'");
 if ($r && $row = $r->fetch_assoc()) { $impactStats['beneficiaries'] = (int)$row['total']; }
 
 // Completed programs
@@ -2076,23 +2076,23 @@ if ($r && $row = $r->fetch_assoc()) { $impactStats['programs_completed'] = (int)
               data-prefix="₱"
               data-format="peso">0</span>
           </div>
-          <div class="impact-label">Total Donations Received</div>
+          <div class="impact-label">Total Assistance Received</div>
           <p class="impact-desc">Confirmed funds received from donors, LGU, NGOs, and partner organizations.</p>
         </div>
       </div>
 
-      <!-- Card 2: Beneficiaries -->
+      <!-- Card 2: Partner Organizations -->
       <div class="col-sm-6 col-lg-4">
         <div class="impact-card" style="--grad-start:#1a6b3c; --grad-end:#27ae60;">
-          <i class="bi bi-people card-watermark"></i>
+          <i class="bi bi-building card-watermark"></i>
           <div class="impact-icon-wrap" style="background:linear-gradient(135deg,#1a6b3c,#27ae60);">
-            <i class="bi bi-people-fill"></i>
+            <i class="bi bi-building-fill"></i>
           </div>
           <div class="impact-number">
             <span class="counter" data-target="<?= $impactStats['beneficiaries'] ?>" data-format="count">0</span><span class="impact-suffix">+</span>
           </div>
-          <div class="impact-label">Number of Beneficiaries</div>
-          <p class="impact-desc">Fishermen and families directly served through our assistance programs.</p>
+          <div class="impact-label">Partner Organizations</div>
+          <p class="impact-desc">LGUs, NGOs, and private organizations working with us to support our community programs.</p>
         </div>
       </div>
 

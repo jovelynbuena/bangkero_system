@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * FORCE PASSWORD CHANGE PAGE
  * Users with force_password_change flag must change password before accessing system
@@ -68,7 +68,7 @@ $user = $stmt->get_result()->fetch_assoc();
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <style>
         body {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             min-height: 100vh;
             display: flex;
             align-items: center;
@@ -118,11 +118,11 @@ $user = $stmt->get_result()->fetch_assoc();
             height: 50px;
         }
         .form-control:focus {
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+            border-color: #2E86AB;
+            box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.20);
         }
         .btn-change {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             border: none;
             border-radius: 10px;
             padding: 14px;
@@ -134,7 +134,7 @@ $user = $stmt->get_result()->fetch_assoc();
         }
         .btn-change:hover {
             transform: translateY(-2px);
-            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+            box-shadow: 0 8px 20px rgba(46, 134, 171, 0.20);
             color: white;
         }
         .requirement-item {

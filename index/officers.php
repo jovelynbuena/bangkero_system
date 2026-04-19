@@ -86,10 +86,11 @@ body { font-family: 'Segoe UI', sans-serif; background: #fdfdfd; }
 
 <div class="main-content">
   <header class="hero-section mb-4">
-    <img src="images/logo1.png" alt="Association Logo" class="hero-logo">
+    <?php require_once __DIR__ . '/../config/logo_helper.php'; ?>
+    <img src="<?= $assocLogoUrl ?>" alt="Association Logo" class="hero-logo">
     <div class="hero-text">
-      <h1>Bankero and Fishermen Association</h1>
-      <p>Barangay Barretto, Olongapo City</p>
+      <h1><?= htmlspecialchars($assocName) ?></h1>
+      <p><?= htmlspecialchars($assocAddress) ?></p>
     </div>
   </header>
 

@@ -8,8 +8,10 @@ if (empty($_SESSION['username'])) {
 
 include('../../config/db_connect.php');
 
-// Get latest announcements first
-$announcements = $conn->query("SELECT * FROM announcements ORDER BY date_posted DESC");
+// Get latest announcements first (exclude expired)
+$announcements = $conn->query("SELECT * FROM announcements 
+                               WHERE (expiry_date IS NULL OR expiry_date = '' OR expiry_date >= CURDATE())
+                               ORDER BY date_posted DESC");
 $memberName = isset($_SESSION['member_name']) ? $_SESSION['member_name'] : 'Member';
 ?>
 <!DOCTYPE html>
@@ -140,7 +142,8 @@ $memberName = isset($_SESSION['member_name']) ? $_SESSION['member_name'] : 'Memb
 <!-- Hero Section -->
 <header class="hero-section mb-4">
     <div class="hero-content">
-        <img src="../images/logo1.png" alt="Association Logo" class="hero-logo">
+        <?php require_once __DIR__ . '/../../config/logo_helper.php'; ?>
+        <img src="<?= $assocLogoUrl ?>" alt="Association Logo" class="hero-logo">
         <div class="hero-text">
             <h1>Member Announcements</h1>
         </div>

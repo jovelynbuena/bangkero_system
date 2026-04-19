@@ -13,7 +13,8 @@
     <div id="chat-header">
         <div id="chat-header-info">
             <div id="chat-avatar">
-                <img src="../images/logo1.png" alt="BFMA Logo" style="width:30px;height:30px;object-fit:contain;border-radius:50%;">
+                <?php require_once __DIR__ . '/../../config/logo_helper.php'; ?>
+                <img src="<?= $assocLogoUrl ?>" alt="BFMA Logo" style="width:30px;height:30px;object-fit:contain;border-radius:50%;">
             </div>
             <div>
                 <div id="chat-title">BFA Virtual Assistant</div>
@@ -474,7 +475,7 @@
         // First time ever — show welcome on first open
         toggle.addEventListener("click", function onFirstOpen() {
             setTimeout(() => {
-                addBotMsg("Hi! Welcome to the <strong>Bankero and Fisherman Association</strong> portal.", true);
+                addBotMsg("Hi! Welcome to the <strong><?= htmlspecialchars($assocName) ?></strong> portal.", true);
             }, 300);
             setTimeout(() => {
                 addBotMsg("I can help you find real-time information about our events, announcements, officers, and membership. How can I assist you today?");

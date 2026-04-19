@@ -287,10 +287,11 @@ $memberName = isset($_SESSION['member_name']) ? $_SESSION['member_name'] : 'Memb
     <!-- Hero Section -->
     <header class="hero-section">
         <div class="hero-content">
-            <img src="images/logo1.png" alt="Association Logo" class="hero-logo">
+            <?php require_once __DIR__ . '/../config/logo_helper.php'; ?>
+            <img src="<?= $assocLogoUrl ?>" alt="Association Logo" class="hero-logo">
             <div class="hero-text">
-                <h1>Bangkero and Fishermen Association</h1>
-                <p>Barangay Barretto, Olongapo City</p>
+                <h1><?= htmlspecialchars($assocName) ?></h1>
+                <p><?= htmlspecialchars($assocAddress) ?></p>
             </div>
         </div>
     </header>

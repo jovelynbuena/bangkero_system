@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Transparency PDF Export
 session_start();
 
@@ -72,10 +72,10 @@ foreach ($transactions as $t) {
 }
 $total = $cashTotal + $inkindTotal;
 
-$assocName = 'Bankero and Fishermen Association';
+require_once __DIR__ . '/../../config/logo_helper.php';
+$logoPath = $assocLogoPath;
+$logoData = $assocLogoB64;
 $generatedDate = date('F d, Y h:i A');
-$logoPath = '../../images/logo1.png';
-$logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
 
 // Simple HTML to PDF-like output
 ?>
@@ -95,7 +95,7 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
         .header {
             display: flex;
             align-items: center;
-            border-bottom: 2px solid #667eea;
+            border-bottom: 2px solid #2E86AB;
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
@@ -110,7 +110,7 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
         }
         .header-text h2 {
             margin: 0 0 5px 0;
-            color: #667eea;
+            color: #2E86AB;
         }
         .header-text p {
             margin: 0;
@@ -138,7 +138,7 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
             text-align: left;
         }
         th {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
             font-weight: bold;
         }
@@ -150,12 +150,12 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
             font-family: monospace;
         }
         .total-row {
-            background: #667eea !important;
+            background: #2E86AB !important;
             color: white;
             font-weight: bold;
         }
         .total-row td {
-            border-color: #667eea;
+            border-color: #2E86AB;
         }
         .inkind-row {
             background: #eff6ff !important;
@@ -169,7 +169,7 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
         }
         .inkind-items li::before {
             content: "→ ";
-            color: #667eea;
+            color: #2E86AB;
         }
         .badge-cash   { background:#198754; color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; }
         .badge-inkind { background:#0d6efd; color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; }

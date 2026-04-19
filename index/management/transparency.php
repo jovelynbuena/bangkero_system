@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Transparency Dashboard - Combined single page with Beneficiaries & Impact Metrics
 session_start();
 
@@ -1028,11 +1028,12 @@ $achievements = array_values($achievements);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <style>
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
         body { background: #f8f9fa; }
         .main-content { padding: 24px; }
         .page-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
             padding: 30px;
             border-radius: 16px;
@@ -1063,17 +1064,17 @@ $achievements = array_values($achievements);
         }
         .badge-status { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
         .badge-active { background: #d1fae5; color: #065f46; }
-        .badge-completed { background: #dbeafe; color: #1e40af; }
+        .badge-completed { background: #dbeafe; color: #1a6d8a; }
         .badge-planned { background: #fef3c7; color: #92400e; }
         .badge-served { background: #d1fae5; color: #065f46; }
-        .badge-in-progress { background: #dbeafe; color: #1e40af; }
+        .badge-in-progress { background: #dbeafe; color: #1a6d8a; }
         .badge-pending { background: #fef3c7; color: #92400e; }
         .progress { height: 8px; border-radius: 4px; }
         .nav-tabs .nav-link { color: #495057; }
-        .nav-tabs .nav-link.active { background: #667eea; color: white; border-color: #667eea; }
+        .nav-tabs .nav-link.active { background: #2E86AB; color: white; border-color: #2E86AB; }
         .featured-star { color: #f59e0b; }
         .metric-card {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
             border-radius: 12px;
             padding: 20px;
@@ -1481,7 +1482,7 @@ $achievements = array_values($achievements);
 
                     <!-- Step 1: Choose type -->
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">Anong uri ng tulong?</label>
+                        <label class="form-label fw-semibold">What type of assistance are you recording?</label>
                         <div class="d-flex gap-3">
                             <div class="flex-fill">
                                 <input type="radio" class="btn-check" name="donation_type" id="typeCash" value="cash" checked>

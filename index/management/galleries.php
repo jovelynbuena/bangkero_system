@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 if (session_status() === PHP_SESSION_NONE) session_start();
 require_once('../../config/db_connect.php');
 
@@ -287,6 +287,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="../../css/admin-theme.css">
 <style>
   /* Modern Layout */
   body { 
@@ -303,7 +304,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
 
   /* Page Header */
   .page-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
     padding: 32px;
     border-radius: 20px;
     margin-bottom: 32px;
@@ -358,8 +359,8 @@ if ($categories_result && $categories_result->num_rows > 0) {
     width: 100%;
   }
   .filter-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
     outline: none;
   }
 
@@ -377,8 +378,8 @@ if ($categories_result && $categories_result->num_rows > 0) {
   }
   .search-box input:focus {
     outline: none;
-    border-color: #667eea;
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
   }
   .search-box i {
     position: absolute;
@@ -442,13 +443,13 @@ if ($categories_result && $categories_result->num_rows > 0) {
   }
 
   .image-count-badge {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
     color: white;
     padding: 6px 16px;
     border-radius: 20px;
     font-size: 0.85rem;
     font-weight: 700;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 2px 8px rgba(46, 134, 171, 0.30);
   }
 
   .gallery-date {
@@ -518,8 +519,8 @@ if ($categories_result && $categories_result->num_rows > 0) {
 
   /* Action Buttons */
   .btn-outline-primary {
-    border: 2px solid #667eea;
-    color: #667eea;
+    border: 2px solid #2E86AB;
+    color: #2E86AB;
     border-radius: 10px;
     padding: 8px 16px;
     font-weight: 600;
@@ -527,11 +528,11 @@ if ($categories_result && $categories_result->num_rows > 0) {
   }
 
   .btn-outline-primary:hover {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    border-color: #667eea;
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+    border-color: #2E86AB;
     color: white;
     transform: translateY(-2px);
-    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+    box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
   }
 
   .btn-danger {
@@ -571,7 +572,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
 
   /* Upload Box */
   .upload-box { 
-    border: 3px dashed #667eea; 
+    border: 3px dashed #2E86AB; 
     padding: 48px; 
     text-align: center; 
     cursor: pointer; 
@@ -581,14 +582,14 @@ if ($categories_result && $categories_result->num_rows > 0) {
   }
 
   .upload-box:hover {
-    border-color: #764ba2;
+    border-color: #1B4F72;
     background: linear-gradient(135deg, #e9ecef 0%, #dee2e6 100%);
     transform: scale(1.02);
   }
 
   .upload-box i {
     font-size: 3rem;
-    color: #667eea;
+    color: #2E86AB;
     margin-bottom: 12px;
   }
 
@@ -628,7 +629,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
   }
 
   .modal-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
     color: white;
     border-radius: 20px 20px 0 0;
     padding: 24px 32px;
@@ -663,8 +664,8 @@ if ($categories_result && $categories_result->num_rows > 0) {
   }
 
   .form-control:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
   }
 
   /* Carousel Controls */
@@ -778,7 +779,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
     width: 24px;
     height: 24px;
     cursor: pointer;
-    border: 2px solid #667eea;
+    border: 2px solid #2E86AB;
     border-radius: 6px;
   }
 
@@ -816,7 +817,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
         <h2><i class="bi bi-images"></i> Gallery Management</h2>
         <p class="meta">Upload, organize, and manage your photo galleries</p>
       </div>
-      <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modalAdd" style="background: white; color: #667eea; border: none; padding: 12px 28px; border-radius: 12px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.1);">
+      <button class="btn btn-light" data-bs-toggle="modal" data-bs-target="#modalAdd" style="background: white; color: #2E86AB; border: none; padding: 12px 28px; border-radius: 12px; font-weight: 600; box-shadow: 0 4px 16px rgba(0,0,0,0.1);">
         <i class="bi bi-plus-circle me-2"></i> New Gallery
       </button>
     </div>
@@ -865,7 +866,7 @@ if ($categories_result && $categories_result->num_rows > 0) {
 
       <div class="col-12 d-flex justify-content-between align-items-center mt-3">
         <div class="d-flex gap-2">
-          <button type="submit" class="btn btn-primary" style="padding: 10px 24px; background: #667eea; border: none; border-radius: 12px; font-weight: 600;">
+          <button type="submit" class="btn btn-primary" style="padding: 10px 24px; background: #2E86AB; border: none; border-radius: 12px; font-weight: 600;">
             <i class="bi bi-funnel me-2"></i> Apply Filters
           </button>
           <a href="galleries.php" class="btn btn-outline-secondary d-flex align-items-center justify-content-center" style="padding: 10px 24px; border-radius: 12px; border: 2px solid #e0e0e0; color: #64748b; font-weight: 600;">
@@ -1237,14 +1238,14 @@ document.addEventListener('DOMContentLoaded', function(){
       
       ['dragenter', 'dragover'].forEach(eventName => {
         uploadBox.addEventListener(eventName, () => {
-          uploadBox.style.borderColor = '#764ba2';
+          uploadBox.style.borderColor = '#1B4F72';
           uploadBox.style.backgroundColor = '#f0f0f0';
         });
       });
       
       ['dragleave', 'drop'].forEach(eventName => {
         uploadBox.addEventListener(eventName, () => {
-          uploadBox.style.borderColor = '#667eea';
+          uploadBox.style.borderColor = '#2E86AB';
           uploadBox.style.backgroundColor = '';
         });
       });

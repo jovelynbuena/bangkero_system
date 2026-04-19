@@ -1,4 +1,5 @@
-<?php 
+﻿<?php
+ob_start();
 session_start();
 
 // Detect AJAX requests (GET or POST)
@@ -145,25 +146,30 @@ $conn->query("CREATE TABLE IF NOT EXISTS `activity_logs` (
 // Get existing backups from file system
 $backupDir = __DIR__ . '/backups/';
 $backups = array();
-$totalStorage = 0;
+$totalStorage = 0;   // SQL-only storage (used for storage limit check)
 $lastBackupDate = null;
 
 if (is_dir($backupDir)) {
     $files = scandir($backupDir);
     foreach ($files as $file) {
-        if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
+        $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+        if ($ext === 'sql' || $ext === 'zip') {
             $filePath = $backupDir . $file;
             $filesize = filesize($filePath);
             $filedate = filemtime($filePath);
-            
+
             $backups[] = array(
                 'name' => $file,
                 'size' => $filesize,
-                'date' => $filedate
+                'date' => $filedate,
+                'type' => $ext,
             );
-            
-            $totalStorage += $filesize;
-            
+
+            // Only count .sql files toward the storage limit
+            if ($ext === 'sql') {
+                $totalStorage += $filesize;
+            }
+
             if ($lastBackupDate === null || $filedate > $lastBackupDate) {
                 $lastBackupDate = $filedate;
             }
@@ -183,6 +189,296 @@ function formatFileSize($bytes) {
     $i = floor(log($bytes) / log($k));
     
     return round($bytes / pow($k, $i), 2) . ' ' . $sizes[$i];
+}
+
+// Handle system backup (DB + files zip) — responds with JSON for iframe AJAX
+if (isset($_POST['create_system_backup'])) {
+    $isSystemBackupRequest = true;
+    if (!backup_check_csrf()) {
+        header('Content-Type: application/json');
+        echo json_encode(['success' => false, 'error' => 'Invalid session token. Please reload the page and try again.']);
+        exit;
+    } else {
+        try {
+            if (!class_exists('ZipArchive')) {
+                throw new Exception('ZipArchive is not available on this server. Please enable the zip extension in PHP.');
+            }
+
+            $systemBackupDir = __DIR__ . '/backups/';
+            if (!file_exists($systemBackupDir)) {
+                mkdir($systemBackupDir, 0777, true);
+            }
+
+            $zipFileName = 'system_backup_' . date('Y-m-d_H-i-s') . '.zip';
+            $zipFilePath = $systemBackupDir . $zipFileName;
+
+            // --- Step 1: Generate SQL dump in memory ---
+            $dbResult = $conn->query("SELECT DATABASE()");
+            $currentDb = $dbResult->fetch_row()[0];
+
+            $sqlContent  = "-- System Backup - Database Dump\n";
+            $sqlContent .= "-- Generated on: " . date('Y-m-d H:i:s') . "\n";
+            $sqlContent .= "-- Database: {$currentDb}\n\n";
+            $sqlContent .= "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\n";
+            $sqlContent .= "SET time_zone = \"+00:00\";\n\n";
+
+            $tables = [];
+            $result = $conn->query("SHOW TABLES");
+            while ($row = $result->fetch_row()) { $tables[] = $row[0]; }
+
+            foreach ($tables as $table) {
+                $sqlContent .= "\n-- Table: {$table}\n";
+                $sqlContent .= "DROP TABLE IF EXISTS `{$table}`;\n\n";
+                $createRes = $conn->query("SHOW CREATE TABLE `{$table}`");
+                $row = $createRes->fetch_row();
+                $sqlContent .= $row[1] . ";\n\n";
+                $sqlContent .= "-- Data for table `{$table}`\n";
+                $dataRes = $conn->query("SELECT * FROM `{$table}`");
+                if ($dataRes->num_rows > 0) {
+                    while ($row = $dataRes->fetch_assoc()) {
+                        $cols = array_keys($row);
+                        $vals = array_map(function($v) use ($conn) {
+                            return $v === null ? 'NULL' : "'" . $conn->real_escape_string($v) . "'";
+                        }, array_values($row));
+                        $sqlContent .= "INSERT INTO `{$table}` (`" . implode('`, `', $cols) . "`) VALUES (" . implode(', ', $vals) . ");\n";
+                    }
+                    $sqlContent .= "\n";
+                }
+            }
+
+            // --- Step 2: Create ZIP ---
+            $zip = new ZipArchive();
+            if ($zip->open($zipFilePath, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
+                throw new Exception('Cannot create zip file. Check folder permissions.');
+            }
+
+            // Add SQL dump
+            $zip->addFromString('database_dump.sql', $sqlContent);
+
+            // Root of the project (bangkero_system)
+            $projectRoot = realpath(__DIR__ . '/../../');
+
+            // Folders/files to include
+            $includeDirs = ['index', 'uploads', 'config', 'css', 'images'];
+            $includeFiles = ['composer.json', 'composer.lock'];
+
+            // Folders to exclude (relative to project root)
+            $excludeDirs = [
+                realpath($projectRoot . '/vendor'),
+                realpath($projectRoot . '/index/utilities/backups'),
+                realpath($projectRoot . '/node_modules'),
+            ];
+
+            // Helper: recursive add to zip, skipping excluded dirs
+            function addDirToZip(ZipArchive $zip, $dirPath, $zipPrefix, array $excludeDirs) {
+                $dirPath = rtrim($dirPath, '/\\');
+                if (!is_dir($dirPath)) return;
+                $realDir = realpath($dirPath);
+                // Skip excluded
+                foreach ($excludeDirs as $ex) {
+                    if ($ex && strpos($realDir . DIRECTORY_SEPARATOR, $ex . DIRECTORY_SEPARATOR) === 0) return;
+                    if ($ex && $realDir === $ex) return;
+                }
+                $items = new RecursiveIteratorIterator(
+                    new RecursiveDirectoryIterator($dirPath, RecursiveDirectoryIterator::SKIP_DOTS),
+                    RecursiveIteratorIterator::SELF_FIRST
+                );
+                foreach ($items as $item) {
+                    $realItem = realpath($item->getPathname());
+                    // Skip excluded
+                    $skip = false;
+                    foreach ($excludeDirs as $ex) {
+                        if ($ex && ($realItem === $ex || strpos($realItem . DIRECTORY_SEPARATOR, $ex . DIRECTORY_SEPARATOR) === 0)) {
+                            $skip = true;
+                            break;
+                        }
+                    }
+                    if ($skip) continue;
+                    $relativePath = $zipPrefix . '/' . substr($item->getPathname(), strlen($dirPath) + 1);
+                    $relativePath = str_replace('\\', '/', $relativePath);
+                    if ($item->isDir()) {
+                        $zip->addEmptyDir($relativePath);
+                    } else {
+                        $zip->addFile($item->getPathname(), $relativePath);
+                    }
+                }
+            }
+
+            foreach ($includeDirs as $dir) {
+                $fullPath = $projectRoot . '/' . $dir;
+                if (is_dir($fullPath)) {
+                    addDirToZip($zip, $fullPath, $dir, $excludeDirs);
+                }
+            }
+
+            foreach ($includeFiles as $file) {
+                $fullPath = $projectRoot . '/' . $file;
+                if (file_exists($fullPath)) {
+                    $zip->addFile($fullPath, $file);
+                }
+            }
+
+            $zip->close();
+
+            // Log activity
+            $user_id = $_SESSION['user_id'];
+            $fsize = filesize($zipFilePath);
+            $action = 'System Backup';
+            $description = "Created system backup: {$zipFileName}";
+            $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+            $log_stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)");
+            $log_stmt->bind_param("isss", $user_id, $action, $description, $ip_address);
+            $log_stmt->execute();
+
+            $success_message = "System backup created successfully! (" . round($fsize / 1024 / 1024, 2) . " MB)";
+            $download_zip = $zipFileName;
+
+            header('Content-Type: application/json');
+            echo json_encode(['success' => true, 'file' => $zipFileName, 'size' => round($fsize / 1024 / 1024, 2)]);
+            exit;
+
+        } catch (Exception $e) {
+            header('Content-Type: application/json');
+            echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+            exit;
+        }
+    }
+}
+
+// Handle system restore from uploaded ZIP or from history — responds with JSON
+if (isset($_POST['restore_system_zip'])) {
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/json');
+    if (!backup_check_csrf()) {
+        echo json_encode(['success' => false, 'error' => 'Invalid session token. Please reload the page and try again.']);
+        exit;
+    }
+    try {
+        if (!class_exists('ZipArchive')) {
+            throw new Exception('ZipArchive is not available on this server.');
+        }
+
+        // Determine source: from history (server-side file) or uploaded file
+        $fromHistory = !empty($_POST['restore_from_history']) && !empty($_POST['zip_filename']);
+
+        if ($fromHistory) {
+            $origName = basename($_POST['zip_filename']);
+            if (strtolower(pathinfo($origName, PATHINFO_EXTENSION)) !== 'zip') {
+                throw new Exception('Only .zip system backup files are accepted.');
+            }
+            $tmpFile = __DIR__ . '/backups/' . $origName;
+            if (!file_exists($tmpFile)) {
+                throw new Exception('Backup file not found on server: ' . $origName);
+            }
+        } else {
+            if (empty($_FILES['zip_file']) || $_FILES['zip_file']['error'] !== UPLOAD_ERR_OK) {
+                $uploadErrors = [
+                    UPLOAD_ERR_INI_SIZE   => 'File too large (exceeds server limit).',
+                    UPLOAD_ERR_FORM_SIZE  => 'File too large (exceeds form limit).',
+                    UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded.',
+                    UPLOAD_ERR_NO_FILE    => 'No file was uploaded.',
+                    UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder.',
+                    UPLOAD_ERR_CANT_WRITE => 'Cannot write file to disk.',
+                ];
+                $errCode = $_FILES['zip_file']['error'] ?? UPLOAD_ERR_NO_FILE;
+                throw new Exception($uploadErrors[$errCode] ?? 'Upload failed (error ' . $errCode . ').');
+            }
+            $tmpFile = $_FILES['zip_file']['tmp_name'];
+            $origName = basename($_FILES['zip_file']['name']);
+            if (strtolower(pathinfo($origName, PATHINFO_EXTENSION)) !== 'zip') {
+                throw new Exception('Only .zip system backup files are accepted.');
+            }
+        }
+
+        // Open ZIP
+        $zip = new ZipArchive();
+        if ($zip->open($tmpFile) !== true) {
+            throw new Exception('Cannot open ZIP file. It may be corrupted.');
+        }
+
+        // Must contain database_dump.sql
+        if ($zip->locateName('database_dump.sql') === false) {
+            $zip->close();
+            throw new Exception('Invalid system backup ZIP — database_dump.sql not found inside.');
+        }
+
+        $projectRoot = realpath(__DIR__ . '/../../');
+
+        // --- Step 1: Extract files (skip database_dump.sql, extract everything else) ---
+        $extractedFiles = 0;
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $entryName = $zip->getNameIndex($i);
+            if ($entryName === 'database_dump.sql') continue;
+
+            // Safety: prevent path traversal
+            $safeName = ltrim(str_replace(['../', '..\\', '..'], '', $entryName), '/\\');
+            if (empty($safeName)) continue;
+
+            $destPath = $projectRoot . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $safeName);
+
+            // Create directory if needed
+            $destDir = substr($entryName, -1) === '/' ? $destPath : dirname($destPath);
+            if (!is_dir($destDir)) {
+                mkdir($destDir, 0777, true);
+            }
+
+            if (substr($entryName, -1) !== '/') {
+                $content = $zip->getFromIndex($i);
+                if ($content !== false) {
+                    file_put_contents($destPath, $content);
+                    $extractedFiles++;
+                }
+            }
+        }
+
+        // --- Step 2: Restore database from database_dump.sql ---
+        $sqlContent = $zip->getFromName('database_dump.sql');  // must be BEFORE close()
+        $zip->close();  // close AFTER reading
+
+        if (empty(trim($sqlContent))) {
+            throw new Exception('database_dump.sql inside the ZIP is empty.');
+        }
+
+        $queries = parseSqlFile($sqlContent);
+        $queryCount = 0;
+        $errors = [];
+
+        $conn->query("SET FOREIGN_KEY_CHECKS=0");
+        foreach ($queries as $query) {
+            if (!$conn->query($query)) {
+                $errors[] = $conn->error;
+            } else {
+                $queryCount++;
+            }
+        }
+        $conn->query("SET FOREIGN_KEY_CHECKS=1");
+
+        // Log activity
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $action = 'System Restore';
+        $description = "Restored system from ZIP: {$origName} ({$extractedFiles} files, {$queryCount} SQL queries)";
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+        $log_stmt = $conn->prepare("INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)");
+        if ($log_stmt) {
+            $log_stmt->bind_param("isss", $user_id, $action, $description, $ip_address);
+            $log_stmt->execute();
+        }
+
+        $warningText = !empty($errors) ? implode('; ', array_slice($errors, 0, 5)) : null;
+
+        echo json_encode([
+            'success'        => true,
+            'file'           => $origName,
+            'extracted_files'=> $extractedFiles,
+            'query_count'    => $queryCount,
+            'warnings'       => $warningText,
+        ]);
+        exit;
+
+    } catch (Exception $e) {
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
 }
 
 // Handle backup creation
@@ -280,27 +576,17 @@ if (isset($_POST['create_backup'])) {
         $lastBackupDate = null;
         $files = scandir($backupDir);
         foreach ($files as $file) {
-            if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if ($ext === 'sql' || $ext === 'zip') {
                 $filePath = $backupDir . $file;
                 $filesize = filesize($filePath);
                 $filedate = filemtime($filePath);
-                
-                $backups[] = array(
-                    'name' => $file,
-                    'size' => $filesize,
-                    'date' => $filedate
-                );
-                
-                $totalStorage += $filesize;
-                
-                if ($lastBackupDate === null || $filedate > $lastBackupDate) {
-                    $lastBackupDate = $filedate;
-                }
+                $backups[] = array('name' => $file, 'size' => $filesize, 'date' => $filedate, 'type' => $ext);
+                if ($ext === 'sql') $totalStorage += $filesize;
+                if ($lastBackupDate === null || $filedate > $lastBackupDate) $lastBackupDate = $filedate;
             }
         }
-        usort($backups, function($a, $b) {
-            return $b['date'] - $a['date'];
-        });
+        usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
 
     } catch (Exception $e) {
         $error_message = "Backup failed: " . $e->getMessage();
@@ -380,6 +666,74 @@ if (isset($_POST['restore_file'])) {
     }
 }
 
+// Handle restore from uploaded SQL file
+if (isset($_POST['restore_sql_upload'])) {
+    while (ob_get_level()) ob_end_clean();
+    header('Content-Type: application/json');
+    if (!backup_check_csrf()) {
+        echo json_encode(['success' => false, 'error' => 'Invalid session token. Please reload the page and try again.']);
+        exit;
+    }
+    $restoreResults = ['success' => 0, 'failed' => 0, 'errors' => []];
+    try {
+        if (empty($_FILES['sql_file']) || $_FILES['sql_file']['error'] !== UPLOAD_ERR_OK) {
+            $uploadErrors = [
+                UPLOAD_ERR_INI_SIZE   => 'File too large (exceeds server limit).',
+                UPLOAD_ERR_FORM_SIZE  => 'File too large (exceeds form limit).',
+                UPLOAD_ERR_PARTIAL    => 'File was only partially uploaded.',
+                UPLOAD_ERR_NO_FILE    => 'No file was uploaded.',
+                UPLOAD_ERR_NO_TMP_DIR => 'Missing temporary folder.',
+                UPLOAD_ERR_CANT_WRITE => 'Cannot write file to disk.',
+            ];
+            $errCode = $_FILES['sql_file']['error'] ?? UPLOAD_ERR_NO_FILE;
+            throw new Exception($uploadErrors[$errCode] ?? 'Upload failed (error ' . $errCode . ').');
+        }
+        $origName = basename($_FILES['sql_file']['name']);
+        if (strtolower(pathinfo($origName, PATHINFO_EXTENSION)) !== 'sql') {
+            throw new Exception('Only .sql backup files are accepted.');
+        }
+        $sql = file_get_contents($_FILES['sql_file']['tmp_name']);
+        if ($sql === false || trim($sql) === '') {
+            throw new Exception('Uploaded SQL file is empty or unreadable.');
+        }
+        $queries = parseSqlFile($sql);
+        $conn->query('SET FOREIGN_KEY_CHECKS=0');
+        foreach ($queries as $index => $query) {
+            $query = trim($query);
+            if (empty($query)) continue;
+            if (!$conn->query($query)) {
+                $restoreResults['failed']++;
+                $restoreResults['errors'][] = "Query " . ($index + 1) . ": " . $conn->error;
+            } else {
+                $restoreResults['success']++;
+            }
+        }
+        $conn->query('SET FOREIGN_KEY_CHECKS=1');
+
+        // Log activity
+        $user_id = $_SESSION['user_id'] ?? 0;
+        $action = 'Database Restore (Upload)';
+        $description = "Restored uploaded SQL: {$origName} — {$restoreResults['success']} success, {$restoreResults['failed']} failed";
+        $ip_address = $_SERVER['REMOTE_ADDR'] ?? 'Unknown';
+        $log_stmt = $conn->prepare('INSERT INTO activity_logs (user_id, action, description, ip_address) VALUES (?, ?, ?, ?)');
+        if ($log_stmt) { $log_stmt->bind_param('isss', $user_id, $action, $description, $ip_address); $log_stmt->execute(); }
+
+        $warningText = !empty($restoreResults['errors']) ? implode('; ', array_slice($restoreResults['errors'], 0, 5)) : null;
+        echo json_encode([
+            'success'       => true,
+            'file'          => $origName,
+            'query_count'   => $restoreResults['success'],
+            'failed_count'  => $restoreResults['failed'],
+            'warnings'      => $warningText,
+        ]);
+        exit;
+    } catch (Exception $e) {
+        $conn->query('SET FOREIGN_KEY_CHECKS=1');
+        echo json_encode(['success' => false, 'error' => $e->getMessage()]);
+        exit;
+    }
+}
+
 // Handle delete
 if (isset($_POST['delete_file'])) {
     if (!backup_check_csrf()) {
@@ -410,27 +764,17 @@ if (isset($_POST['delete_file'])) {
         $lastBackupDate = null;
         $files = scandir($backupDir);
         foreach ($files as $file) {
-            if (pathinfo($file, PATHINFO_EXTENSION) === 'sql') {
+            $ext = strtolower(pathinfo($file, PATHINFO_EXTENSION));
+            if ($ext === 'sql' || $ext === 'zip') {
                 $filePath = $backupDir . $file;
                 $filesize = filesize($filePath);
                 $filedate = filemtime($filePath);
-                
-                $backups[] = array(
-                    'name' => $file,
-                    'size' => $filesize,
-                    'date' => $filedate
-                );
-                
-                $totalStorage += $filesize;
-                
-                if ($lastBackupDate === null || $filedate > $lastBackupDate) {
-                    $lastBackupDate = $filedate;
-                }
+                $backups[] = array('name' => $file, 'size' => $filesize, 'date' => $filedate, 'type' => $ext);
+                if ($ext === 'sql') $totalStorage += $filesize;
+                if ($lastBackupDate === null || $filedate > $lastBackupDate) $lastBackupDate = $filedate;
             }
         }
-        usort($backups, function($a, $b) {
-            return $b['date'] - $a['date'];
-        });
+        usort($backups, function($a, $b) { return $b['date'] - $a['date']; });
     }
   }
 }
@@ -438,6 +782,7 @@ if (isset($_POST['delete_file'])) {
 // ========= Filtering, sorting, pagination =========
 $totalBackups = count($backups);
 
+// --- SQL Backup Tab ---
 $search = trim($_GET['search'] ?? '');
 $sort = $_GET['sort'] ?? 'newest';
 $dateFrom = $_GET['date_from'] ?? '';
@@ -450,10 +795,10 @@ $toTs = $dateTo ? strtotime($dateTo . ' 23:59:59') : null;
 $minSizeBytes = is_numeric($minSize) ? (float)$minSize * 1024 * 1024 : null;
 $maxSizeBytes = is_numeric($maxSize) ? (float)$maxSize * 1024 * 1024 : null;
 
-$filteredBackups = array_filter($backups, function($b) use ($search, $fromTs, $toTs, $minSizeBytes, $maxSizeBytes) {
-    if ($search !== '' && stripos($b['name'], $search) === false) {
-        return false;
-    }
+$sqlBackups = array_values(array_filter($backups, fn($b) => $b['type'] === 'sql'));
+
+$filteredBackups = array_filter($sqlBackups, function($b) use ($search, $fromTs, $toTs, $minSizeBytes, $maxSizeBytes) {
+    if ($search !== '' && stripos($b['name'], $search) === false) return false;
     if ($fromTs && $b['date'] < $fromTs) return false;
     if ($toTs && $b['date'] > $toTs) return false;
     if ($minSizeBytes !== null && $b['size'] < $minSizeBytes) return false;
@@ -463,14 +808,10 @@ $filteredBackups = array_filter($backups, function($b) use ($search, $fromTs, $t
 
 usort($filteredBackups, function($a, $b) use ($sort) {
     switch ($sort) {
-        case 'oldest':
-            return $a['date'] <=> $b['date'];
-        case 'largest':
-            return $b['size'] <=> $a['size'];
-        case 'smallest':
-            return $a['size'] <=> $b['size'];
-        default:
-            return $b['date'] <=> $a['date']; // newest
+        case 'oldest':  return $a['date'] <=> $b['date'];
+        case 'largest': return $b['size'] <=> $a['size'];
+        case 'smallest':return $a['size'] <=> $b['size'];
+        default:        return $b['date'] <=> $a['date'];
     }
 });
 
@@ -483,6 +824,49 @@ $offset = ($page - 1) * $perPage;
 $pagedBackups = array_slice($filteredBackups, $offset, $perPage);
 $showingFrom = $totalFiltered ? $offset + 1 : 0;
 $showingTo = $offset + count($pagedBackups);
+
+// --- System (ZIP) Backup Tab ---
+$sysSearch   = trim($_GET['sys_search'] ?? '');
+$sysSort     = $_GET['sys_sort'] ?? 'newest';
+$sysDateFrom = $_GET['sys_date_from'] ?? '';
+$sysDateTo   = $_GET['sys_date_to'] ?? '';
+$sysMinSize  = $_GET['sys_min_size'] ?? '';
+$sysMaxSize  = $_GET['sys_max_size'] ?? '';
+
+$sysFromTs      = $sysDateFrom ? strtotime($sysDateFrom . ' 00:00:00') : null;
+$sysToTs        = $sysDateTo   ? strtotime($sysDateTo . ' 23:59:59')   : null;
+$sysMinSizeBytes= is_numeric($sysMinSize) ? (float)$sysMinSize * 1024 * 1024 : null;
+$sysMaxSizeBytes= is_numeric($sysMaxSize) ? (float)$sysMaxSize * 1024 * 1024 : null;
+
+$zipBackups = array_values(array_filter($backups, fn($b) => $b['type'] === 'zip'));
+
+$sysFilteredBackups = array_filter($zipBackups, function($b) use ($sysSearch, $sysFromTs, $sysToTs, $sysMinSizeBytes, $sysMaxSizeBytes) {
+    if ($sysSearch !== '' && stripos($b['name'], $sysSearch) === false) return false;
+    if ($sysFromTs && $b['date'] < $sysFromTs) return false;
+    if ($sysToTs && $b['date'] > $sysToTs) return false;
+    if ($sysMinSizeBytes !== null && $b['size'] < $sysMinSizeBytes) return false;
+    if ($sysMaxSizeBytes !== null && $b['size'] > $sysMaxSizeBytes) return false;
+    return true;
+});
+
+usort($sysFilteredBackups, function($a, $b) use ($sysSort) {
+    switch ($sysSort) {
+        case 'oldest':  return $a['date'] <=> $b['date'];
+        case 'largest': return $b['size'] <=> $a['size'];
+        case 'smallest':return $a['size'] <=> $b['size'];
+        default:        return $b['date'] <=> $a['date'];
+    }
+});
+
+$sysPerPage = 10;
+$sysPage = max(1, (int)($_GET['sys_page'] ?? 1));
+$sysTotalFiltered = count($sysFilteredBackups);
+$sysTotalPages = max(1, (int)ceil($sysTotalFiltered / $sysPerPage));
+if ($sysPage > $sysTotalPages) { $sysPage = $sysTotalPages; }
+$sysOffset = ($sysPage - 1) * $sysPerPage;
+$sysPagedBackups = array_slice($sysFilteredBackups, $sysOffset, $sysPerPage);
+$sysShowingFrom = $sysTotalFiltered ? $sysOffset + 1 : 0;
+$sysShowingTo = $sysOffset + count($sysPagedBackups);
 
 // Storage limit + auto backup status from system_config
 $maxStorageMb = 100;
@@ -514,29 +898,40 @@ if ($hasAutoBackup || $hasLimit || $hasNext) {
     }
 }
 
-$maxStorageBytes = $maxStorageMb * 1024 * 1024;
-$storagePercent = $maxStorageBytes > 0 ? min(100, round(($totalStorage / $maxStorageBytes) * 100, 1)) : 0;
-$storageLimitReached = $maxStorageBytes > 0 && $totalStorage >= $maxStorageBytes;
-
-if ($storageLimitReached) {
-    $warning_message = ($warning_message ? $warning_message . "\n" : '') . 'Storage limit reached. Delete old backups before creating new ones.';
-}
+$maxStorageBytes = 0; // No storage limit
+$storagePercent = 0;
+$storageLimitReached = false;
 
 // AJAX: return only backup list + filters
-
 if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
-    ob_start();
-    include __DIR__ . '/backup_list_partial.php';
-    $html = ob_get_clean();
-    header('Content-Type: application/json');
-    echo json_encode([
-        'html' => $html,
-        'page' => $page,
-        'totalPages' => $totalPages,
-        'total' => $totalFiltered,
-        'showingFrom' => $showingFrom,
-        'showingTo' => $showingTo,
-    ]);
+    $ajaxTab = $_GET['tab'] ?? 'sql';
+    if ($ajaxTab === 'system') {
+        ob_start();
+        include __DIR__ . '/system_backup_list_partial.php';
+        $html = ob_get_clean();
+        header('Content-Type: application/json');
+        echo json_encode([
+            'html'        => $html,
+            'page'        => $sysPage,
+            'totalPages'  => $sysTotalPages,
+            'total'       => $sysTotalFiltered,
+            'showingFrom' => $sysShowingFrom,
+            'showingTo'   => $sysShowingTo,
+        ]);
+    } else {
+        ob_start();
+        include __DIR__ . '/backup_list_partial.php';
+        $html = ob_get_clean();
+        header('Content-Type: application/json');
+        echo json_encode([
+            'html'        => $html,
+            'page'        => $page,
+            'totalPages'  => $totalPages,
+            'total'       => $totalFiltered,
+            'showingFrom' => $showingFrom,
+            'showingTo'   => $showingTo,
+        ]);
+    }
     exit;
 }
 ?>
@@ -575,7 +970,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             box-shadow: 0 1px 6px rgba(0,0,0,0.06);
             margin-bottom: 20px;
             border-left: 4px solid;
-            border-image: linear-gradient(135deg, #667eea 0%, #764ba2 100%) 1;
+            border-image: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%) 1;
         }
 
         .page-header h2 {
@@ -597,7 +992,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         .page-icon {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -667,7 +1062,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         }
 
         .alert-success-custom .alert-icon {
-            background: #28a745;
+            background: #2E86AB;
             color: white;
         }
 
@@ -681,7 +1076,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             align-items: center;
             gap: 6px;
             padding: 8px 14px;
-            background: #28a745;
+            background: #2E86AB;
             color: white;
             text-decoration: none;
             border-radius: 6px;
@@ -689,13 +1084,15 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
             margin-top: 8px;
             transition: all 0.2s ease;
             font-size: 12px;
+            border: none;
+            cursor: pointer;
         }
 
         .download-badge:hover {
-            background: #218838;
+            background: #1B4F72;
             color: white;
             transform: translateY(-1px);
-            box-shadow: 0 2px 8px rgba(40, 167, 69, 0.3);
+            box-shadow: 0 2px 8px rgba(46, 134, 171, 0.4);
         }
 
         /* Summary Dashboard - Minimalist */
@@ -721,7 +1118,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         .summary-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-color: rgba(102, 126, 234, 0.3);
+            border-color: rgba(46, 134, 171, 0.20);
         }
 
         .summary-icon {
@@ -736,7 +1133,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         }
 
         .summary-icon.purple {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
         }
 
@@ -746,7 +1143,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         }
 
         .summary-icon.green {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
         }
 
@@ -782,7 +1179,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         .action-card:hover {
             transform: translateY(-2px);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-            border-color: rgba(102, 126, 234, 0.3);
+            border-color: rgba(46, 134, 171, 0.20);
         }
 
         .action-card-header {
@@ -804,12 +1201,12 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         }
 
         .backup-card-icon {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
         }
 
         .restore-card-icon {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
         }
 
@@ -842,24 +1239,24 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         }
 
         .btn-primary-custom {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
         }
 
         .btn-primary-custom:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+            box-shadow: 0 6px 20px rgba(46, 134, 171, 0.20);
             color: white;
         }
 
         .btn-success-custom {
-            background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
         }
 
         .btn-success-custom:hover {
             transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(40, 167, 69, 0.4);
+            box-shadow: 0 6px 20px rgba(46, 134, 171, 0.4);
             color: white;
         }
 
@@ -890,7 +1287,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         }
 
         .backup-count {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
             padding: 4px 12px;
             border-radius: 12px;
@@ -913,15 +1310,15 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
 
         .backup-item:hover {
             background: white;
-            border-color: #667eea;
+            border-color: #2E86AB;
             transform: translateX(6px) scale(1.005);
-            box-shadow: 0 4px 16px rgba(102, 126, 234, 0.12);
+            box-shadow: 0 4px 16px rgba(46, 134, 171, 0.20);
         }
 
         .backup-icon-wrapper {
             width: 36px;
             height: 36px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             border-radius: 8px;
             display: flex;
             align-items: center;
@@ -1032,7 +1429,7 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
 
         .empty-state-icon {
             font-size: 64px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
             background-clip: text;
@@ -1135,10 +1532,18 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                 <div class="flex-grow-1">
                     <strong>Success!</strong> <?= htmlspecialchars($success_message) ?>
                     <?php if (!empty($download_file)): ?>
-                        <a href="download_backup.php?file=<?= urlencode($download_file) ?>" class="download-badge">
+                        <button type="button" class="download-badge"
+                                onclick="triggerBackupDownload('<?= htmlspecialchars($download_file, ENT_QUOTES) ?>')">
                             <i class="bi bi-download"></i>
                             Download: <?= htmlspecialchars($download_file) ?>
-                        </a>
+                        </button>
+                    <?php endif; ?>
+                    <?php if (!empty($download_zip)): ?>
+                        <button type="button" class="download-badge" style="background:#1B4F72;"
+                                onclick="triggerBackupDownload('<?= htmlspecialchars($download_zip, ENT_QUOTES) ?>')">
+                            <i class="bi bi-file-zip"></i>
+                            Download System Backup: <?= htmlspecialchars($download_zip) ?>
+                        </button>
                     <?php endif; ?>
                 </div>
             </div>
@@ -1178,28 +1583,6 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                     <div class="summary-label">Total Backups</div>
                 </div>
             </div>
-
-            <div class="summary-card">
-                <div class="summary-icon blue">
-                    <i class="bi bi-hdd-fill"></i>
-                </div>
-                <div class="summary-content">
-                    <div class="summary-value"><?= formatFileSize($totalStorage) ?> / <?= formatFileSize($maxStorageBytes) ?></div>
-                    <div class="summary-label">Storage Used (<?= $storagePercent ?>%)</div>
-                    <div class="progress mt-2" style="height: 8px;">
-                        <?php
-                        $barClass = 'bg-success';
-                        if ($storagePercent > 90) {
-                            $barClass = 'bg-danger';
-                        } elseif ($storagePercent > 70) {
-                            $barClass = 'bg-warning';
-                        }
-                        ?>
-                        <div class="progress-bar <?= $barClass ?>" role="progressbar" style="width: <?= $storagePercent ?>%;" aria-valuenow="<?= $storagePercent ?>" aria-valuemin="0" aria-valuemax="100"></div>
-                    </div>
-                </div>
-            </div>
-
 
             <div class="summary-card">
                 <div class="summary-icon green">
@@ -1244,9 +1627,9 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
 
         <!-- Action Cards -->
         <div class="row mb-3">
-            <!-- Create Backup -->
-            <div class="col-lg-6 mb-3">
-                <div class="action-card">
+            <!-- Create Database Backup -->
+            <div class="col-lg-3 mb-3">
+                <div class="action-card h-100">
                     <div class="action-card-header">
                         <div class="action-card-icon backup-card-icon">
                             <i class="bi bi-cloud-download"></i>
@@ -1254,55 +1637,127 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
                         <h3>Create Database Backup</h3>
                     </div>
                     <p>Generate a complete snapshot of your database. The backup file includes all tables, data, and structures.</p>
-                    
+
                     <form method="post">
                         <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
-                        <button type="submit" name="create_backup" class="btn-custom btn-primary-custom" <?= $storageLimitReached ? 'disabled' : '' ?> data-bs-toggle="tooltip" title="<?= $storageLimitReached ? 'Storage limit reached. Delete old backups to create new ones.' : 'Create a new full database backup.' ?>">
+                        <button type="submit" name="create_backup" class="btn-custom btn-primary-custom w-100" <?= $storageLimitReached ? 'disabled' : '' ?> data-bs-toggle="tooltip" title="<?= $storageLimitReached ? 'Storage limit reached. Delete old backups to create new ones.' : 'Create a new full database backup.' ?>">
                             <i class="bi bi-plus-circle"></i>
                             Create Backup Now
                         </button>
                     </form>
-
                 </div>
             </div>
 
-            <!-- Restore Database -->
-            <div class="col-lg-6 mb-3">
-                <div class="action-card">
+            <!-- Restore Database Backup (SQL upload) -->
+            <div class="col-lg-3 mb-3">
+                <div class="action-card h-100">
+                    <div class="action-card-header">
+                        <div class="action-card-icon backup-card-icon">
+                            <i class="bi bi-database-up"></i>
+                        </div>
+                        <h3>Restore Database Backup</h3>
+                    </div>
+                    <p style="font-size:13px; color:#6c757d;">
+                        Upload a <strong>.sql</strong> backup file to restore the database.
+                    </p>
+
+                    <form method="post" enctype="multipart/form-data" id="sqlRestoreUploadForm">
+                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                        <input type="hidden" name="restore_sql_upload" value="1">
+
+                        <div class="mb-3">
+                            <label for="sqlRestoreFile" class="form-label" style="font-size:13px; font-weight:600;">
+                                <i class="bi bi-folder2-open me-1"></i> Select SQL file
+                            </label>
+                            <input type="file" class="form-control form-control-sm" id="sqlRestoreFile"
+                                   name="sql_file" accept=".sql" required>
+                            <div class="form-text" style="font-size:11px;">Only <code>.sql</code> backup files are accepted.</div>
+                        </div>
+
+                        <button type="button" class="btn-custom btn-primary-custom w-100"
+                                onclick="confirmSqlUploadRestore()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restore Database
+                        </button>
+                    </form>
+
+                    <div class="mt-2" style="font-size:11px; color:#dc3545;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>Warning:</strong> This will overwrite the current database.
+                    </div>
+                </div>
+            </div>
+
+            <!-- Create System Backup -->
+            <div class="col-lg-3 mb-3">
+                <div class="action-card h-100">
+                    <div class="action-card-header">
+                        <div class="action-card-icon backup-card-icon">
+                            <i class="bi bi-file-zip"></i>
+                        </div>
+                        <h3>Create System Backup</h3>
+                    </div>
+                    <p>Generate a full ZIP backup including the database dump + all project files (uploads, config, css, etc.). Excludes vendor/ and backups/ folder.</p>
+
+                    <button type="button" class="btn-custom btn-primary-custom w-100" onclick="confirmSystemBackup()" data-bs-toggle="tooltip" title="Create a full system backup (DB + files) as ZIP.">
+                        <i class="bi bi-archive"></i>
+                        Create System Backup
+                    </button>
+                    <!-- Hidden iframe for background form submission -->
+                    <iframe id="systemBackupIframe" name="systemBackupIframe" style="display:none;"></iframe>
+                    <form method="post" id="systemBackupForm" target="systemBackupIframe" data-ajax>
+                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                        <input type="hidden" name="create_system_backup" value="1">
+                    </form>
+
+                    <div class="mt-2" style="font-size:11px; color:#6c757d;">
+                        <i class="bi bi-info-circle"></i>
+                        Includes: index/, uploads/, config/, css/, images/, composer.json + DB dump<br>
+                        <i class="bi bi-x-circle text-danger"></i>
+                        Excludes: vendor/, backups/, node_modules/
+                    </div>
+                </div>
+            </div>
+
+            <!-- Restore System Backup -->
+            <div class="col-lg-3 mb-3">
+                <div class="action-card h-100">
                     <div class="action-card-header">
                         <div class="action-card-icon restore-card-icon">
-                            <i class="bi bi-arrow-counterclockwise"></i>
+                            <i class="bi bi-file-zip"></i>
                         </div>
-                        <h3>Restore Database</h3>
+                        <h3>Restore System Backup</h3>
                     </div>
 
-                    <!-- Restore from existing backups -->
-                    <div class="mb-3">
-                        <p class="mb-2" style="font-size:13px; color:#495057; font-weight:600;">
-                            <i class="bi bi-server me-1"></i> Restore from System Backups:
-                        </p>
-                        <?php if (!empty($backups)): ?>
-                            <?php $latest = $backups[0]; ?>
-                            <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 p-2 bg-light rounded">
-                                <div>
-                                    <div style="font-size:12px; color:#6c757d;">Latest:</div>
-                                    <div style="font-size:13px; font-weight:600;">
-                                        <?= htmlspecialchars($latest['name']) ?>
-                                    </div>
-                                    <div style="font-size:11px; color:#6c757d;">
-                                        <?= date('M j, Y - g:i A', $latest['date']) ?> · <?= formatFileSize($latest['size']) ?>
-                                    </div>
-                                </div>
-                                <button type="button" class="btn btn-sm btn-success" onclick="confirmRestoreFromBackup('<?= htmlspecialchars($latest['name'], ENT_QUOTES) ?>')">
-                                    <i class="bi bi-arrow-counterclockwise"></i> Restore
-                                </button>
-                            </div>
-                        <?php else: ?>
-                            <p class="text-muted" style="font-size:12px;">No system backups yet.</p>
-                        <?php endif; ?>
+                    <p style="font-size:13px; color:#6c757d;">
+                        Upload a <strong>.zip</strong> system backup to restore files and database.
+                    </p>
+
+                    <!-- Hidden iframe for background submission -->
+                    <iframe id="sysRestoreIframe" name="sysRestoreIframe" style="display:none;"></iframe>
+                    <form method="post" id="sysRestoreForm" enctype="multipart/form-data"
+                          target="sysRestoreIframe" data-ajax>
+                        <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                        <input type="hidden" name="restore_system_zip" value="1">
+
+                        <div class="mb-3">
+                            <label for="sysRestoreFile" class="form-label" style="font-size:13px; font-weight:600;">
+                                <i class="bi bi-folder2-open me-1"></i> Select ZIP file
+                            </label>
+                            <input type="file" class="form-control form-control-sm" id="sysRestoreFile"
+                                   name="zip_file" accept=".zip" required>
+                            <div class="form-text" style="font-size:11px;">Only <code>system_backup_*.zip</code> files are accepted.</div>
+                        </div>
+
+                        <button type="button" class="btn-custom btn-primary-custom w-100"
+                                onclick="confirmSystemRestore()">
+                            <i class="bi bi-arrow-counterclockwise me-1"></i> Restore System
+                        </button>
+                    </form>
+
+                    <div class="mt-2" style="font-size:11px; color:#dc3545;">
+                        <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                        <strong>Warning:</strong> This will overwrite existing files and database.
                     </div>
-
-
                 </div>
             </div>
 
@@ -1311,19 +1766,53 @@ if (isset($_GET['ajax']) && $_GET['ajax'] === '1') {
         <!-- Backup History -->
         <div class="history-card">
             <div class="history-header">
-                <i class="bi bi-clock-history" style="font-size: 20px; color: #667eea;"></i>
+                <i class="bi bi-clock-history" style="font-size: 20px; color: #2E86AB;"></i>
                 <h3>Backup History</h3>
-                <span class="backup-count"><?= $totalFiltered ?> Backups</span>
+                <span class="backup-count"><?= count($backups) ?> Backups</span>
             </div>
-            <div id="backupFiltersAndList">
-                <?php include __DIR__ . '/backup_list_partial.php'; ?>
+
+            <!-- Tabs -->
+            <ul class="nav nav-tabs mb-3" id="backupHistoryTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="tab-sql-btn" data-bs-toggle="tab" data-bs-target="#tab-sql" type="button" role="tab">
+                        <i class="bi bi-database me-1"></i> SQL Backup
+                        <?php $sqlCount = count(array_filter($backups, fn($b) => $b['type'] === 'sql')); ?>
+                        <span class="badge ms-1" style="background:#2E86AB; font-size:11px;"><?= $sqlCount ?></span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="tab-system-btn" data-bs-toggle="tab" data-bs-target="#tab-system" type="button" role="tab">
+                        <i class="bi bi-file-zip me-1"></i> System Backup
+                        <?php $zipCount = count(array_filter($backups, fn($b) => $b['type'] === 'zip')); ?>
+                        <span class="badge ms-1" style="background:#1B4F72; font-size:11px;"><?= $zipCount ?></span>
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="backupHistoryTabContent">
+                <!-- SQL Backup Tab -->
+                <div class="tab-pane fade show active" id="tab-sql" role="tabpanel">
+                    <div id="backupFiltersAndList">
+                        <?php include __DIR__ . '/backup_list_partial.php'; ?>
+                    </div>
+                </div>
+                <!-- System Backup Tab -->
+                <div class="tab-pane fade" id="tab-system" role="tabpanel">
+                    <div id="systemBackupFiltersAndList">
+                        <?php include __DIR__ . '/system_backup_list_partial.php'; ?>
+                    </div>
+                </div>
             </div>
+
         </div>
 
     </div>
 </div>
 
 <!-- Hidden form for restore & delete actions -->
+<!-- Hidden iframe for background file downloads (prevents page loading indicator) -->
+<iframe id="downloadBackupIframe" style="display:none;" title="download"></iframe>
+
 <form id="restoreForm" method="post" style="display: none;">
     <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
     <input type="hidden" name="restore_file" id="restoreFileName">
@@ -1432,6 +1921,23 @@ window.addEventListener('DOMContentLoaded', function() {
     });
 
     attachBackupFilterListeners();
+    attachSystemBackupFilterListeners();
+
+    // Restore active tab from sessionStorage
+    const savedTab = sessionStorage.getItem('backupActiveTab');
+    if (savedTab) {
+        const tabEl = document.querySelector('#backupHistoryTabs button[data-bs-target="' + savedTab + '"]');
+        if (tabEl) {
+            new bootstrap.Tab(tabEl).show();
+        }
+    }
+
+    // Save active tab on switch
+    document.querySelectorAll('#backupHistoryTabs button[data-bs-toggle="tab"]').forEach(function(btn) {
+        btn.addEventListener('shown.bs.tab', function(e) {
+            sessionStorage.setItem('backupActiveTab', e.target.getAttribute('data-bs-target'));
+        });
+    });
 });
 
 let backupSearchTimer = null;
@@ -1508,6 +2014,12 @@ function attachBackupFilterListeners() {
     });
 }
 
+// Download backup via hidden iframe (no page loading indicator stuck)
+function triggerBackupDownload(filename) {
+    const iframe = document.getElementById('downloadBackupIframe');
+    iframe.src = 'download_backup.php?file=' + encodeURIComponent(filename);
+}
+
 function fetchBackupList(page) {
     const filters = getBackupFilters();
     const params = new URLSearchParams({ ajax: '1', page: String(page) });
@@ -1581,9 +2093,486 @@ function confirmRestoreFromBackup(filename) {
     });
 }
 
-// SweetAlert confirmation for delete
-function confirmDelete(filename) {
+// Restore a system ZIP directly from backup history (no file upload needed)
+function confirmRestoreZipFromHistory(filename) {
+    Swal.fire({
+        title: 'Restore System Backup?',
+        html: `<div style="text-align:left;">
+                 <p><strong style="color:#dc3545;">⚠️ WARNING: This cannot be undone!</strong></p>
+                 <p>This will <strong>overwrite</strong> your current files and database with:</p>
+                 <p style="background:#f8f9fa; padding:8px; border-radius:6px; font-size:13px;">
+                   <i class="bi bi-file-zip"></i> <strong>${filename}</strong>
+                 </p>
+               </div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-arrow-counterclockwise"></i> Yes, Restore!',
+        cancelButtonText: 'Cancel',
+        customClass: { confirmButton: 'btn btn-danger px-4 py-2', cancelButton: 'btn btn-secondary px-4 py-2' },
+        buttonsStyling: false,
+    }).then(result => {
+        if (!result.isConfirmed) return;
 
+        let sec = 0;
+        Swal.fire({
+            title: 'Restoring System...',
+            html: 'Extracting files and restoring database.<br>Please do not close this page.<br><br><b>0</b> seconds elapsed',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+                const b = Swal.getHtmlContainer().querySelector('b');
+                window._sysRestoreTimer = setInterval(() => { sec++; b.textContent = sec; }, 1000);
+            },
+        });
+
+        const formData = new FormData();
+        formData.append('restore_system_zip', '1');
+        formData.append('restore_from_history', '1');
+        formData.append('zip_filename', filename);
+        formData.append('csrf_token', document.querySelector('#sysRestoreForm input[name="csrf_token"]').value);
+
+        fetch(window.location.href, { method: 'POST', body: formData })
+        .then(res => res.text())
+        .then(raw => {
+            clearInterval(window._sysRestoreTimer);
+            let data;
+            try { data = JSON.parse(raw.trim()); }
+            catch(e) {
+                Swal.fire({ title: 'Restore Failed!', html: '<pre style="font-size:11px;max-height:200px;overflow:auto;">' + raw.substring(0,1500) + '</pre>', icon: 'error', confirmButtonColor: '#dc3545', width:'650px' });
+                return;
+            }
+            if (data.success) {
+                Swal.fire({
+                    title: 'System Restored!',
+                    html: `System restored successfully!<br><br><strong>${data.file}</strong><br>
+                           <small class="text-muted">${data.extracted_files} files · ${data.query_count} SQL queries</small>`,
+                    icon: 'success',
+                    confirmButtonColor: '#28a745',
+                    customClass: { confirmButton: 'btn btn-success px-4 py-2' },
+                    buttonsStyling: false,
+                }).then(() => location.reload());
+            } else {
+                Swal.fire({ title: 'Restore Failed!', html: data.error || 'Unknown error.', icon: 'error', confirmButtonColor: '#dc3545' });
+            }
+        })
+        .catch(err => {
+            clearInterval(window._sysRestoreTimer);
+            Swal.fire({ title: 'Restore Failed!', html: 'Network error: ' + err.message, icon: 'error', confirmButtonColor: '#dc3545' });
+        });
+    });
+}
+
+// SweetAlert confirmation for SQL upload restore
+function confirmSqlUploadRestore() {
+    const fileInput = document.getElementById('sqlRestoreFile');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        Swal.fire({
+            title: 'No File Selected',
+            text: 'Please choose a .sql backup file first.',
+            icon: 'warning',
+            confirmButtonColor: '#28a745',
+        });
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+
+    Swal.fire({
+        title: 'Restore Database?',
+        html: `<div style="text-align:left;">
+                 <p><strong style="color:#dc3545;">⚠️ WARNING: This cannot be undone!</strong></p>
+                 <p>This will <strong>overwrite</strong> your current database with:</p>
+                 <p style="background:#f8f9fa; padding:8px; border-radius:6px; font-size:13px;">
+                   <i class="bi bi-file-earmark-code"></i> <strong>${file.name}</strong><br>
+                   <small class="text-muted">${sizeMB} MB</small>
+                 </p>
+               </div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#28a745',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-arrow-counterclockwise"></i> Yes, Restore!',
+        cancelButtonText: 'Cancel',
+        customClass: { confirmButton: 'btn btn-success px-4 py-2', cancelButton: 'btn btn-secondary px-4 py-2' },
+        buttonsStyling: false,
+    }).then(result => {
+        if (!result.isConfirmed) return;
+
+        let sec = 0;
+        Swal.fire({
+            title: 'Restoring Database...',
+            html: 'Please wait while we restore your database.<br>Do not close this page.<br><br><b>0</b> seconds elapsed',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+                const b = Swal.getHtmlContainer().querySelector('b');
+                window._sqlRestoreTimer = setInterval(() => { sec++; b.textContent = sec; }, 1000);
+            },
+        });
+
+        const formData = new FormData();
+        formData.append('restore_sql_upload', '1');
+        formData.append('csrf_token', document.querySelector('#sqlRestoreUploadForm input[name="csrf_token"]').value);
+        formData.append('sql_file', file);
+
+        fetch(window.location.href, { method: 'POST', body: formData })
+        .then(res => res.text())
+        .then(raw => {
+            clearInterval(window._sqlRestoreTimer);
+            let data;
+            try { data = JSON.parse(raw.trim()); }
+            catch(e) {
+                Swal.fire({ title: 'Restore Failed!', html: '<pre style="font-size:11px;max-height:200px;overflow:auto;">' + raw.substring(0,1500) + '</pre>', icon: 'error', confirmButtonColor: '#dc3545', width:'650px' });
+                return;
+            }
+            if (data.success) {
+                let warningHtml = data.warnings ? `<br><small class="text-warning"><i class="bi bi-exclamation-triangle"></i> Warnings: ${data.warnings}</small>` : '';
+                Swal.fire({
+                    title: 'Database Restored!',
+                    html: `Database restored successfully!<br><br>
+                           <strong>${data.file}</strong><br>
+                           <small class="text-muted">${data.query_count} queries executed${data.failed_count > 0 ? ', ' + data.failed_count + ' failed' : ''}</small>
+                           ${warningHtml}`,
+                    icon: 'success',
+                    confirmButtonColor: '#28a745',
+                    customClass: { confirmButton: 'btn btn-success px-4 py-2' },
+                    buttonsStyling: false,
+                }).then(() => location.reload());
+            } else {
+                Swal.fire({ title: 'Restore Failed!', html: data.error || 'Unknown error.', icon: 'error', confirmButtonColor: '#dc3545' });
+            }
+        })
+        .catch(err => {
+            clearInterval(window._sqlRestoreTimer);
+            Swal.fire({ title: 'Restore Failed!', html: 'Network error: ' + err.message, icon: 'error', confirmButtonColor: '#dc3545' });
+        });
+    });
+}
+
+// SweetAlert confirmation for system backup
+function confirmSystemBackup() {
+    Swal.fire({
+        title: 'Create System Backup?',
+        html: `This will create a <strong>ZIP file</strong> containing:<br><br>
+               <ul style="text-align:left; font-size:13px;">
+                 <li>Database dump (SQL)</li>
+                 <li>index/, uploads/, config/, css/, images/</li>
+                 <li>composer.json, composer.lock</li>
+               </ul>
+               <small class="text-muted">Excludes: vendor/, backups/, node_modules/</small><br><br>
+               This may take a few seconds depending on file size.`,
+        icon: 'info',
+        showCancelButton: true,
+        confirmButtonColor: '#1B4F72',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-archive"></i> Yes, Create It',
+        cancelButtonText: '<i class="bi bi-x-circle"></i> Cancel',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'btn btn-primary px-4 py-2',
+            cancelButton: 'btn btn-secondary px-4 py-2'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            // Show loading
+            let sec = 0;
+            Swal.fire({
+                title: 'Creating System Backup...',
+                html: 'Please wait, this may take a moment.<br><br><b>0</b> seconds elapsed',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                didOpen: () => {
+                    Swal.showLoading();
+                    const b = Swal.getHtmlContainer().querySelector('b');
+                    window._sysBackupTimer = setInterval(() => { sec++; b.textContent = sec; }, 1000);
+                },
+                willClose: () => { clearInterval(window._sysBackupTimer); }
+            });
+
+            // Submit form via iframe (no page reload)
+            const iframe = document.getElementById('systemBackupIframe');
+            iframe.onload = function() {
+                clearInterval(window._sysBackupTimer);
+                try {
+                    const raw = iframe.contentDocument?.body?.innerText || iframe.contentWindow?.document?.body?.innerText || '';
+                    const data = JSON.parse(raw);
+                    if (data.success) {
+                        Swal.fire({
+                            title: 'System Backup Created!',
+                            html: `Backup created successfully!<br><br>
+                                   <strong>${data.file}</strong><br>
+                                   <small class="text-muted">${data.size} MB</small><br><br>
+                                   <a href="download_backup.php?file=${encodeURIComponent(data.file)}" 
+                                      class="btn btn-primary mt-2" style="background:#1B4F72; border:none;"
+                                      download data-print>
+                                      <i class="bi bi-file-zip"></i> Download ZIP
+                                   </a>`,
+                            icon: 'success',
+                            confirmButtonColor: '#1B4F72',
+                            confirmButtonText: 'OK',
+                            customClass: { confirmButton: 'btn btn-primary px-4 py-2' },
+                            buttonsStyling: false
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Backup Failed!',
+                            html: data.error || 'An unknown error occurred.',
+                            icon: 'error',
+                            confirmButtonColor: '#dc3545',
+                            confirmButtonText: 'OK'
+                        });
+                    }
+                } catch(e) {
+                    Swal.fire({
+                        title: 'Backup Failed!',
+                        html: 'Could not parse server response. Please try again.',
+                        icon: 'error',
+                        confirmButtonColor: '#dc3545',
+                        confirmButtonText: 'OK'
+                    });
+                }
+            };
+            document.getElementById('systemBackupForm').submit();
+        }
+    });
+}
+
+// SweetAlert confirmation for system restore (ZIP upload) — uses fetch() for reliable response
+function confirmSystemRestore() {
+    const fileInput = document.getElementById('sysRestoreFile');
+    if (!fileInput || !fileInput.files || fileInput.files.length === 0) {
+        Swal.fire({
+            title: 'No File Selected',
+            text: 'Please choose a system backup .zip file first.',
+            icon: 'warning',
+            confirmButtonColor: '#e67e22',
+        });
+        return;
+    }
+
+    const file = fileInput.files[0];
+    const sizeMB = (file.size / 1024 / 1024).toFixed(2);
+
+    Swal.fire({
+        title: 'Restore System Backup?',
+        html: `<div style="text-align:left;">
+                 <p><strong style="color:#dc3545;">⚠️ WARNING: This cannot be undone!</strong></p>
+                 <p>This will <strong>overwrite</strong> your current files and database with:</p>
+                 <p style="background:#f8f9fa; padding:8px; border-radius:6px; font-size:13px;">
+                   <i class="bi bi-file-zip"></i> <strong>${file.name}</strong><br>
+                   <small class="text-muted">${sizeMB} MB</small>
+                 </p>
+                 <p style="font-size:13px;">Make sure this is a valid <code>system_backup_*.zip</code> created by this system.</p>
+               </div>`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-arrow-counterclockwise"></i> Yes, Restore!',
+        cancelButtonText: 'Cancel',
+        customClass: { confirmButton: 'btn btn-danger px-4 py-2', cancelButton: 'btn btn-secondary px-4 py-2' },
+        buttonsStyling: false,
+    }).then(result => {
+        if (!result.isConfirmed) return;
+
+        let sec = 0;
+        Swal.fire({
+            title: 'Restoring System...',
+            html: 'Extracting files and restoring database.<br>Please do not close this page.<br><br><b>0</b> seconds elapsed',
+            allowOutsideClick: false,
+            allowEscapeKey: false,
+            didOpen: () => {
+                Swal.showLoading();
+                const b = Swal.getHtmlContainer().querySelector('b');
+                window._sysRestoreTimer = setInterval(() => { sec++; b.textContent = sec; }, 1000);
+            },
+        });
+
+        // Build FormData and use fetch() — avoids iframe parsing issues
+        const formData = new FormData();
+        formData.append('restore_system_zip', '1');
+        formData.append('csrf_token', document.querySelector('#sysRestoreForm input[name="csrf_token"]').value);
+        formData.append('zip_file', file);
+
+        fetch(window.location.href, {
+            method: 'POST',
+            body: formData,
+        })
+        .then(res => res.text())
+        .then(raw => {
+            clearInterval(window._sysRestoreTimer);
+            let data;
+            try {
+                // Strip any leading/trailing whitespace or BOM before parsing
+                data = JSON.parse(raw.trim());
+            } catch (e) {
+                Swal.fire({
+                    title: 'Restore Failed!',
+                    html: '<b>Raw server response:</b><br><pre style="text-align:left;font-size:11px;max-height:200px;overflow:auto;background:#f8f9fa;padding:8px;border-radius:4px;">' + raw.substring(0, 1500) + '</pre>',
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545',
+                    width: '650px',
+                });
+                return;
+            }
+
+            if (data.success) {
+                let warningHtml = '';
+                if (data.warnings) {
+                    warningHtml = `<br><small class="text-warning"><i class="bi bi-exclamation-triangle"></i> Some warnings: ${data.warnings}</small>`;
+                }
+                Swal.fire({
+                    title: 'System Restored!',
+                    html: `System has been restored successfully!<br><br>
+                           <strong>${data.file}</strong><br>
+                           <small class="text-muted">${data.extracted_files} files extracted · ${data.query_count} SQL queries executed</small>
+                           ${warningHtml}`,
+                    icon: 'success',
+                    confirmButtonColor: '#28a745',
+                    confirmButtonText: 'OK',
+                    customClass: { confirmButton: 'btn btn-success px-4 py-2' },
+                    buttonsStyling: false,
+                }).then(() => { location.reload(); });
+            } else {
+                Swal.fire({
+                    title: 'Restore Failed!',
+                    html: data.error || 'An unknown error occurred.',
+                    icon: 'error',
+                    confirmButtonColor: '#dc3545',
+                });
+            }
+        })
+        .catch(err => {
+            clearInterval(window._sysRestoreTimer);
+            Swal.fire({
+                title: 'Restore Failed!',
+                html: 'Network error: ' + err.message,
+                icon: 'error',
+                confirmButtonColor: '#dc3545',
+            });
+        });
+    });
+}
+
+// SweetAlert confirmation for delete (ZIP system backups)
+function confirmDeleteZip(filename) {
+    Swal.fire({
+        title: 'Delete System Backup?',
+        html: `Are you sure you want to delete this system backup?<br><br><strong>${filename}</strong><br><br>This action cannot be undone.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: '<i class="bi bi-trash"></i> Yes, Delete It',
+        cancelButtonText: '<i class="bi bi-x-circle"></i> Cancel',
+        reverseButtons: true,
+        customClass: {
+            confirmButton: 'btn btn-danger px-4 py-2',
+            cancelButton: 'btn btn-secondary px-4 py-2'
+        },
+        buttonsStyling: false
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('deleteFileName').value = filename;
+            document.getElementById('deleteForm').submit();
+        }
+    });
+}
+
+// ===== System Backup Tab Filters & AJAX =====
+let sysBackupSearchTimer = null;
+
+function getSysBackupFilters() {
+    const wrapper = document.getElementById('systemBackupFiltersAndList');
+    if (!wrapper) return {};
+    return {
+        sys_search:    wrapper.querySelector('#sysBackupSearch')?.value   || '',
+        sys_date_from: wrapper.querySelector('#sysBackupDateFrom')?.value || '',
+        sys_date_to:   wrapper.querySelector('#sysBackupDateTo')?.value   || '',
+        sys_min_size:  wrapper.querySelector('#sysBackupMinSize')?.value  || '',
+        sys_max_size:  wrapper.querySelector('#sysBackupMaxSize')?.value  || '',
+        sys_sort:      wrapper.querySelector('#sysBackupSort')?.value     || 'newest',
+    };
+}
+
+function attachSystemBackupFilterListeners() {
+    const wrapper = document.getElementById('systemBackupFiltersAndList');
+    if (!wrapper) return;
+
+    const searchInput = wrapper.querySelector('#sysBackupSearch');
+    if (searchInput && !searchInput.dataset.bound) {
+        searchInput.dataset.bound = '1';
+        searchInput.addEventListener('input', function() {
+            if (sysBackupSearchTimer) clearTimeout(sysBackupSearchTimer);
+            sysBackupSearchTimer = setTimeout(function() { fetchSystemBackupList(1); }, 400);
+        });
+        searchInput.addEventListener('keyup', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (sysBackupSearchTimer) clearTimeout(sysBackupSearchTimer);
+                fetchSystemBackupList(1);
+            }
+        });
+    }
+
+    const searchBtn = wrapper.querySelector('#sysBackupSearchBtn');
+    if (searchBtn && !searchBtn.dataset.bound) {
+        searchBtn.dataset.bound = '1';
+        searchBtn.addEventListener('click', function() {
+            if (sysBackupSearchTimer) clearTimeout(sysBackupSearchTimer);
+            fetchSystemBackupList(1);
+        });
+    }
+
+    const filterInputs = wrapper.querySelectorAll('.sys-backup-filter-input');
+    filterInputs.forEach(function(input) {
+        if (!input.dataset.bound) {
+            input.dataset.bound = '1';
+            input.addEventListener('change', function() { fetchSystemBackupList(1); });
+        }
+    });
+
+    // Pagination buttons
+    wrapper.addEventListener('click', function(e) {
+        const btn = e.target.closest('[data-sys-page]');
+        if (btn) {
+            e.preventDefault();
+            const p = parseInt(btn.getAttribute('data-sys-page'), 10);
+            if (!isNaN(p) && p > 0) { fetchSystemBackupList(p); }
+        }
+    });
+}
+
+function fetchSystemBackupList(page) {
+    const filters = getSysBackupFilters();
+    const params = new URLSearchParams({ ajax: '1', tab: 'system', sys_page: String(page) });
+    Object.keys(filters).forEach(function(key) {
+        if (filters[key] !== '') { params.append(key, filters[key]); }
+    });
+
+    fetch('backup.php?' + params.toString(), {
+        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+    })
+        .then(function(res) { return res.json(); })
+        .then(function(data) {
+            const wrapper = document.getElementById('systemBackupFiltersAndList');
+            if (wrapper && data.html) {
+                wrapper.innerHTML = data.html;
+                attachSystemBackupFilterListeners();
+            }
+        })
+        .catch(function(err) { console.error('Failed to fetch system backups list', err); });
+}
+
+
+// SweetAlert confirmation for delete (SQL backups)
+function confirmDelete(filename) {
     Swal.fire({
         title: 'Delete Backup?',
         html: `Are you sure you want to delete this backup?<br><br><strong>${filename}</strong><br><br>This action cannot be undone.`,

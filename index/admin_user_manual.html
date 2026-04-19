@@ -1,0 +1,908 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin User Manual – Bangkero Association Management System</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --teal: #2E86AB;
+      --dark-blue: #1B4F72;
+      --light-bg: #f4f6f9;
+      --card-bg: #ffffff;
+      --text: #1a1a1a;
+      --muted: #6c757d;
+      --border: #e9ecef;
+    }
+
+    * { box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: var(--light-bg); color: var(--text); margin: 0; }
+
+    /* ── Cover ── */
+    .cover {
+      background: linear-gradient(135deg, var(--teal) 0%, var(--dark-blue) 100%);
+      color: white; padding: 60px 40px 50px; text-align: center;
+    }
+    .cover-logo { width: 90px; height: 90px; border-radius: 20px; background: rgba(255,255,255,.2); padding: 12px; margin: 0 auto 20px; display: flex; align-items: center; justify-content: center; font-size: 50px; }
+    .cover h1 { font-family: 'Poppins', sans-serif; font-size: 32px; font-weight: 800; margin: 0 0 10px; }
+    .cover p  { font-size: 15px; opacity: .85; margin: 0 0 6px; }
+    .cover .meta { font-size: 12px; opacity: .65; margin-top: 18px; }
+
+    /* ── Layout ── */
+    .page-wrap { display: flex; min-height: 100vh; }
+    .sidebar-toc {
+      width: 260px; flex-shrink: 0; background: white;
+      border-right: 1px solid var(--border);
+      position: sticky; top: 0; height: 100vh; overflow-y: auto;
+      padding: 24px 0 40px;
+    }
+    .sidebar-toc::-webkit-scrollbar { width: 4px; }
+    .sidebar-toc::-webkit-scrollbar-thumb { background: #d0d8e4; border-radius: 4px; }
+    .toc-title { font-size: 11px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); padding: 0 20px 8px; }
+    .toc-group { margin-bottom: 4px; }
+    .toc-group-label { font-size: 10px; font-weight: 700; letter-spacing: 1.2px; text-transform: uppercase; color: #b0bec5; padding: 12px 20px 4px; }
+    .toc-link { display: flex; align-items: center; gap: 8px; padding: 8px 20px; font-size: 13px; color: #475569; text-decoration: none; border-left: 3px solid transparent; transition: all .15s; }
+    .toc-link:hover { background: #f1f5f9; color: var(--teal); border-left-color: var(--teal); }
+    .toc-link i { font-size: 14px; width: 18px; flex-shrink: 0; }
+
+    .main-content { flex: 1; padding: 40px 48px 80px; max-width: 900px; }
+
+    /* ── Section cards ── */
+    .section { margin-bottom: 48px; scroll-margin-top: 24px; }
+    .section-header {
+      display: flex; align-items: center; gap: 14px;
+      background: linear-gradient(135deg, var(--teal) 0%, var(--dark-blue) 100%);
+      color: white; border-radius: 14px 14px 0 0; padding: 18px 24px;
+    }
+    .section-header .sec-icon { font-size: 28px; }
+    .section-header h2 { font-family: 'Poppins', sans-serif; font-size: 20px; font-weight: 800; margin: 0; }
+    .section-header .sec-badge { margin-left: auto; font-size: 11px; background: rgba(255,255,255,.2); padding: 4px 12px; border-radius: 20px; white-space: nowrap; }
+    .section-body { background: white; border: 1px solid var(--border); border-top: none; border-radius: 0 0 14px 14px; padding: 28px 32px; box-shadow: 0 4px 18px rgba(0,0,0,.05); }
+
+    h3.sub-head { font-size: 15px; font-weight: 700; color: var(--dark-blue); margin: 24px 0 10px; display: flex; align-items: center; gap: 8px; padding-bottom: 6px; border-bottom: 2px solid #f0f4f8; }
+    h3.sub-head i { color: var(--teal); }
+
+    p, li { font-size: 14px; line-height: 1.75; color: #444; }
+    ul, ol { padding-left: 20px; }
+    li { margin-bottom: 5px; }
+
+    /* ── Buttons ── */
+    .btn-demo { display: inline-flex; align-items: center; gap: 6px; padding: 6px 16px; border-radius: 20px; font-size: 13px; font-weight: 600; color: white; margin: 3px 4px 3px 0; text-decoration: none; border: none; cursor: default; }
+    .b-teal   { background: linear-gradient(135deg, var(--teal), var(--dark-blue)); }
+    .b-blue   { background: linear-gradient(135deg, #0d6efd, #0a58ca); }
+    .b-red    { background: linear-gradient(135deg, #dc3545, #c82333); }
+    .b-green  { background: linear-gradient(135deg, #198754, #157347); }
+    .b-orange { background: linear-gradient(135deg, #fd7e14, #e8640a); }
+    .b-gray   { background: #6c757d; }
+    .b-yellow { background: linear-gradient(135deg, #ffc107, #e0a800); color: #212529; }
+
+    /* ── Notes ── */
+    .note { border-radius: 8px; padding: 12px 16px; margin: 12px 0; font-size: 13px; line-height: 1.65; display: flex; gap: 10px; align-items: flex-start; }
+    .note i { font-size: 17px; flex-shrink: 0; margin-top: 1px; }
+    .note-info    { background: #e8f4fd; border-left: 4px solid var(--teal); }
+    .note-info i  { color: var(--teal); }
+    .note-warn    { background: #fff8e1; border-left: 4px solid #ffc107; }
+    .note-warn i  { color: #e6a800; }
+    .note-danger  { background: #fff0f0; border-left: 4px solid #dc3545; }
+    .note-danger i { color: #dc3545; }
+    .note-success { background: #f0fff4; border-left: 4px solid #198754; }
+    .note-success i { color: #198754; }
+
+    /* ── Steps ── */
+    .steps { counter-reset: step; padding: 0; list-style: none; margin: 12px 0 16px; }
+    .steps li { display: flex; gap: 14px; margin-bottom: 10px; counter-increment: step; }
+    .steps li::before { content: counter(step); width: 26px; height: 26px; background: linear-gradient(135deg, var(--teal), var(--dark-blue)); color: white; border-radius: 50%; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; margin-top: 1px; }
+    .steps li span { font-size: 14px; line-height: 1.65; color: #444; }
+
+    /* ── Mini role table ── */
+    .role-table th { background: var(--dark-blue); color: white; font-size: 12px; padding: 8px 12px; }
+    .role-table td { font-size: 13px; padding: 8px 12px; vertical-align: middle; }
+    .role-table .chk { color: #198754; font-size: 15px; }
+    .role-table .no  { color: #dc3545; font-size: 15px; }
+
+    /* ── Nav section divider ── */
+    .nav-group-divider { margin: 32px 0 16px; padding: 6px 0 6px 14px; border-left: 4px solid var(--teal); font-size: 12px; font-weight: 800; letter-spacing: 1.5px; text-transform: uppercase; color: var(--teal); background: #f0f8fc; border-radius: 0 6px 6px 0; }
+
+    /* ── Quick ref grid ── */
+    .quick-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px,1fr)); gap: 12px; margin: 12px 0; }
+    .quick-card { background: #f8fafc; border: 1px solid var(--border); border-radius: 10px; padding: 14px 16px; }
+    .quick-card i { font-size: 22px; color: var(--teal); margin-bottom: 6px; display: block; }
+    .quick-card strong { font-size: 14px; display: block; margin-bottom: 4px; }
+    .quick-card span { font-size: 12px; color: var(--muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 900px) {
+      .sidebar-toc { display: none; }
+      .main-content { padding: 24px 20px 60px; }
+    }
+    @media print {
+      .sidebar-toc { display: none; }
+      .section { page-break-inside: avoid; }
+      .cover { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+      .section-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Cover -->
+<div class="cover">
+  <div class="cover-logo"><i class="bi bi-shield-check"></i></div>
+  <h1>Admin User Manual</h1>
+  <p>Bangkero Association Management System</p>
+  <p>Complete guide to every button &amp; feature in the Admin Panel</p>
+  <div class="meta">
+    Version 1.0 &nbsp;·&nbsp; For Admin, Officer &amp; Member Roles &nbsp;·&nbsp; Generated: <?php echo date('F j, Y'); ?>
+  </div>
+</div>
+
+<div class="page-wrap">
+
+  <!-- Left TOC -->
+  <nav class="sidebar-toc">
+    <div class="toc-title">Contents</div>
+
+    <div class="toc-group">
+      <a href="#nav-overview" class="toc-link"><i class="bi bi-layout-sidebar"></i>Sidebar Navigation</a>
+    </div>
+
+    <div class="toc-group-label">Main</div>
+    <a href="#dashboard" class="toc-link"><i class="bi bi-grid-1x2"></i>Dashboard</a>
+
+    <div class="toc-group-label">Management</div>
+    <a href="#members" class="toc-link"><i class="bi bi-people"></i>Members</a>
+    <a href="#officers" class="toc-link"><i class="bi bi-person-badge"></i>Officers</a>
+    <a href="#manage-officers" class="toc-link"><i class="bi bi-shield-lock"></i>Manage Officers</a>
+    <a href="#roles" class="toc-link"><i class="bi bi-shield-check"></i>Roles</a>
+    <a href="#awards" class="toc-link"><i class="bi bi-trophy"></i>Awards</a>
+
+    <div class="toc-group-label">Activities</div>
+    <a href="#events" class="toc-link"><i class="bi bi-calendar-event"></i>Events</a>
+    <a href="#attendance" class="toc-link"><i class="bi bi-clipboard-data"></i>Attendance Reports</a>
+    <a href="#galleries" class="toc-link"><i class="bi bi-images"></i>Galleries</a>
+    <a href="#announcements" class="toc-link"><i class="bi bi-megaphone"></i>Announcements</a>
+
+    <div class="toc-group-label">Communication</div>
+    <a href="#messages" class="toc-link"><i class="bi bi-envelope"></i>Contact Messages</a>
+
+    <div class="toc-group-label">Transparency</div>
+    <a href="#transparency" class="toc-link"><i class="bi bi-eye"></i>Transparency</a>
+
+    <div class="toc-group-label">System</div>
+    <a href="#backup" class="toc-link"><i class="bi bi-cloud-arrow-up"></i>Backup &amp; Restore</a>
+    <a href="#logs" class="toc-link"><i class="bi bi-journal-text"></i>Activity Logs</a>
+
+    <div class="toc-group-label">Archives</div>
+    <a href="#archives" class="toc-link"><i class="bi bi-archive"></i>All Archive Sections</a>
+
+    <div class="toc-group-label">Settings</div>
+    <a href="#profile-settings" class="toc-link"><i class="bi bi-person-circle"></i>Profile Settings</a>
+    <a href="#system-config" class="toc-link"><i class="bi bi-sliders"></i>System Configuration</a>
+    <a href="#website-content" class="toc-link"><i class="bi bi-file-text"></i>Website Content</a>
+
+    <div class="toc-group-label">Account</div>
+    <a href="#logout" class="toc-link"><i class="bi bi-box-arrow-right"></i>Logout</a>
+  </nav>
+
+  <!-- Main content -->
+  <div class="main-content">
+
+    <!-- ── SIDEBAR OVERVIEW ── -->
+    <div class="section" id="nav-overview">
+      <div class="section-header">
+        <i class="bi bi-layout-sidebar sec-icon"></i>
+        <h2>Sidebar Navigation Overview</h2>
+        <span class="sec-badge">All Roles</span>
+      </div>
+      <div class="section-body">
+        <p>The sidebar on the left side of every admin page is the main navigation hub. It stays visible at all times on desktop and can be toggled on mobile.</p>
+
+        <h3 class="sub-head"><i class="bi bi-toggles"></i> Sidebar Controls</h3>
+        <div class="quick-grid">
+          <div class="quick-card">
+            <i class="bi bi-list"></i>
+            <strong>Hamburger / Collapse Button</strong>
+            <span>On desktop: collapses sidebar to icon-only mode. On mobile: opens or closes the sidebar drawer.</span>
+          </div>
+          <div class="quick-card">
+            <i class="bi bi-chevron-down"></i>
+            <strong>Dropdown Arrows</strong>
+            <span>Archive and Settings sections have a caret arrow. Click the parent item to expand or collapse the sub-menu.</span>
+          </div>
+          <div class="quick-card">
+            <i class="bi bi-person-circle"></i>
+            <strong>User Pill (Top Right)</strong>
+            <span>Shows your name, avatar, and role. Informational only — no clickable actions.</span>
+          </div>
+          <div class="quick-card">
+            <i class="bi bi-circle-fill" style="color:#ef4444;"></i>
+            <strong>Red Badge (Envelope)</strong>
+            <span>Appears on Contact Messages when there are unread messages. Number indicates the count.</span>
+          </div>
+        </div>
+
+        <h3 class="sub-head"><i class="bi bi-person-badge"></i> Role Visibility</h3>
+        <div class="table-responsive">
+          <table class="table table-bordered role-table align-middle">
+            <thead><tr><th>Sidebar Section</th><th>Admin</th><th>Officer</th><th>Member</th></tr></thead>
+            <tbody>
+              <tr><td>Dashboard</td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td></tr>
+              <tr><td>Members / Officers / Events / Attendance / Galleries / Announcements / Messages</td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-x-circle-fill no"></i></td></tr>
+              <tr><td>Manage Officers / Roles / Awards</td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-x-circle-fill no"></i></td><td class="text-center"><i class="bi bi-x-circle-fill no"></i></td></tr>
+              <tr><td>Transparency</td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center">Treasurer / Secretary only</td><td class="text-center"><i class="bi bi-x-circle-fill no"></i></td></tr>
+              <tr><td>Backup, Logs, Archives, System Config, Website Content</td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-x-circle-fill no"></i></td><td class="text-center"><i class="bi bi-x-circle-fill no"></i></td></tr>
+              <tr><td>Profile Settings</td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td></tr>
+              <tr><td>Logout</td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td><td class="text-center"><i class="bi bi-check-circle-fill chk"></i></td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ MAIN ════ -->
+    <div class="nav-group-divider">Main</div>
+
+    <!-- Dashboard -->
+    <div class="section" id="dashboard">
+      <div class="section-header">
+        <i class="bi bi-grid-1x2 sec-icon"></i>
+        <h2>Dashboard</h2>
+        <span class="sec-badge">Admin · Officer · Member</span>
+      </div>
+      <div class="section-body">
+        <p>The Dashboard is the first page you see after logging in. It shows a high-level summary of the entire association at a glance.</p>
+
+        <h3 class="sub-head"><i class="bi bi-bar-chart"></i> Summary Cards</h3>
+        <ul>
+          <li><strong>Total Members</strong> – total registered members in the system</li>
+          <li><strong>Active Officers</strong> – current officers with active terms</li>
+          <li><strong>Upcoming Events</strong> – events scheduled in the future</li>
+          <li><strong>Announcements</strong> – number of active announcements</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-calendar-event"></i> Upcoming Events Widget</h3>
+        <p>Lists the next upcoming events. Click an event name to go directly to its detail page.</p>
+
+        <h3 class="sub-head"><i class="bi bi-megaphone"></i> Recent Announcements Widget</h3>
+        <p>Shows the latest announcements. Click to read the full announcement.</p>
+
+        <div class="note note-info">
+          <i class="bi bi-info-circle-fill"></i>
+          <div>The Dashboard is read-only. No data can be edited from here — use the dedicated management pages for edits.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ MANAGEMENT ════ -->
+    <div class="nav-group-divider">Management</div>
+
+    <!-- Members -->
+    <div class="section" id="members">
+      <div class="section-header">
+        <i class="bi bi-people sec-icon"></i>
+        <h2>Members</h2>
+        <span class="sec-badge">Admin · Officer</span>
+      </div>
+      <div class="section-body">
+        <p>Manage all registered association members — add, edit, view, export, and archive member records.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Main Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Member</span>
+        <span class="btn-demo b-blue"><i class="bi bi-file-earmark-excel"></i> Export Excel</span>
+        <span class="btn-demo b-gray"><i class="bi bi-printer"></i> Print</span>
+        <ul class="mt-2">
+          <li><strong>Add Member</strong> – opens a form to register a new member (name, contact info, address, membership date, etc.)</li>
+          <li><strong>Export Excel</strong> – downloads the current filtered member list as an Excel / CSV file</li>
+          <li><strong>Print</strong> – opens a print-ready view of the member list</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-table"></i> Per-Row Actions</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-eye"></i> View</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li><strong>View</strong> – shows full member profile including attendance history</li>
+          <li><strong>Edit</strong> – update member information</li>
+          <li><strong>Archive</strong> – moves member to the Archives section (not deleted, can be restored)</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-funnel"></i> Search &amp; Filter</h3>
+        <p>Use the search box to find members by name or ID. Filter by status (Active / Inactive) or membership date range.</p>
+      </div>
+    </div>
+
+    <!-- Officers -->
+    <div class="section" id="officers">
+      <div class="section-header">
+        <i class="bi bi-person-badge sec-icon"></i>
+        <h2>Officers</h2>
+        <span class="sec-badge">Admin · Officer</span>
+      </div>
+      <div class="section-body">
+        <p>View the list of all officers — both current and past. Shows position, term dates, and contact information.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-eye"></i> View Profile</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li><strong>View Profile</strong> – see full officer details</li>
+          <li><strong>Edit</strong> – update officer details (position, term dates)</li>
+          <li><strong>Archive</strong> – archives the officer record (for past officers)</li>
+        </ul>
+
+        <div class="note note-info">
+          <i class="bi bi-info-circle-fill"></i>
+          <div>Officers are linked to Members. An officer record references a member's profile. Use <em>Manage Officers</em> to create new officer assignments.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Manage Officers -->
+    <div class="section" id="manage-officers">
+      <div class="section-header">
+        <i class="bi bi-shield-lock sec-icon"></i>
+        <h2>Manage Officers</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>Assign members to officer positions and manage their system access roles (Treasurer, Secretary, etc.).</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Officer</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-red"><i class="bi bi-trash3"></i> Remove</span>
+        <ul class="mt-2">
+          <li><strong>Add Officer</strong> – select a member, assign a role/position, set term start and end dates, and set their Transparency access (Treasurer / Secretary / Both)</li>
+          <li><strong>Edit</strong> – change role, term dates, or transparency access</li>
+          <li><strong>Remove</strong> – removes the officer assignment (member stays in the system)</li>
+        </ul>
+
+        <div class="note note-warn">
+          <i class="bi bi-exclamation-circle-fill"></i>
+          <div>The <strong>Transparency Role</strong> field controls what an Officer can see in the Transparency page. Set to <em>Treasurer</em> for financial data, <em>Secretary</em> for programs, or <em>Both</em> for full access.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Roles -->
+    <div class="section" id="roles">
+      <div class="section-header">
+        <i class="bi bi-shield-check sec-icon"></i>
+        <h2>Roles</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>Create and manage officer role names (e.g., President, Vice President, Treasurer, Secretary).</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Role</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li><strong>Add Role</strong> – create a new named officer role</li>
+          <li><strong>Edit</strong> – rename an existing role</li>
+          <li><strong>Archive</strong> – hides the role from active use (still linked to past officers)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Awards -->
+    <div class="section" id="awards">
+      <div class="section-header">
+        <i class="bi bi-trophy sec-icon"></i>
+        <h2>Awards</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>Record and manage awards given to members of the association.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Award</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li><strong>Add Award</strong> – fill in award title, recipient (member), date, and description</li>
+          <li><strong>Edit</strong> – update award details</li>
+          <li><strong>Archive</strong> – moves award to Archives (restorable)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════ ACTIVITIES ════ -->
+    <div class="nav-group-divider">Activities</div>
+
+    <!-- Events -->
+    <div class="section" id="events">
+      <div class="section-header">
+        <i class="bi bi-calendar-event sec-icon"></i>
+        <h2>Events</h2>
+        <span class="sec-badge">Admin · Officer</span>
+      </div>
+      <div class="section-body">
+        <p>Create, manage, and track association events. Members can be marked present/absent per event.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Main Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Event</span>
+        <span class="btn-demo b-blue"><i class="bi bi-file-earmark-pdf"></i> Export PDF</span>
+        <ul class="mt-2">
+          <li><strong>Add Event</strong> – create a new event with title, date, time, venue, and description</li>
+          <li><strong>Export PDF</strong> – generates a printable PDF of the event list</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-table"></i> Per-Row Actions</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-people"></i> Attendance</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li><strong>Attendance</strong> – opens the attendance sheet for that event; mark members as Present, Absent, or Excused</li>
+          <li><strong>Edit</strong> – update event details</li>
+          <li><strong>Archive</strong> – moves event to Archives</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Attendance Reports -->
+    <div class="section" id="attendance">
+      <div class="section-header">
+        <i class="bi bi-clipboard-data sec-icon"></i>
+        <h2>Attendance Reports</h2>
+        <span class="sec-badge">Admin · Officer</span>
+      </div>
+      <div class="section-body">
+        <p>View aggregated attendance data across all events. Filter by member, date range, or event.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-file-earmark-pdf"></i> Export PDF</span>
+        <span class="btn-demo b-blue"><i class="bi bi-file-earmark-excel"></i> Export Excel</span>
+        <span class="btn-demo b-gray"><i class="bi bi-printer"></i> Print</span>
+        <ul class="mt-2">
+          <li><strong>Export PDF</strong> – downloads the attendance report as a formatted PDF</li>
+          <li><strong>Export Excel</strong> – downloads attendance data as a spreadsheet</li>
+          <li><strong>Print</strong> – opens print dialog for the current report view</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-funnel"></i> Filters</h3>
+        <ul>
+          <li>Filter by <strong>Event</strong> – select a specific event to see its attendance</li>
+          <li>Filter by <strong>Member</strong> – see all events a specific member attended</li>
+          <li>Filter by <strong>Date Range</strong> – narrow results to a period</li>
+          <li>Filter by <strong>Status</strong> – Present, Absent, or Excused</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Galleries -->
+    <div class="section" id="galleries">
+      <div class="section-header">
+        <i class="bi bi-images sec-icon"></i>
+        <h2>Galleries</h2>
+        <span class="sec-badge">Admin · Officer</span>
+      </div>
+      <div class="section-body">
+        <p>Upload and manage photo galleries for events and activities. Photos are visible on the public-facing website gallery page.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Gallery</span>
+        <span class="btn-demo b-blue"><i class="bi bi-download"></i> Export Selected</span>
+        <ul class="mt-2">
+          <li><strong>Add Gallery</strong> – create a new gallery album with a title, date, and upload multiple photos at once</li>
+          <li><strong>Export Selected</strong> – download selected gallery images as a ZIP file</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-table"></i> Per-Gallery Actions</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-eye"></i> View</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li><strong>View</strong> – opens the gallery to see all photos in a lightbox carousel</li>
+          <li><strong>Edit</strong> – rename the gallery or add/remove photos</li>
+          <li><strong>Archive</strong> – hides gallery from the public site</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Announcements -->
+    <div class="section" id="announcements">
+      <div class="section-header">
+        <i class="bi bi-megaphone sec-icon"></i>
+        <h2>Announcements</h2>
+        <span class="sec-badge">Admin · Officer</span>
+      </div>
+      <div class="section-body">
+        <p>Post and manage association announcements that appear on the member portal and public site.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Announcement</span>
+        <ul class="mt-2">
+          <li><strong>Add Announcement</strong> – fill in title, body text, optional image, and publish date; toggle visibility (Members only / Public)</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-table"></i> Per-Row Actions</h3>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li><strong>Edit</strong> – update announcement content or visibility</li>
+          <li><strong>Archive</strong> – removes from public view (restorable from Archives)</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════ COMMUNICATION ════ -->
+    <div class="nav-group-divider">Communication</div>
+
+    <!-- Contact Messages -->
+    <div class="section" id="messages">
+      <div class="section-header">
+        <i class="bi bi-envelope sec-icon"></i>
+        <h2>Contact Messages</h2>
+        <span class="sec-badge">Admin · Officer</span>
+      </div>
+      <div class="section-body">
+        <p>Read and manage messages sent by website visitors through the Contact Us form on the public site.</p>
+
+        <h3 class="sub-head"><i class="bi bi-info-circle"></i> Badge Indicator</h3>
+        <p>A <strong>red badge</strong> on the sidebar envelope icon shows the count of unread messages. It disappears once all messages are read.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Per-Row Actions</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-envelope-open"></i> View / Mark Read</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <span class="btn-demo b-red"><i class="bi bi-trash3"></i> Delete</span>
+        <ul class="mt-2">
+          <li><strong>View / Mark Read</strong> – opens the message and marks it as read; the sidebar badge count decreases</li>
+          <li><strong>Archive</strong> – moves message to archive (still accessible in Archives &gt; Messages)</li>
+          <li><strong>Delete</strong> – permanently removes the message</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-funnel"></i> Filters</h3>
+        <p>Filter by status (Unread / Read / All) and date range to manage your inbox efficiently.</p>
+      </div>
+    </div>
+
+    <!-- ════ TRANSPARENCY ════ -->
+    <div class="nav-group-divider">Transparency</div>
+
+    <!-- Transparency -->
+    <div class="section" id="transparency">
+      <div class="section-header">
+        <i class="bi bi-eye sec-icon"></i>
+        <h2>Transparency</h2>
+        <span class="sec-badge">Admin · Treasurer · Secretary</span>
+      </div>
+      <div class="section-body">
+        <p>Record and publish financial assistance, expenses, and program achievements to promote accountability within the association.</p>
+
+        <h3 class="sub-head"><i class="bi bi-layout-tabs"></i> Three Tabs</h3>
+        <ul>
+          <li><strong>Assistance Tab</strong> – record donations and aid received (cash or in-kind); visible to Treasurer &amp; Secretary</li>
+          <li><strong>Expenses Tab</strong> – log association spending; visible to Treasurer</li>
+          <li><strong>Achievements / Programs Tab</strong> – document completed programs with photos; visible to Secretary</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Key Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Assistance</span>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Expense</span>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Add Photo / Achievement</span>
+        <span class="btn-demo b-blue"><i class="bi bi-pencil"></i> Edit</span>
+        <span class="btn-demo b-orange"><i class="bi bi-archive"></i> Archive</span>
+        <ul class="mt-2">
+          <li>Each tab has its own <strong>Add</strong> button that opens a modal form</li>
+          <li><strong>Edit</strong> (pencil icon) – update a record</li>
+          <li><strong>Archive</strong> (box icon) – hides record from public transparency view</li>
+        </ul>
+
+        <div class="note note-info">
+          <i class="bi bi-info-circle-fill"></i>
+          <div>For a detailed guide with every modal field explained, see the separate <strong>Transparency User Manual</strong> at <code>/index/management/transparency_user_manual.html</code></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ SYSTEM ════ -->
+    <div class="nav-group-divider">System</div>
+
+    <!-- Backup -->
+    <div class="section" id="backup">
+      <div class="section-header">
+        <i class="bi bi-cloud-arrow-up sec-icon"></i>
+        <h2>Backup &amp; Restore</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>Protect the system by creating backups of the database or the entire project, and restore them when needed.</p>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Four Main Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-plus-circle"></i> Create Backup Now</span>
+        <span class="btn-demo b-teal"><i class="bi bi-arrow-counterclockwise"></i> Restore Database</span>
+        <span class="btn-demo b-teal"><i class="bi bi-archive"></i> Create System Backup</span>
+        <span class="btn-demo b-teal"><i class="bi bi-arrow-counterclockwise"></i> Restore System</span>
+
+        <ul class="mt-2">
+          <li><strong>Create Backup Now</strong> – generates a <code>.sql</code> file with all database tables and data</li>
+          <li><strong>Restore Database</strong> – upload a <code>.sql</code> file to overwrite the current database</li>
+          <li><strong>Create System Backup</strong> – generates a <code>.zip</code> containing the database dump + all project files</li>
+          <li><strong>Restore System</strong> – upload a <code>.zip</code> to restore both files and database</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-clock-history"></i> Backup History Actions (per row)</h3>
+        <span class="btn-demo b-blue"><i class="bi bi-download"></i> Download</span>
+        <span class="btn-demo b-green"><i class="bi bi-arrow-counterclockwise"></i> Restore</span>
+        <span class="btn-demo b-red"><i class="bi bi-trash3"></i> Delete</span>
+        <ul class="mt-2">
+          <li><strong>Download</strong> – save the backup file to your computer</li>
+          <li><strong>Restore</strong> – restore directly from the server-side file (no upload needed)</li>
+          <li><strong>Delete</strong> – permanently delete the backup file from the server</li>
+        </ul>
+
+        <div class="note note-danger">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <div>Restore and Delete are <strong>irreversible</strong>. Always download a copy before deleting, and create a fresh backup before restoring.</div>
+        </div>
+
+        <div class="note note-info">
+          <i class="bi bi-info-circle-fill"></i>
+          <div>For the full Backup &amp; Restore guide, see <code>/index/utilities/backup_user_manual.html</code></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Logs -->
+    <div class="section" id="logs">
+      <div class="section-header">
+        <i class="bi bi-journal-text sec-icon"></i>
+        <h2>Activity Logs</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>View a complete audit trail of all important actions performed in the system — who did what and when.</p>
+
+        <h3 class="sub-head"><i class="bi bi-info-circle"></i> What is Logged</h3>
+        <ul>
+          <li>Login and logout events</li>
+          <li>Member / Officer additions, edits, and deletions</li>
+          <li>Backup creation and restore operations</li>
+          <li>Transparency record changes</li>
+          <li>Announcement and event changes</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-red"><i class="bi bi-trash3"></i> Clear Logs</span>
+        <span class="btn-demo b-blue"><i class="bi bi-file-earmark-excel"></i> Export</span>
+        <ul class="mt-2">
+          <li><strong>Clear Logs</strong> – permanently deletes all log entries (use with caution)</li>
+          <li><strong>Export</strong> – downloads logs as an Excel or CSV file for record-keeping</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-funnel"></i> Filters</h3>
+        <p>Filter logs by date range, action type, or user to find a specific event quickly.</p>
+
+        <div class="note note-warn">
+          <i class="bi bi-exclamation-circle-fill"></i>
+          <div>Clearing logs is permanent. Export the logs before clearing if you need a record for auditing purposes.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ ARCHIVES ════ -->
+    <div class="nav-group-divider">Archives</div>
+
+    <div class="section" id="archives">
+      <div class="section-header">
+        <i class="bi bi-archive sec-icon"></i>
+        <h2>Archives</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>The Archives dropdown contains a separate archive section for each module. Archived records are hidden from active use but are never deleted — they can always be restored.</p>
+
+        <h3 class="sub-head"><i class="bi bi-list-ul"></i> Archive Sections</h3>
+        <div class="quick-grid">
+          <div class="quick-card"><i class="bi bi-people"></i><strong>Members</strong><span>Archived member profiles</span></div>
+          <div class="quick-card"><i class="bi bi-person-badge"></i><strong>Officers</strong><span>Past / archived officers</span></div>
+          <div class="quick-card"><i class="bi bi-calendar-x"></i><strong>Events</strong><span>Past or cancelled events</span></div>
+          <div class="quick-card"><i class="bi bi-trophy"></i><strong>Awards</strong><span>Archived award records</span></div>
+          <div class="quick-card"><i class="bi bi-images"></i><strong>Galleries</strong><span>Hidden gallery albums</span></div>
+          <div class="quick-card"><i class="bi bi-envelope"></i><strong>Messages</strong><span>Archived contact messages</span></div>
+          <div class="quick-card"><i class="bi bi-shield-check"></i><strong>Roles</strong><span>Archived officer role names</span></div>
+          <div class="quick-card"><i class="bi bi-person-lock"></i><strong>Accounts</strong><span>Deactivated user accounts</span></div>
+          <div class="quick-card"><i class="bi bi-megaphone"></i><strong>Announcements</strong><span>Archived announcements</span></div>
+          <div class="quick-card"><i class="bi bi-file-text"></i><strong>Website Content</strong><span>Previous website content versions</span></div>
+          <div class="quick-card"><i class="bi bi-eye-slash"></i><strong>Transparency</strong><span>Archived transparency records</span></div>
+        </div>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Actions Available in Every Archive</h3>
+        <span class="btn-demo b-green"><i class="bi bi-arrow-counterclockwise"></i> Restore</span>
+        <span class="btn-demo b-red"><i class="bi bi-trash3"></i> Delete Permanently</span>
+        <ul class="mt-2">
+          <li><strong>Restore</strong> – moves the record back to the active list</li>
+          <li><strong>Delete Permanently</strong> – completely and irreversibly removes the record from the database</li>
+        </ul>
+
+        <div class="note note-danger">
+          <i class="bi bi-exclamation-triangle-fill"></i>
+          <div><strong>Permanent Delete</strong> cannot be undone. If unsure, leave the record archived instead of deleting it.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════ SETTINGS ════ -->
+    <div class="nav-group-divider">Settings</div>
+
+    <!-- Profile Settings -->
+    <div class="section" id="profile-settings">
+      <div class="section-header">
+        <i class="bi bi-person-circle sec-icon"></i>
+        <h2>Profile Settings</h2>
+        <span class="sec-badge">Admin · Officer · Member</span>
+      </div>
+      <div class="section-body">
+        <p>Update your personal account information and security settings.</p>
+
+        <h3 class="sub-head"><i class="bi bi-info-circle"></i> What You Can Change</h3>
+        <ul>
+          <li>Display name and email address</li>
+          <li>Profile avatar / photo</li>
+          <li>Password (current password required)</li>
+          <li>Contact number</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-save"></i> Save Changes</span>
+        <span class="btn-demo b-gray"><i class="bi bi-x-circle"></i> Cancel</span>
+        <ul class="mt-2">
+          <li><strong>Save Changes</strong> – applies all profile updates; shows a success message</li>
+          <li><strong>Cancel</strong> – discards unsaved changes</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- System Configuration -->
+    <div class="section" id="system-config">
+      <div class="section-header">
+        <i class="bi bi-sliders sec-icon"></i>
+        <h2>System Configuration</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>Control global association settings that appear across the entire system and public website.</p>
+
+        <h3 class="sub-head"><i class="bi bi-info-circle"></i> Settings Available</h3>
+        <ul>
+          <li><strong>Association Name</strong> – name displayed in the navbar, page titles, and emails</li>
+          <li><strong>Association Logo</strong> – upload a new logo (shown in sidebar and public site header)</li>
+          <li><strong>Email Address</strong> – official association email for contact forms</li>
+          <li><strong>Phone Number</strong> – displayed on the public website</li>
+          <li><strong>Address</strong> – office address for the public site</li>
+          <li><strong>Backup Storage Limit (MB)</strong> – maximum storage allowed for SQL backup files</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-save"></i> Save Configuration</span>
+        <ul class="mt-2">
+          <li><strong>Save Configuration</strong> – saves all settings and refreshes the navbar/logo site-wide</li>
+        </ul>
+
+        <div class="note note-warn">
+          <i class="bi bi-exclamation-circle-fill"></i>
+          <div>Changing the Association Name updates every page title immediately. Logo changes may require a hard refresh (Ctrl+Shift+R) to appear in the browser cache.</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Website Content -->
+    <div class="section" id="website-content">
+      <div class="section-header">
+        <i class="bi bi-file-text sec-icon"></i>
+        <h2>Website Content</h2>
+        <span class="sec-badge">Admin Only</span>
+      </div>
+      <div class="section-body">
+        <p>Edit the text and media that appear on the public-facing website pages (About Us, Mission, Vision, etc.).</p>
+
+        <h3 class="sub-head"><i class="bi bi-info-circle"></i> Sections You Can Edit</h3>
+        <ul>
+          <li>About the Association (history, mission, vision)</li>
+          <li>Hero / banner text and image</li>
+          <li>Contact information displayed on the public site</li>
+          <li>Footer text</li>
+        </ul>
+
+        <h3 class="sub-head"><i class="bi bi-cursor-fill"></i> Buttons</h3>
+        <span class="btn-demo b-teal"><i class="bi bi-save"></i> Save Content</span>
+        <span class="btn-demo b-gray"><i class="bi bi-arrow-counterclockwise"></i> Reset</span>
+        <ul class="mt-2">
+          <li><strong>Save Content</strong> – publishes changes to the live public website</li>
+          <li><strong>Reset</strong> – reverts the form to the last saved version</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- ════ ACCOUNT ════ -->
+    <div class="nav-group-divider">Account</div>
+
+    <!-- Logout -->
+    <div class="section" id="logout">
+      <div class="section-header">
+        <i class="bi bi-box-arrow-right sec-icon"></i>
+        <h2>Logout</h2>
+        <span class="sec-badge">All Roles</span>
+      </div>
+      <div class="section-body">
+        <p>The <strong>Logout</strong> button is at the bottom of the sidebar. Clicking it ends your session and redirects you to the login page.</p>
+
+        <div class="note note-info">
+          <i class="bi bi-info-circle-fill"></i>
+          <div>For security, always log out when using a shared computer. The session is also automatically ended after a period of inactivity.</div>
+        </div>
+
+        <h3 class="sub-head"><i class="bi bi-shield-lock"></i> Change Password Prompt</h3>
+        <p>If your account has a temporary password, the system will redirect you to a <strong>Change Password</strong> page immediately after login before you can access any other page. This is a one-time security step.</p>
+      </div>
+    </div>
+
+    <!-- ── Quick Reference ── -->
+    <div class="section" id="quick-ref">
+      <div class="section-header">
+        <i class="bi bi-lightning-charge-fill sec-icon"></i>
+        <h2>Quick Reference – Button Color Guide</h2>
+        <span class="sec-badge">All Pages</span>
+      </div>
+      <div class="section-body">
+        <p>Across the system, button colors follow a consistent meaning to help you act confidently without reading labels:</p>
+        <div class="table-responsive">
+          <table class="table table-bordered align-middle" style="font-size:13px;">
+            <thead class="table-dark"><tr><th>Color</th><th>Typical Action</th><th>Examples</th></tr></thead>
+            <tbody>
+              <tr><td><span class="btn-demo b-teal" style="cursor:default;">Teal / Blue-Gray</span></td><td>Primary action — create, save, confirm</td><td>Create Backup, Add Member, Save Changes</td></tr>
+              <tr><td><span class="btn-demo b-blue" style="cursor:default;">Blue</span></td><td>Secondary / download / edit</td><td>Edit, Export, Download</td></tr>
+              <tr><td><span class="btn-demo b-green" style="cursor:default;">Green</span></td><td>Restore / approve</td><td>Restore from Archive, Restore Backup</td></tr>
+              <tr><td><span class="btn-demo b-orange" style="cursor:default;">Orange</span></td><td>Archive (soft-remove)</td><td>Archive Member, Archive Event</td></tr>
+              <tr><td><span class="btn-demo b-red" style="cursor:default;">Red</span></td><td>Delete / destructive</td><td>Delete Permanently, Delete Backup</td></tr>
+              <tr><td><span class="btn-demo b-gray" style="cursor:default;">Gray</span></td><td>Cancel / neutral</td><td>Cancel, Close, Reset</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <p class="text-center text-muted mt-5" style="font-size:12px;">
+      Bangkero Association Management System &nbsp;·&nbsp; Admin User Manual &nbsp;·&nbsp; Version 1.0
+    </p>
+
+  </div><!-- end main-content -->
+</div><!-- end page-wrap -->
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Smooth scroll for TOC links
+  document.querySelectorAll('.toc-link').forEach(function(link) {
+    link.addEventListener('click', function(e) {
+      var target = document.querySelector(this.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        // highlight active
+        document.querySelectorAll('.toc-link').forEach(l => l.style.background = '');
+        this.style.background = '#e8f4fd';
+      }
+    });
+  });
+
+  // Highlight TOC link on scroll
+  var sections = document.querySelectorAll('.section');
+  window.addEventListener('scroll', function() {
+    var scrollY = window.scrollY + 80;
+    sections.forEach(function(sec) {
+      if (sec.offsetTop <= scrollY && sec.offsetTop + sec.offsetHeight > scrollY) {
+        document.querySelectorAll('.toc-link').forEach(l => l.style.background = '');
+        var active = document.querySelector('.toc-link[href="#' + sec.id + '"]');
+        if (active) active.style.background = '#e8f4fd';
+      }
+    });
+  });
+</script>
+</body>
+</html>

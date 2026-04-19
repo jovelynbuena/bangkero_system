@@ -50,15 +50,22 @@
     </div>
 
     <div class="backup-list">
-        <?php foreach ($pagedBackups as $backup): ?>
+        <?php foreach ($pagedBackups as $backup):
+            $isZip = (($backup['type'] ?? strtolower(pathinfo($backup['name'], PATHINFO_EXTENSION))) === 'zip');
+        ?>
             <div class="backup-item">
-                <div class="backup-icon-wrapper">
-                    <i class="bi bi-database"></i>
+                <div class="backup-icon-wrapper" style="<?= $isZip ? 'background: linear-gradient(135deg,#1B4F72,#2E86AB);' : '' ?>">
+                    <i class="bi <?= $isZip ? 'bi-file-zip' : 'bi-database' ?>"></i>
                 </div>
                 <div class="backup-details">
                     <div class="backup-filename">
-                        <i class="bi bi-file-earmark-zip"></i>
+                        <i class="bi <?= $isZip ? 'bi-file-zip' : 'bi-file-earmark-code' ?>"></i>
                         <?= htmlspecialchars($backup['name']) ?>
+                        <?php if ($isZip): ?>
+                            <span class="badge ms-1" style="font-size:10px; background:#1B4F72;">System ZIP</span>
+                        <?php else: ?>
+                            <span class="badge ms-1" style="font-size:10px; background:#2E86AB;">DB SQL</span>
+                        <?php endif; ?>
                     </div>
                     <div class="backup-meta">
                         <div class="backup-meta-item">
@@ -72,19 +79,29 @@
                     </div>
                 </div>
                 <div class="backup-actions">
-                    <button type="button" 
-                            class="btn-action-small btn-success-custom" 
-                            onclick="confirmRestoreFromBackup('<?= htmlspecialchars($backup['name'], ENT_QUOTES) ?>')">
-                        <i class="bi bi-arrow-counterclockwise"></i>
-                        Restore
-                    </button>
-                    <a href="download_backup.php?file=<?= urlencode($backup['name']) ?>" 
-                       class="btn-action-small btn-download-small">
+                    <?php if ($isZip): ?>
+                        <button type="button"
+                                class="btn-action-small btn-success-custom"
+                                onclick="confirmRestoreZipFromHistory('<?= htmlspecialchars($backup['name'], ENT_QUOTES) ?>')">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            Restore
+                        </button>
+                    <?php else: ?>
+                        <button type="button"
+                                class="btn-action-small btn-success-custom"
+                                onclick="confirmRestoreFromBackup('<?= htmlspecialchars($backup['name'], ENT_QUOTES) ?>')">
+                            <i class="bi bi-arrow-counterclockwise"></i>
+                            Restore
+                        </button>
+                    <?php endif; ?>
+                    <button type="button"
+                            class="btn-action-small btn-download-small"
+                            onclick="triggerBackupDownload('<?= htmlspecialchars($backup['name'], ENT_QUOTES) ?>')">
                         <i class="bi bi-download"></i>
                         Download
-                    </a>
-                    <button type="button" 
-                            class="btn-action-small btn-delete-small" 
+                    </button>
+                    <button type="button"
+                            class="btn-action-small btn-delete-small"
                             onclick="confirmDelete('<?= htmlspecialchars($backup['name'], ENT_QUOTES) ?>')">
                         <i class="bi bi-trash"></i>
                         Delete

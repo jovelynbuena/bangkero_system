@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 // Clear caches for development
@@ -27,7 +27,7 @@ if (!$eventResult) die("Query failed: " . $conn->error);
 $membersRow = $conn->query("SELECT COUNT(*) AS total FROM members")->fetch_assoc();
 $members = $membersRow ? (int)$membersRow['total'] : 0;
 
-$officersStats = $conn->query("SELECT COUNT(DISTINCT member_id) AS distinct_members, COUNT(*) AS assignments FROM officers")->fetch_assoc();
+$officersStats = $conn->query("SELECT COUNT(DISTINCT o.member_id) AS distinct_members, COUNT(*) AS assignments FROM officers o INNER JOIN members m ON o.member_id = m.id")->fetch_assoc();
 $officersActive = $officersStats ? (int)$officersStats['distinct_members'] : 0;
 $officersAssignments = $officersStats ? (int)$officersStats['assignments'] : 0;
 
@@ -36,7 +36,7 @@ $officersArchived = $officersArchivedRow ? (int)$officersArchivedRow['distinct_m
 
 $officers = $officersActive;
 
-$announcementsRow = $conn->query("SELECT COUNT(*) AS total FROM announcements")->fetch_assoc();
+$announcementsRow = $conn->query("SELECT COUNT(*) AS total FROM announcements WHERE expiry_date IS NULL OR expiry_date >= CURDATE()")->fetch_assoc();
 $announcements = $announcementsRow ? (int)$announcementsRow['total'] : 0;
 
 $eventsTotalRow = $conn->query("SELECT COUNT(*) AS total FROM events")->fetch_assoc();
@@ -110,8 +110,8 @@ $eventsTrend['percent'] = $lastCount > 0 ? round(($eventsTrend['change'] / $last
 
 // Announcements trend
 $announcementsTrend = ['change' => 0, 'direction' => '', 'percent' => 0];
-$lastMonthAnnouncements = $conn->query("SELECT COUNT(*) AS total FROM announcements WHERE date_posted >= '$lastMonthStart' AND date_posted <= '$lastMonthEnd'")->fetch_assoc();
-$thisMonthAnnouncements = $conn->query("SELECT COUNT(*) AS total FROM announcements WHERE date_posted >= '$thisMonthStart'")->fetch_assoc();
+$lastMonthAnnouncements = $conn->query("SELECT COUNT(*) AS total FROM announcements WHERE (expiry_date IS NULL OR expiry_date >= CURDATE()) AND date_posted >= '$lastMonthStart' AND date_posted <= '$lastMonthEnd'")->fetch_assoc();
+$thisMonthAnnouncements = $conn->query("SELECT COUNT(*) AS total FROM announcements WHERE (expiry_date IS NULL OR expiry_date >= CURDATE()) AND date_posted >= '$thisMonthStart'")->fetch_assoc();
 $lastCount = $lastMonthAnnouncements ? (int)$lastMonthAnnouncements['total'] : 0;
 $thisCount = $thisMonthAnnouncements ? (int)$thisMonthAnnouncements['total'] : 0;
 $announcementsTrend['change'] = $thisCount - $lastCount;
@@ -389,6 +389,7 @@ if ($totalEvents > 0) {
 <link href="https://cdn.jsdelivr.net/npm/@fullcalendar/list@6.1.10/index.global.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.8/main.min.css" rel="stylesheet">
 
+<link rel="stylesheet" href="../css/admin-theme.css">
 <style>
 /* ===== GLOBAL SENIOR-FRIENDLY BASE ===== */
 body {
@@ -416,11 +417,11 @@ h6 { font-size: 1.05rem; }
 
 /* ===== GREETING BANNER ===== */
 .greeting-banner {
-    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 55%, #A8DADC 100%);
     color: white;
     padding: 32px 36px;
     border-radius: 18px;
-    box-shadow: 0 8px 28px rgba(99, 102, 241, 0.28);
+    box-shadow: 0 8px 28px rgba(46, 134, 171, 0.32);
     animation: fadeInDown 0.5s ease-out;
     margin-bottom: 2rem;
 }
@@ -489,7 +490,7 @@ h6 { font-size: 1.05rem; }
     background: #ffffff;
     border-radius: 12px;
     padding: 20px;
-    border-left: 4px solid #6366f1;
+    border-left: 4px solid #2E86AB;
     box-shadow: 0 2px 10px rgba(0,0,0,0.07);
     transition: transform 0.2s ease, box-shadow 0.2s ease;
     cursor: pointer;
@@ -499,7 +500,7 @@ h6 { font-size: 1.05rem; }
 }
 .stat-card-wrap:hover {
     transform: translateY(-3px);
-    box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+    box-shadow: 0 8px 24px rgba(46, 134, 171, 0.18);
     text-decoration: none;
 }
 .stat-card-wrap .sc-icon  { font-size: 1.5rem; margin-bottom: 6px; }
@@ -508,17 +509,17 @@ h6 { font-size: 1.05rem; }
 .stat-card-wrap .sc-trend { font-size: 0.75rem; font-weight: 600; margin-top: 4px; display: flex; align-items: center; gap: 3px; }
 .sc-trend.trend-up   { color: #16a34a; }
 .sc-trend.trend-down { color: #dc2626; }
-.sc-trend.trend-same { color: #8b5cf6; }
+.sc-trend.trend-same { color: #2E86AB; }
 
 /* per-card colors */
-.stat-card-members  { background: #ffffff; border-left-color: #6366f1; }
-.stat-card-members  .sc-icon { color: #6366f1; }
-.stat-card-officers { background: #ffffff; border-left-color: #22c55e; }
-.stat-card-officers .sc-icon { color: #22c55e; }
-.stat-card-events   { background: #ffffff; border-left-color: #f97316; }
-.stat-card-events   .sc-icon { color: #f97316; }
-.stat-card-announce { background: #ffffff; border-left-color: #a855f7; }
-.stat-card-announce .sc-icon { color: #a855f7; }
+.stat-card-members  { background: #ffffff; border-left-color: #2E86AB; }
+.stat-card-members  .sc-icon { color: #2E86AB; }
+.stat-card-officers { background: #ffffff; border-left-color: #1a6d8a; }
+.stat-card-officers .sc-icon { color: #1a6d8a; }
+.stat-card-events   { background: #ffffff; border-left-color: #1B4F72; }
+.stat-card-events   .sc-icon { color: #1B4F72; }
+.stat-card-announce { background: #ffffff; border-left-color: #A8DADC; }
+.stat-card-announce .sc-icon { color: #2E86AB; }
 .stat-card-messages { background: #ffffff; border-left-color: #f59e0b; }
 .stat-card-messages .sc-icon { color: #f59e0b; }
 
@@ -535,11 +536,11 @@ h6 { font-size: 1.05rem; }
     font-size: 1.35rem;
     flex-shrink: 0;
 }
-.icon-box-members  { background: #6366f1; }
-.icon-box-officers { background: #22c55e; }
-.icon-box-events   { background: #f97316; }
-.icon-box-announce { background: #a855f7; }
-.icon-box-messages { background: #f59e0b; }
+.icon-box-members  { background: linear-gradient(135deg, #2E86AB 0%, #1a6d8a 100%); }
+.icon-box-officers { background: linear-gradient(135deg, #1a6d8a 0%, #1B4F72 100%); }
+.icon-box-events   { background: linear-gradient(135deg, #1B4F72 0%, #154260 100%); }
+.icon-box-announce { background: linear-gradient(135deg, #2E86AB 0%, #A8DADC 100%); }
+.icon-box-messages { background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%); }
 
 /* ===== TREND INDICATORS (legacy, used in other sections) ===== */
 .trend-indicator {
@@ -551,7 +552,7 @@ h6 { font-size: 1.05rem; }
 }
 .trend-indicator.trend-up   { color: #16a34a; }
 .trend-indicator.trend-down { color: #dc2626; }
-.trend-indicator.trend-same { color: #8b5cf6; }
+.trend-indicator.trend-same { color: #2E86AB; }
 
 /* ===== ANALYTICS / EVENT CARDS ===== */
 .event-card {
@@ -595,12 +596,12 @@ h6 { font-size: 1.05rem; }
     padding: 8px 16px;
 }
 .btn-primary {
-    background-color: #6366f1;
-    border-color: #6366f1;
+    background-color: #2E86AB;
+    border-color: #2E86AB;
 }
 .btn-primary:hover {
-    background-color: #4f46e5;
-    border-color: #4f46e5;
+    background-color: #1a6d8a;
+    border-color: #1a6d8a;
 }
 
 /* ===== CHART CONTAINERS ===== */
@@ -700,8 +701,8 @@ h6 { font-size: 1.05rem; }
     /* Active state for toggle buttons */
     #toggle24h.active,
     #calendarFilter.active {
-        background-color: #5B6B7A !important;
-        border-color: #5B6B7A !important;
+        background-color: #2E86AB !important;
+        border-color: #2E86AB !important;
         color: white !important;
     }
 
@@ -731,22 +732,22 @@ h6 { font-size: 1.05rem; }
     }
 
     .filter-dropdown .btn-link {
-        color: #5B6B7A;
+        color: #2E86AB;
     }
 
     .filter-dropdown .btn-link:hover {
-        color: #3E4A54;
+        color: #1B4F72;
     }
 
     .calendar-custom-header .btn:focus,
     .calendar-custom-header .form-select:focus {
-        box-shadow: 0 0 0 0.2rem rgba(91, 107, 122, 0.18);
-        border-color: rgba(91, 107, 122, 0.55);
+        box-shadow: 0 0 0 0.2rem rgba(46, 134, 171, 0.20);
+        border-color: rgba(46, 134, 171, 0.55);
     }
 
     .calendar-view-btn.active {
-        background-color: #5B6B7A !important;
-        border-color: #5B6B7A !important;
+        background-color: #2E86AB !important;
+        border-color: #2E86AB !important;
         color: white !important;
     }
 
@@ -826,7 +827,7 @@ h6 { font-size: 1.05rem; }
     }
 
     .fc-daygrid-day.fc-day-today .fc-daygrid-day-number {
-        background: #000000;
+        background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
         color: white;
         border-radius: 50%;
         width: 32px;
@@ -911,7 +912,7 @@ h6 { font-size: 1.05rem; }
 
     /* + More Link */
     .fc-more-link {
-        background: #5B6B7A;
+        background: #2E86AB;
         color: #fff !important;
         border-radius: 4px;
         padding: 4px 8px;
@@ -922,7 +923,7 @@ h6 { font-size: 1.05rem; }
     }
 
     .fc-more-link:hover {
-        background: #3E4A54;
+        background: #1B4F72;
     }
 
     /* Popover */
@@ -933,7 +934,7 @@ h6 { font-size: 1.05rem; }
     }
 
     .fc-popover-header {
-        background: #5B6B7A;
+        background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
         color: #fff;
         font-weight: 700;
         padding: 10px;
@@ -973,18 +974,18 @@ h6 { font-size: 1.05rem; }
 
     /* Add Event Button */
     .btn-dark {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+        background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%) !important;
         border: none !important;
         color: white !important;
         font-weight: 600;
-        box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 4px 16px rgba(46, 134, 171, 0.30);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     .btn-dark:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%) !important;
+        box-shadow: 0 6px 24px rgba(46, 134, 171, 0.45);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%) !important;
         color: white !important;
     }
 
@@ -1005,6 +1006,9 @@ h6 { font-size: 1.05rem; }
             <p class="mb-0">You are logged in as <strong><?= ucfirst($role) ?></strong></p>
         </div>
         <div class="d-flex gap-2 align-items-center mt-2 mt-md-0">
+            <a href="<?= BASE_URL ?>admin_user_manual.html" target="_blank" class="btn btn-light btn-sm">
+                <i class="bi bi-book"></i> Help
+            </a>
             <button class="btn btn-light btn-sm" onclick="showQuickSearch()">
                 <i class="bi bi-search"></i> Quick Search
             </button>
@@ -1111,10 +1115,10 @@ h6 { font-size: 1.05rem; }
 <div class="row mb-4">
     <div class="col-12">
         <!-- Monthly New Members — modern smooth line chart card -->
-        <div class="chart-card-animate" style="background:#ffffff; border-radius:18px; box-shadow:0 4px 24px rgba(99,102,241,0.08); padding:28px 28px 20px; border:1px solid #ede9fe;">
+        <div class="chart-card-animate" style="background:#ffffff; border-radius:18px; box-shadow:0 4px 24px rgba(46,134,171,0.10); padding:28px 28px 20px; border:1px solid #d4eef2;">
             <div class="d-flex align-items-center justify-content-between mb-1">
                 <div class="d-flex align-items-center gap-3">
-                    <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#6366f1,#8b5cf6);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;">
+                    <div style="width:42px;height:42px;border-radius:12px;background:linear-gradient(135deg,#2E86AB,#1B4F72);display:flex;align-items:center;justify-content:center;color:#fff;font-size:1.1rem;">
                         <i class="bi bi-people-fill"></i>
                     </div>
                     <div>
@@ -1122,7 +1126,7 @@ h6 { font-size: 1.05rem; }
                         <div style="font-size:0.78rem;color:#94a3b8;">Growth trend over the last 6 months</div>
                     </div>
                 </div>
-                <span style="font-size:0.72rem;font-weight:600;letter-spacing:0.5px;color:#6366f1;background:#eef2ff;padding:4px 12px;border-radius:20px;">LAST 6 MONTHS</span>
+                <span style="font-size:0.72rem;font-weight:600;letter-spacing:0.5px;color:#2E86AB;background:#e8f4f9;padding:4px 12px;border-radius:20px;">LAST 6 MONTHS</span>
             </div>
             <div style="height:290px;position:relative;margin-top:12px;">
                 <canvas id="monthlyNewMembersChart"></canvas>
@@ -1452,6 +1456,11 @@ document.addEventListener('DOMContentLoaded', function() {
         eventDidMount: function(info) {
             const cat = normalizeCategory(info.event.extendedProps?.category);
             info.el.setAttribute('data-event-type', cat);
+
+            // Show full title on hover
+            const fullTitle = info.event.title || '';
+            info.el.setAttribute('title', fullTitle);
+            info.el.style.cursor = 'pointer';
         },
 
         datesSet: function() {
@@ -1702,14 +1711,14 @@ Chart.defaults.font.size = 11;
             // Gradient fill
             const mlCtx2d = monthlyCtx.getContext('2d');
             const gradientFill = mlCtx2d.createLinearGradient(0, 0, 0, 280);
-            gradientFill.addColorStop(0,   'rgba(99, 102, 241, 0.22)');
-            gradientFill.addColorStop(0.6, 'rgba(99, 102, 241, 0.05)');
-            gradientFill.addColorStop(1,   'rgba(99, 102, 241, 0)');
+            gradientFill.addColorStop(0,   'rgba(46, 134, 171, 0.22)');
+            gradientFill.addColorStop(0.6, 'rgba(46, 134, 171, 0.05)');
+            gradientFill.addColorStop(1,   'rgba(46, 134, 171, 0)');
 
             // Per-point styling: highlight the last data point
             const lastIdx = monthlyNew.length - 1;
-            const pointBg    = monthlyNew.map((_, i) => i === lastIdx ? '#6366f1' : '#ffffff');
-            const pointBorder = monthlyNew.map((_, i) => i === lastIdx ? '#6366f1' : '#6366f1');
+            const pointBg    = monthlyNew.map((_, i) => i === lastIdx ? '#2E86AB' : '#ffffff');
+            const pointBorder = monthlyNew.map((_, i) => i === lastIdx ? '#2E86AB' : '#2E86AB');
             const pointRadius = monthlyNew.map((_, i) => i === lastIdx ? 7 : 5);
             const pointHover  = monthlyNew.map((_, i) => i === lastIdx ? 9 : 7);
 
@@ -1720,7 +1729,7 @@ Chart.defaults.font.size = 11;
                     datasets: [{
                         label: 'New Members',
                         data: monthlyNew,
-                        borderColor: '#6366f1',
+                        borderColor: '#2E86AB',
                         borderWidth: 2.5,
                         tension: 0.45,
                         fill: true,
@@ -1730,7 +1739,7 @@ Chart.defaults.font.size = 11;
                         pointBorderWidth: 2.5,
                         pointRadius: pointRadius,
                         pointHoverRadius: pointHover,
-                        pointHoverBackgroundColor: '#6366f1',
+                        pointHoverBackgroundColor: '#2E86AB',
                         pointHoverBorderColor: '#ffffff',
                         pointHoverBorderWidth: 3,
                         cubicInterpolationMode: 'monotone'
@@ -1751,7 +1760,7 @@ Chart.defaults.font.size = 11;
                     plugins: {
                         legend: { display: false },
                         tooltip: {
-                            backgroundColor: '#1e293b',
+                            backgroundColor: '#1a3a4a',
                             titleColor: '#94a3b8',
                             bodyColor: '#ffffff',
                             bodyFont: { size: 14, weight: '700' },
@@ -1799,8 +1808,8 @@ Chart.defaults.font.size = 11;
                         {
                             label: 'Active',
                             data: activeData,
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                            borderColor: '#2E86AB',
+                            backgroundColor: 'rgba(46, 134, 171, 0.1)',
                             tension: 0.3,
                             fill: true,
                             borderWidth: 2
@@ -1999,7 +2008,7 @@ function showQuickSearch() {
         `,
         showCancelButton: true,
         confirmButtonText: 'Search',
-        confirmButtonColor: '#5B6B7A',
+        confirmButtonColor: '#2E86AB',
         preConfirm: () => {
             const query = document.getElementById('quickSearchInput').value;
             const type = document.getElementById('quickSearchType').value;
@@ -2086,7 +2095,7 @@ Swal.fire({
     icon: 'error',
     title: 'Access denied',
     text: 'Wala kang permission sa Transparency page na iyon. (Treasurer: Donations, Secretary: Programs)',
-    confirmButtonColor: '#667eea'
+    confirmButtonColor: '#2E86AB'
 });
 <?php endif; ?>
 </script>

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 require_once('../../config/db_connect.php');
 
@@ -1087,7 +1087,7 @@ body {
 }
 
 .page-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
     border-radius: 12px;
     padding: 28px 32px;
     margin-bottom: 24px;

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Transparency Reports Page
 session_start();
 
@@ -79,7 +79,7 @@ function e($value) {
 }
 
 // Association name for reports
-$assocName = 'Bankero and Fishermen Association';
+require_once __DIR__ . '/../../config/logo_helper.php';
 
 // Get filter values — validate dates to prevent injection
 $rawFrom   = $_GET['date_from'] ?? date('Y-01-01');
@@ -616,11 +616,12 @@ $generatedDate = date('F d, Y h:i A');
     <title>Transparency Reports</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
-    <style>
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
         body { background: #f8f9fa; }
         .main-content { padding: 24px; }
         .page-header {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
             color: white;
             padding: 30px;
             border-radius: 16px;
@@ -642,7 +643,7 @@ $generatedDate = date('F d, Y h:i A');
         .stat-value {
             font-size: 2rem;
             font-weight: 700;
-            color: #667eea;
+            color: #2E86AB;
         }
         .table-container {
             background: white;
@@ -658,7 +659,7 @@ $generatedDate = date('F d, Y h:i A');
         }
         .chart-bar {
             height: 30px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            background: linear-gradient(90deg, #2E86AB 0%, #1B4F72 100%);
             border-radius: 4px;
             display: flex;
             align-items: center;

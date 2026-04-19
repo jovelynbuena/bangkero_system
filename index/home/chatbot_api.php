@@ -10,6 +10,7 @@ header('Content-Type: application/json');
 header('X-Content-Type-Options: nosniff');
 
 require_once('../../config/db_connect.php');
+require_once('../../config/logo_helper.php');
 
 $input   = json_decode(file_get_contents('php://input'), true);
 $message = isset($input['message']) ? trim(strtolower($input['message'])) : '';
@@ -178,13 +179,13 @@ if ($parsedDate && detect($message, [
 ])) {
     if ($isTagalog) {
         $greetings = [
-            "Kamusta! Maligayang pagdating sa portal ng Bankero and Fisherman Association. Paano kita matutulungan ngayon?",
+            "Kamusta! Maligayang pagdating sa portal ng {$assocName}. Paano kita matutulungan ngayon?",
             "Hello! Ako ang BFA Virtual Assistant. Pwede mo akong tanungin tungkol sa aming mga events, opisyal, balita, o membership.",
             "Magandang araw! Ano ang maipaglilingkod ko para sa iyo ngayon?"
         ];
     } else {
         $greetings = [
-            "Hello! Welcome to the Bankero and Fisherman Association portal. How can I help you today?",
+            "Hello! Welcome to the {$assocName} portal. How can I help you today?",
             "Hi there! I'm the BFA Virtual Assistant. You can ask me about events, officers, announcements, or membership.",
             "Good day! What can I do for you today?"
         ];
@@ -316,8 +317,8 @@ if ($parsedDate && detect($message, [
     );
     if ($result && $result->num_rows > 0) {
         $reply = $isTagalog
-            ? "Narito ang mga <strong>kasalukuyang opisyal</strong> ng Bankero and Fisherman Association:<br><br>"
-            : "Here are the <strong>current officers</strong> of the Bankero and Fisherman Association:<br><br>";
+            ? "Narito ang mga <strong>kasalukuyang opisyal</strong> ng {$assocName}:<br><br>"
+            : "Here are the <strong>current officers</strong> of the {$assocName}:<br><br>";
         $reply .= "<div style='font-size:13px;'>";
         while ($row = $result->fetch_assoc()) {
             $reply .= "<div style='padding:5px 0;border-bottom:1px solid #eee;'>";
@@ -345,8 +346,8 @@ if ($parsedDate && detect($message, [
     $row    = $result ? $result->fetch_assoc() : null;
     $count  = $row ? $row['total'] : 0;
     $reply  = $isTagalog
-        ? "Ang Bankero and Fisherman Association ay kasalukuyang may <strong>{$count} aktibong miyembro</strong>. Patuloy na lumalaki ang aming komunidad!"
-        : "The Bankero and Fisherman Association currently has <strong>{$count} active members</strong>. Our community continues to grow!";
+        ? "Ang {$assocName} ay kasalukuyang may <strong>{$count} aktibong miyembro</strong>. Patuloy na lumalaki ang aming komunidad!"
+        : "The {$assocName} currently has <strong>{$count} active members</strong>. Our community continues to grow!";
     $type   = 'html';
 
 /* ── JOIN / MEMBERSHIP ── */
@@ -358,15 +359,15 @@ if ($parsedDate && detect($message, [
     'magkano','bayad','membership fee','bayad sa membership'
 ])) {
     if ($isTagalog) {
-        $reply = "Para maging miyembro ng Bankero and Fisherman Association, maaari kang:<br><br>"
-               . "<strong>1.</strong> Pumunta sa opisina ng asosasyon sa Olongapo City.<br>"
+        $reply = "Para maging miyembro ng {$assocName}, maaari kang:<br><br>"
+               . "<strong>1.</strong> Pumunta sa opisina ng asosasyon sa {$assocAddress}.<br>"
                . "<strong>2.</strong> Makipag-ugnayan sa sinuman sa aming mga opisyal para sa tulong.<br>"
                . "<strong>3.</strong> Ihanda ang iyong valid ID at basic na personal na impormasyon.<br><br>"
                . "Bukas ang membership para sa lahat ng rehistradong Bangkero at Mangingisda sa lugar.";
         $action = ['label' => 'Makipag-ugnayan sa Opisyal', 'url' => 'contact_us.php'];
     } else {
-        $reply = "To become a member of the Bankero and Fisherman Association, you may:<br><br>"
-               . "<strong>1.</strong> Visit the association's office in Olongapo City.<br>"
+        $reply = "To become a member of the {$assocName}, you may:<br><br>"
+               . "<strong>1.</strong> Visit the association's office at {$assocAddress}.<br>"
                . "<strong>2.</strong> Contact any of our officers for assistance.<br>"
                . "<strong>3.</strong> Prepare a valid ID and basic personal information.<br><br>"
                . "Membership is open to all registered fishermen and boatmen in the area.";
@@ -382,10 +383,10 @@ if ($parsedDate && detect($message, [
     'paano makipag-ugnayan','numero','telepono ng opisina'
 ])) {
     if ($isTagalog) {
-        $reply  = "Maaari kang makipag-ugnayan sa Bankero and Fisherman Association sa pamamagitan ng aming <strong>Contact page</strong>. Ang aming mga opisyal ay handa kang tulungan sa oras ng opisina sa Olongapo City.";
+        $reply  = "Maaari kang makipag-ugnayan sa {$assocName} sa pamamagitan ng aming <strong>Contact page</strong>. Ang aming mga opisyal ay handa kang tulungan sa oras ng opisina sa {$assocAddress}.";
         $action = ['label' => 'Makipag-ugnayan', 'url' => 'contact_us.php'];
     } else {
-        $reply  = "You can reach the Bankero and Fisherman Association through our <strong>Contact page</strong>. Our officers are available during office hours in Olongapo City.";
+        $reply  = "You can reach the {$assocName} through our <strong>Contact page</strong>. Our officers are available during office hours at {$assocAddress}.";
         $action = ['label' => 'Contact Us', 'url' => 'contact_us.php'];
     }
     $type = 'html';
@@ -411,10 +412,10 @@ if ($parsedDate && detect($message, [
         ];
     } else {
         if ($isTagalog) {
-            $reply  = "Ang Bankero and Fisherman Association (BFA) ay isang organisasyon ng komunidad na naglilingkod sa mga Bangkero at Mangingisda ng Olongapo City, Zambales. Bisitahin ang aming About page para sa karagdagang impormasyon.";
+            $reply  = "Ang {$assocName} (BFA) ay isang organisasyon ng komunidad na naglilingkod sa mga Bangkero at Mangingisda ng {$assocAddress}. Bisitahin ang aming About page para sa karagdagang impormasyon.";
             $action = ['label' => 'Tungkol Sa Amin', 'url' => 'about_us.php'];
         } else {
-            $reply  = "The Bankero and Fisherman Association (BFA) is a community organization serving the fishermen and boatmen of Olongapo City, Zambales. Visit our About page for more information.";
+            $reply  = "The {$assocName} (BFA) is a community organization serving the fishermen and boatmen of {$assocAddress}. Visit our About page for more information.";
             $action = ['label' => 'About Us', 'url' => 'about_us.php'];
         }
     }

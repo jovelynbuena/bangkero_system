@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * EXPORT SELECTED MEMBERS
  * Exports only the selected members to CSV/PDF
@@ -68,8 +68,9 @@ if ($format === 'csv') {
 
 // PDF Export (basic implementation)
 if ($format === 'pdf') {
-    $logoPath = '../../images/logo1.png';
-    $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
+    require_once __DIR__ . '/../../config/logo_helper.php';
+    $logoPath = $assocLogoPath;
+    $logoData = $assocLogoB64;
     
     echo '<!DOCTYPE html>
     <html>
@@ -84,7 +85,7 @@ if ($format === 'pdf') {
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             th { background-color: #0e7490; color: white; }
-            h1 { color: #667eea; }
+            h1 { color: #2E86AB; }
         </style>
     </head>
     <body>
@@ -92,7 +93,7 @@ if ($format === 'pdf') {
             ' . ($logoData ? '<img src="data:image/png;base64,' . $logoData . '" class="logo" alt="Logo">' : '') . '
             <div class="header-text">
                 <h1>Selected Members Export</h1>
-                <p>Bankero and Fisherman Association</p>
+                <p>' . htmlspecialchars($assocName) . '</p>
                 <p>Generated: ' . date('F d, Y h:i A') . '</p>
             </div>
         </div>';

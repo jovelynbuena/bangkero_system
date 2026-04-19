@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 session_start();
 
 if (empty($_SESSION['username'])) {
@@ -177,6 +177,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_role'])) {
     if ($id <= 0) {
         $errorMsg = "Invalid role ID!";
     } else {
+        // ✅ RESTRICTION 2: Cannot archive if officers are currently assigned to this role
+        $checkAssigned = $conn->prepare("SELECT COUNT(*) AS cnt FROM officers WHERE role_id = ?");
+        $checkAssigned->bind_param("i", $id);
+        $checkAssigned->execute();
+        $assignedCount = (int)$checkAssigned->get_result()->fetch_assoc()['cnt'];
+        $checkAssigned->close();
+
+        if ($assignedCount > 0) {
+            $errorMsg = "Cannot archive this role — {$assignedCount} officer(s) are currently assigned to it. Please reassign them first before archiving.";
+        } else {
         try {
             $conn->begin_transaction();
             
@@ -208,6 +218,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['archive_role'])) {
             $conn->rollback();
             $errorMsg = "Error archiving role: " . $e->getMessage();
         }
+        } // end else (not assigned)
     }
 }
 
@@ -224,6 +235,15 @@ if ($hasOfficerRolesDisplayOrder) {
 }
 $rolesResult = $conn->query("SELECT * FROM officer_roles ORDER BY {$orderBy}");
 $totalRoles = $rolesResult->num_rows;
+
+// Fetch assignment counts per role
+$assignmentCounts = [];
+$acRes = $conn->query("SELECT o.role_id, COUNT(*) AS cnt FROM officers o INNER JOIN members m ON o.member_id = m.id WHERE o.role_id IS NOT NULL GROUP BY o.role_id");
+if ($acRes) {
+    while ($acRow = $acRes->fetch_assoc()) {
+        $assignmentCounts[(int)$acRow['role_id']] = (int)$acRow['cnt'];
+    }
+}
 ?>
 
 <!DOCTYPE html>
@@ -237,6 +257,7 @@ $totalRoles = $rolesResult->num_rows;
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<link rel="stylesheet" href="../../css/admin-theme.css">
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -252,12 +273,12 @@ $totalRoles = $rolesResult->num_rows;
 
     /* Page Header */
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         padding: 32px;
         border-radius: 20px;
         color: white;
         margin-bottom: 32px;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 10px 30px rgba(46, 134, 171, 0.30);
     }
     .page-header h2 {
         font-size: 32px;
@@ -285,7 +306,7 @@ $totalRoles = $rolesResult->num_rows;
     }
     
     .card-header { 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white; 
         font-weight: 600; 
         font-size: 18px;
@@ -311,8 +332,8 @@ $totalRoles = $rolesResult->num_rows;
     }
     
     .form-select:focus, .form-control:focus, textarea:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
         outline: none;
     }
     
@@ -338,14 +359,14 @@ $totalRoles = $rolesResult->num_rows;
     }
     
     .btn-primary { 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white;
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
     }
     
     .btn-primary:hover { 
         transform: translateY(-2px);
-        box-shadow: 0 6px 16px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 16px rgba(46, 134, 171, 0.40);
     }
     
     .btn-warning {
@@ -464,7 +485,7 @@ $totalRoles = $rolesResult->num_rows;
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
     .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white;
         border-radius: 20px 20px 0 0;
         padding: 24px;
@@ -546,7 +567,7 @@ $totalRoles = $rolesResult->num_rows;
     }
     
     .input-group .form-control:focus {
-        border-color: #667eea;
+        border-color: #2E86AB;
         box-shadow: none;
     }
 
@@ -588,8 +609,8 @@ $totalRoles = $rolesResult->num_rows;
     <div class="row mb-2">
 
         <div class="col-md-6 mb-2">
-            <div class="stats-card" style="border-left: 4px solid #667eea;">
-                <div class="icon" style="color: #667eea;">
+            <div class="stats-card" style="border-left: 4px solid #2E86AB;">
+                <div class="icon" style="color: #2E86AB;">
                     <i class="bi bi-list-ul"></i>
                 </div>
                 <h3><?= $totalRoles ?></h3>
@@ -692,16 +713,28 @@ $totalRoles = $rolesResult->num_rows;
                                 <th width="8%">ID</th>
                                 <th>Role Name</th>
                                 <th>Description</th>
+                                <th width="10%">Assigned</th>
                                 <th width="20%">Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if ($rolesResult->num_rows > 0): ?>
-                                <?php while ($row = $rolesResult->fetch_assoc()): ?>
+                                <?php $rowNum = 1; while ($row = $rolesResult->fetch_assoc()): 
+                                    $roleId = (int)$row['id'];
+                                    $assignedCount = $assignmentCounts[$roleId] ?? 0;
+                                    $isInUse = $assignedCount > 0;
+                                ?>
                                     <tr data-role-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>" data-description="<?= htmlspecialchars($row['description'] ?? '') ?>">
-                                        <td style="font-weight: 600;"><?= htmlspecialchars($row['id'] ?? '') ?></td>
+                                        <td style="font-weight: 600;"><?= $rowNum++ ?></td>
                                         <td style="font-weight: 600;"><?= htmlspecialchars($row['role_name'] ?? '') ?></td>
                                         <td><?= htmlspecialchars($row['description'] ?? 'No description') ?></td>
+                                        <td>
+                                            <?php if ($isInUse): ?>
+                                                <span class="badge bg-success"><?= $assignedCount ?> officer<?= $assignedCount > 1 ? 's' : '' ?></span>
+                                            <?php else: ?>
+                                                <span class="badge bg-secondary">None</span>
+                                            <?php endif; ?>
+                                        </td>
                                         <td>
                                             <button class="btn btn-edit btn-sm me-1"
                                                 data-bs-toggle="modal"
@@ -709,23 +742,31 @@ $totalRoles = $rolesResult->num_rows;
                                                 data-id="<?= htmlspecialchars($row['id'] ?? '') ?>"
                                                 data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>"
                                                 data-description="<?= htmlspecialchars($row['description'] ?? '') ?>"
-                                                data-bs-toggle="tooltip" data-bs-placement="top" title="Edit role" aria-label="Edit role">
+                                                title="Edit role" aria-label="Edit role">
                                                 <i class="bi bi-pencil-square"></i>
                                             </button>
+                                            <?php if ($isInUse): ?>
+                                                <button class="btn btn-sm btn-secondary" disabled
+                                                    title="Cannot archive — <?= $assignedCount ?> officer(s) assigned"
+                                                    style="opacity:0.5; cursor:not-allowed;">
+                                                    <i class="bi bi-lock-fill"></i>
+                                                </button>
+                                            <?php else: ?>
                                             <button class="btn btn-archive btn-sm"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#archiveModal"
                                                 data-id="<?= htmlspecialchars($row['id'] ?? '') ?>"
                                                 data-name="<?= htmlspecialchars($row['role_name'] ?? '') ?>"
-                                                data-bs-toggle="tooltip" data-bs-placement="top" title="Archive role" aria-label="Archive role">
+                                                title="Archive role" aria-label="Archive role">
                                                 <i class="bi bi-archive"></i>
                                             </button>
+                                            <?php endif; ?>
                                         </td>
 
                                     </tr>
                                 <?php endwhile; ?>
                             <?php else: ?>
-                                <tr><td colspan="4" class="text-center text-muted py-4"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No roles defined yet</td></tr>
+                                <tr><td colspan="5" class="text-center text-muted py-4"><i class="bi bi-inbox fs-1 d-block mb-2"></i>No roles defined yet</td></tr>
                             <?php endif; ?>
                         </tbody>
                     </table>
@@ -917,7 +958,7 @@ document.getElementById('addRoleForm')?.addEventListener('submit', function(e) {
             icon: 'warning',
             title: 'Invalid Input',
             text: 'Role name must be at least 3 characters long!',
-            confirmButtonColor: '#667eea'
+            confirmButtonColor: '#2E86AB'
         });
         return false;
     }
@@ -928,7 +969,7 @@ document.getElementById('addRoleForm')?.addEventListener('submit', function(e) {
             icon: 'warning',
             title: 'Invalid Input',
             text: 'Role name must not exceed 50 characters!',
-            confirmButtonColor: '#667eea'
+            confirmButtonColor: '#2E86AB'
         });
         return false;
     }
@@ -943,7 +984,7 @@ document.getElementById('editRoleForm')?.addEventListener('submit', function(e) 
             icon: 'warning',
             title: 'Invalid Input',
             text: 'Role name must be at least 3 characters long!',
-            confirmButtonColor: '#667eea'
+            confirmButtonColor: '#2E86AB'
         });
         return false;
     }
@@ -954,7 +995,7 @@ document.getElementById('editRoleForm')?.addEventListener('submit', function(e) 
             icon: 'warning',
             title: 'Invalid Input',
             text: 'Role name must not exceed 50 characters!',
-            confirmButtonColor: '#667eea'
+            confirmButtonColor: '#2E86AB'
         });
         return false;
     }
@@ -968,7 +1009,7 @@ Swal.fire({
     icon: 'success',
     title: 'Success!',
     text: '<?= addslashes($successMsg) ?>',
-    confirmButtonColor: '#667eea',
+    confirmButtonColor: '#2E86AB',
     timer: 2000,
     showConfirmButton: false
 }).then(() => {

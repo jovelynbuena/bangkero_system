@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 /**
  * Database Migration Script
  * Run this file once to update database tables
@@ -14,7 +14,7 @@ echo "<!DOCTYPE html>
     <style>
         body { font-family: Arial, sans-serif; padding: 40px; background: #f5f5f5; }
         .container { max-width: 900px; margin: 0 auto; background: white; padding: 30px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        h1 { color: #333; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+        h1 { color: #333; border-bottom: 2px solid #2E86AB; padding-bottom: 10px; }
         h2 { color: #555; margin-top: 30px; padding-top: 20px; border-top: 1px solid #eee; }
         .success { background: #d4edda; color: #155724; padding: 12px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #28a745; }
         .error { background: #f8d7da; color: #721c24; padding: 12px; border-radius: 4px; margin: 10px 0; border-left: 4px solid #dc3545; }
@@ -255,10 +255,10 @@ if ($allSuccess) {
 
 echo "
         <div style='text-align: center; margin-top: 30px;'>
-            <a href='../index/admin.php' style='display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 5px;'>
+            <a href='../index/admin.php' style='display: inline-block; background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 5px;'>
                 Go to Admin Dashboard →
             </a>
-            <a href='../index/management/officer_roles.php' style='display: inline-block; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 5px;'>
+            <a href='../index/management/officer_roles.php' style='display: inline-block; background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); color: white; padding: 12px 30px; border-radius: 8px; text-decoration: none; font-weight: 600; margin: 5px;'>
                 Manage Officer Roles →
             </a>
         </div>

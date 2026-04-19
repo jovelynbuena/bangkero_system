@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -355,6 +355,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<link rel="stylesheet" href="../../css/admin-theme.css">
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -370,12 +371,12 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
 
   /* Page Header */
   .page-header {
-      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
       padding: 32px;
       border-radius: 20px;
       color: white;
       margin-bottom: 32px;
-      box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+      box-shadow: 0 10px 30px rgba(46, 134, 171, 0.30);
   }
   .page-header h2 {
       font-size: 32px;
@@ -426,8 +427,8 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
       width: 100%;
   }
   .filter-select:focus {
-      border-color: #667eea;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      border-color: #2E86AB;
+      box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
       outline: none;
   }
 
@@ -445,8 +446,8 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
   }
   .search-box input:focus {
       outline: none;
-      border-color: #667eea;
-      box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+      border-color: #2E86AB;
+      box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
   }
   .search-box i {
       position: absolute;
@@ -459,14 +460,14 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
 
   /* Add Button */
     .btn-add-award {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white;
         padding: 14px 28px;
         border-radius: 12px;
         border: none;
         font-weight: 600;
         font-size: 16px;
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 20px rgba(46, 134, 171, 0.40);
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         display: inline-flex;
         align-items: center;
@@ -475,7 +476,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
     .btn-add-award:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
-        background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+        background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
     }
 
     /* Table Container */
@@ -542,8 +543,8 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
     }
     .badge-regional {
         background: #dbeafe;
-        color: #1e40af;
-        border: 1px solid #3b82f6;
+        color: #1a6d8a;
+        border: 1px solid #2E86AB;
     }
     .badge-local {
         background: #fef3c7;
@@ -553,7 +554,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
     .badge-other {
         background: #f3e8ff;
         color: #6b21a8;
-        border: 1px solid #8b5cf6;
+        border: 1px solid #2E86AB;
     }
 
     /* Circle Action Buttons */
@@ -580,7 +581,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
         color: white;
     }
     .btn-view {
-        background: #3b82f6;
+        background: #2E86AB;
         color: white;
     }
     .btn-view:hover {
@@ -599,7 +600,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
         margin-bottom: 24px;
         align-items: center;
         justify-content: space-between;
-        border-left: 5px solid #667eea;
+        border-left: 5px solid #2E86AB;
         animation: slideDown 0.3s ease;
     }
     @keyframes slideDown {
@@ -621,14 +622,14 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
         transition: all 0.2s;
     }
     .page-item.active .page-link {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+        box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
     }
 
     /* Checkbox */
     .form-check-input:checked {
-        background-color: #667eea;
-        border-color: #667eea;
+        background-color: #2E86AB;
+        border-color: #2E86AB;
     }
 
     /* Mobile Cards */
@@ -661,7 +662,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
     .modal-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white;
         border-radius: 20px 20px 0 0;
         padding: 24px;
@@ -703,8 +704,8 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
         font-size: 14px;
     }
     .form-select:focus, .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
     }
 
     /* Submit Button */
@@ -855,7 +856,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
             </div>
 
             <div class="col-md-1 d-flex align-items-end gap-2">
-                <button type="submit" class="btn btn-primary w-100" style="padding: 12px; background: #667eea; border: none; border-radius: 12px; font-weight: 600;">
+                <button type="submit" class="btn btn-primary w-100" style="padding: 12px; background: #2E86AB; border: none; border-radius: 12px; font-weight: 600;">
                     <i class="bi bi-funnel"></i>
                 </button>
             </div>
@@ -924,7 +925,7 @@ while ($b = $bodies_res->fetch_assoc()) $awarding_bodies[] = $b['awarding_body']
                                          data-image="<?= $uploadDir . htmlspecialchars($row['award_image']) ?>"
                                          style="cursor: pointer;">
                                 <?php else: ?>
-                                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;"
+                                    <div style="width: 60px; height: 60px; background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); border-radius: 10px; display: flex; align-items: center; justify-content: center; cursor: pointer;"
                                          class="view-award"
                                          data-title="<?= htmlspecialchars($row['award_title']) ?>"
                                          data-body="<?= htmlspecialchars($row['awarding_body']) ?>"
@@ -1490,7 +1491,7 @@ Swal.fire({
     icon: '<?= $alertType ?>',
     title: '<?= ucfirst($alertType) ?>!',
     text: '<?= addslashes($alertMsg) ?>',
-    confirmButtonColor: '#667eea'
+    confirmButtonColor: '#2E86AB'
 }).then(() => {
     if ('<?= $alertType ?>' === 'success') window.location.href = "awards.php";
 });

@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 ob_start();
 mysqli_report(MYSQLI_REPORT_OFF); // keep off globally to avoid HTML exceptions
 session_start();
@@ -143,6 +143,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<link rel="stylesheet" href="../../css/admin-theme.css">
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -158,12 +159,12 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
 
     /* Page Header */
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         padding: 32px;
         border-radius: 20px;
         color: white;
         margin-bottom: 32px;
-        box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 10px 30px rgba(46, 134, 171, 0.30);
     }
     .page-header h2 {
         font-size: 32px;
@@ -229,7 +230,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
     }
     
     .card-header { 
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white; 
         font-weight: 600; 
         font-size: 18px;
@@ -267,8 +268,8 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
     }
     
     .form-select-sm:focus, .form-control:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
         outline: none;
     }
 
@@ -346,7 +347,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
         color: white;
     }
     .badge-replied {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white;
     }
 
@@ -377,15 +378,15 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
     }
     
     .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white;
-        box-shadow: 0 2px 8px rgba(102, 126, 234, 0.3);
+        box-shadow: 0 2px 8px rgba(46, 134, 171, 0.30);
     }
 
     .btn-primary:hover {
         background: linear-gradient(135deg, #5a6fd6 0%, #6a4295 100%);
         transform: translateY(-2px);
-        box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 4px 12px rgba(46, 134, 171, 0.40);
         color: white;
     }
 
@@ -409,19 +410,19 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
     .page-item .page-link {
         border: 2px solid #e9ecef;
         border-radius: 10px;
-        color: #667eea;
+        color: #2E86AB;
         font-weight: 600;
         padding: 8px 14px;
         transition: all 0.3s ease;
     }
     .page-item.active .page-link {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: #667eea;
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+        border-color: #2E86AB;
         color: white;
     }
     .page-item .page-link:hover {
         background: #f8f9ff;
-        border-color: #667eea;
+        border-color: #2E86AB;
         transform: translateY(-2px);
     }
 
@@ -456,8 +457,8 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
     <!-- Statistics Cards -->
     <div class="row mb-4">
         <div class="col-md-4 mb-3">
-            <div class="stats-card" style="border-left-color: #667eea;">
-                <div class="icon" style="color: #667eea;">
+            <div class="stats-card" style="border-left-color: #2E86AB;">
+                <div class="icon" style="color: #2E86AB;">
                     <i class="bi bi-inbox-fill"></i>
                 </div>
                 <div>
@@ -599,7 +600,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
 <div class="modal fade" id="replyModal" tabindex="-1" aria-labelledby="replyModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content" style="border-radius: 18px; border: none; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
-      <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 18px 18px 0 0; color: white; border: none;">
+      <div class="modal-header" style="background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); border-radius: 18px 18px 0 0; color: white; border: none;">
         <h5 class="modal-title fw-bold" id="replyModalLabel">
           <i class="bi bi-reply-fill me-2"></i>Reply to Message
         </h5>
@@ -607,7 +608,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
       </div>
       <div class="modal-body p-4">
         <!-- Original Message Preview -->
-        <div class="mb-3 p-3" style="background: #f8f9ff; border-radius: 12px; border-left: 4px solid #667eea;">
+        <div class="mb-3 p-3" style="background: #f8f9ff; border-radius: 12px; border-left: 4px solid #2E86AB;">
           <div class="d-flex align-items-center gap-2 mb-1">
             <i class="bi bi-person-fill text-primary"></i>
             <strong id="replyOriginalName" class="text-primary"></strong>
@@ -640,8 +641,8 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
         </div>
 
         <!-- Step 2: Confirmation panel (hidden by default) -->
-        <div id="replyConfirmPanel" style="display:none; border-radius: 12px; border: 2px solid #667eea; background: #f0f2ff; padding: 16px; margin-top: 4px;">
-          <p class="fw-semibold mb-1" style="color: #667eea; font-size: 14px;">
+        <div id="replyConfirmPanel" style="display:none; border-radius: 12px; border: 2px solid #2E86AB; background: #f0f2ff; padding: 16px; margin-top: 4px;">
+          <p class="fw-semibold mb-1" style="color: #2E86AB; font-size: 14px;">
             <i class="bi bi-send-check me-2"></i>Ready to send this reply?
           </p>
           <p class="mb-3 text-muted" style="font-size: 13px;">
@@ -650,7 +651,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
           </p>
           <div class="d-flex gap-2 flex-wrap">
             <button type="button" id="confirmSendGmailBtn" class="btn btn-sm fw-semibold"
-                    style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px; min-width: 160px;">
+                    style="background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); color: white; border-radius: 10px; min-width: 160px;">
               <i class="bi bi-google me-1"></i><span id="gmailBtnLabel">Send via Gmail</span>
             </button>
             <button type="button" id="cancelConfirmBtn" class="btn btn-sm btn-outline-secondary fw-semibold" style="border-radius: 10px;">
@@ -664,7 +665,7 @@ $msgResult = $conn->query("SELECT id, name, email, message, status, created_at F
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px;">
           <i class="bi bi-x-circle me-1"></i>Cancel
         </button>
-        <button type="button" id="sendReplyBtn" class="btn" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border-radius: 10px; min-width: 140px;">
+        <button type="button" id="sendReplyBtn" class="btn" style="background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); color: white; border-radius: 10px; min-width: 140px;">
           <i class="bi bi-send-fill me-1"></i>Send Reply
         </button>
       </div>
@@ -841,7 +842,7 @@ document.querySelectorAll('.reply-message').forEach(btn => {
 document.getElementById('sendReplyBtn').addEventListener('click', function() {
     const body = document.getElementById('replyBody').value.trim();
     if (!body) {
-        Swal.fire({ icon: 'warning', title: 'Empty Reply', text: 'Please type your reply message before sending.', confirmButtonColor: '#667eea' });
+        Swal.fire({ icon: 'warning', title: 'Empty Reply', text: 'Please type your reply message before sending.', confirmButtonColor: '#2E86AB' });
         return;
     }
 
@@ -910,7 +911,7 @@ document.getElementById('confirmSendGmailBtn').addEventListener('click', functio
         icon: 'success',
         title: 'Redirecting to Gmail...',
         html: 'Your reply has been pre-filled.<br><small class="text-muted">Click <strong>Send</strong> inside Gmail to complete delivery.</small>',
-        confirmButtonColor: '#667eea',
+        confirmButtonColor: '#2E86AB',
         confirmButtonText: 'Got it'
     });
 });

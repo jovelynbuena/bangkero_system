@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -88,10 +88,11 @@ $initialPresent = count($existing);
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+<link rel="stylesheet" href="../css/admin-theme.css">
 <style>
   body { font-family: 'Inter', 'Segoe UI', sans-serif; background: #f9fafb; }
   .main-content { margin-left: 270px; padding: 32px; min-height: 100vh; }
-  .page-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 24px 28px; border-radius: 18px; color: #fff; margin-bottom: 24px; }
+  .page-header { background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); padding: 24px 28px; border-radius: 18px; color: #fff; margin-bottom: 24px; }
   .page-header h3 { margin: 0; display: flex; align-items: center; gap: 10px; }
   .card-attendance { background: #fff; border-radius: 16px; box-shadow: 0 4px 16px rgba(0,0,0,0.06); padding: 24px; }
   .table thead th { background: #f3f4f6; font-size: 0.85rem; text-transform: uppercase; letter-spacing: .03em; }
@@ -115,16 +116,17 @@ $initialPresent = count($existing);
 <?php include('navbar.php'); ?>
 <div class="main-content">
   <!-- Print Header with Logo -->
-  <div class="print-header" style="margin-bottom: 20px; border-bottom: 3px solid #0e7490; padding-bottom: 15px;">
+  <div class="print-header" style="margin-bottom: 20px; border-bottom: 3px solid #2E86AB; padding-bottom: 15px;">
     <div style="display: flex; align-items: center;">
       <?php
-      $logoPath = __DIR__ . '/../images/logo1.png';
-      if (file_exists($logoPath)) {
-          echo '<img src="data:image/png;base64,' . base64_encode(file_get_contents($logoPath)) . '" class="print-logo">';
+      require_once __DIR__ . '/../config/logo_helper.php';
+      if ($assocLogoB64) {
+          $ext = pathinfo($assocLogoPath, PATHINFO_EXTENSION) ?: 'png';
+          echo '<img src="data:image/' . $ext . ';base64,' . $assocLogoB64 . '" class="print-logo">';
       }
       ?>
       <div>
-        <h2 style="margin: 0; color: #0e7490; font-size: 20px;">Bangkero & Fishermen Association</h2>
+        <h2 style="margin: 0; color: #2E86AB; font-size: 20px;">Bangkero & Fishermen Association</h2>
         <p style="margin: 5px 0 0 0; color: #666; font-size: 14px;">Event Attendance Report</p>
         <p style="margin: 3px 0 0 0; color: #999; font-size: 11px;">Generated: <?= date('Y-m-d h:i A') ?></p>
       </div>
@@ -162,9 +164,18 @@ $initialPresent = count($existing);
           <input type="date" name="attendance_date" class="form-control" value="<?= htmlspecialchars($attendanceDateDefault) ?>" required>
         </div>
         <div class="col-md-8 mt-3 mt-md-0 d-flex justify-content-md-end align-items-center gap-2">
-          <button type="button" class="btn btn-outline-secondary btn-sm d-print-none" onclick="window.print();">
-            <i class="bi bi-printer"></i> Print Attendance
-          </button>
+          <a id="printPdfBtn"
+             href="home/generate_event_attendance_pdf.php?event_id=<?= $eventId ?>&date=<?= htmlspecialchars($attendanceDateDefault) ?>&mode=report"
+             target="_blank"
+             class="btn btn-outline-secondary btn-sm d-print-none">
+            <i class="bi bi-file-earmark-pdf"></i> Print Attendance
+          </a>
+          <a id="printSheetBtn"
+             href="home/generate_event_attendance_pdf.php?event_id=<?= $eventId ?>&date=<?= htmlspecialchars($attendanceDateDefault) ?>&mode=sheet"
+             target="_blank"
+             class="btn btn-outline-primary btn-sm d-print-none">
+            <i class="bi bi-printer"></i> Print Sheet
+          </a>
           <span class="badge bg-primary-subtle text-primary present-counter">
             Present: <span id="presentCount"><?= $initialPresent ?></span> / <?= $totalMembers ?> members
           </span>
@@ -347,6 +358,21 @@ $initialPresent = count($existing);
     });
 
     applyFilters();
+
+    // Update PDF print links when date changes
+    const dateInput   = document.querySelector('input[name="attendance_date"]');
+    const pdfBtn      = document.getElementById('printPdfBtn');
+    const sheetBtn    = document.getElementById('printSheetBtn');
+    if (dateInput) {
+      dateInput.addEventListener('change', function() {
+        [pdfBtn, sheetBtn].forEach(btn => {
+          if (!btn) return;
+          const url = new URL(btn.href, window.location.href);
+          url.searchParams.set('date', dateInput.value);
+          btn.href = url.toString();
+        });
+      });
+    }
   });
 })();
 </script>

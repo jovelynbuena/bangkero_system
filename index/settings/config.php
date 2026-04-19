@@ -1,6 +1,7 @@
-<?php
+﻿<?php
 session_start();
 require_once('../../config/db_connect.php');
+require_once('../../config/path.php');
 
 // Only allow admin
 $role = strtolower($_SESSION['role'] ?? 'guest');
@@ -155,11 +156,11 @@ body {
 }
 
 .page-header {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
     border-radius: 16px;
     padding: 30px;
     margin-bottom: 30px;
-    box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+    box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
     color: white;
 }
 
@@ -207,18 +208,18 @@ body {
     width: 160px;
     height: 160px;
     margin: 0 auto 24px;
-    border: 4px dashed #667eea;
+    border: 4px dashed #2E86AB;
     border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+    background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.05) 100%);
     overflow: hidden;
     transition: all 0.3s ease;
 }
 
 .logo-preview-container:hover {
-    border-color: #764ba2;
+    border-color: #1B4F72;
     transform: scale(1.02);
 }
 
@@ -236,7 +237,7 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    background: rgba(102, 126, 234, 0.9);
+    background: rgba(46, 134, 171, 0.20);
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -267,7 +268,7 @@ body {
 
 .form-label i {
     margin-right: 8px;
-    color: #667eea;
+    color: #2E86AB;
 }
 
 .form-control, .form-select {
@@ -278,8 +279,8 @@ body {
 }
 
 .form-control:focus, .form-select:focus {
-    border-color: #667eea;
-    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.20);
     outline: none;
 }
 
@@ -289,7 +290,7 @@ textarea.form-control {
 }
 
 .save-btn {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
     border: none;
     border-radius: 10px;
     padding: 14px 32px;
@@ -301,19 +302,19 @@ textarea.form-control {
 
 .save-btn:hover {
     transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+    box-shadow: 0 6px 20px rgba(46, 134, 171, 0.20);
 }
 
 .info-box {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-    border-left: 4px solid #667eea;
+    background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-left: 4px solid #2E86AB;
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 24px;
 }
 
 .info-box i {
-    color: #667eea;
+    color: #2E86AB;
     margin-right: 10px;
 }
 
@@ -335,17 +336,17 @@ textarea.form-control {
     justify-content: center;
     padding: 12px 20px;
     background: white;
-    border: 2px dashed #667eea;
+    border: 2px dashed #2E86AB;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
-    color: #667eea;
+    color: #2E86AB;
     font-weight: 500;
 }
 
 .file-upload-label:hover {
-    background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-    border-color: #764ba2;
+    background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: #1B4F72;
 }
 
 .file-upload-label i {
@@ -396,7 +397,7 @@ textarea.form-control {
                 <!-- Logo Preview -->
                 <div class="text-center mb-4">
                     <div class="logo-preview-container" onclick="document.getElementById('logoInput').click()">
-                        <img src="<?= !empty($config['assoc_logo']) ? BASE_URL.'uploads/config/'.htmlspecialchars($config['assoc_logo']) : BASE_URL.'images/logo1.png' ?>" 
+                        <img src="<?= !empty($config['assoc_logo']) ? BASE_URL.'uploads/config/'.htmlspecialchars($config['assoc_logo']).'?v='.time() : BASE_URL.'../images/logo1.png' ?>" 
                              alt="Association Logo" 
                              class="hero-logo"
                              id="logoPreview">
@@ -559,7 +560,7 @@ Swal.fire({
     icon: 'error',
     title: 'Error!',
     text: '<?= htmlspecialchars($error) ?>',
-    confirmButtonColor: '#667eea'
+    confirmButtonColor: '#2E86AB'
 });
 </script>
 <?php endif; ?>

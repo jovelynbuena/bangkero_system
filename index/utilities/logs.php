@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -95,11 +95,11 @@ while ($row = $actions_result->fetch_assoc()) {
     
     /* Page Header */
     .page-header {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         padding: 32px;
         border-radius: 20px;
         margin-bottom: 32px;
-        box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
+        box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
         color: white;
     }
     
@@ -150,12 +150,12 @@ while ($row = $actions_result->fetch_assoc()) {
     }
     
     .form-control:focus, .form-select:focus {
-        border-color: #667eea;
-        box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.20);
     }
     
     .btn-primary {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         border: none;
         padding: 12px 24px;
         border-radius: 10px;
@@ -165,7 +165,7 @@ while ($row = $actions_result->fetch_assoc()) {
     
     .btn-primary:hover {
         transform: translateY(-2px);
-        box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+        box-shadow: 0 6px 20px rgba(46, 134, 171, 0.20);
     }
     
     .btn-outline-secondary {
@@ -179,8 +179,8 @@ while ($row = $actions_result->fetch_assoc()) {
     
     .btn-outline-secondary:hover {
         background: #f8f9fa;
-        border-color: #667eea;
-        color: #667eea;
+        border-color: #2E86AB;
+        color: #2E86AB;
     }
     
     .btn-success {
@@ -284,7 +284,7 @@ while ($row = $actions_result->fetch_assoc()) {
         width: 36px;
         height: 36px;
         border-radius: 50%;
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
         color: white;
         display: inline-flex;
         align-items: center;
@@ -308,20 +308,20 @@ while ($row = $actions_result->fetch_assoc()) {
         border-radius: 8px;
         margin: 0 4px;
         border: 1.5px solid #E0E0E0;
-        color: #667eea;
+        color: #2E86AB;
         padding: 8px 14px;
         font-weight: 500;
     }
     
     .page-link:hover {
-        background: #667eea;
+        background: #2E86AB;
         color: white;
-        border-color: #667eea;
+        border-color: #2E86AB;
     }
     
     .page-item.active .page-link {
-        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-        border-color: #667eea;
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+        border-color: #2E86AB;
     }
     
     /* Empty State */
@@ -382,8 +382,8 @@ while ($row = $actions_result->fetch_assoc()) {
     }
     
     .dt-button:hover {
-        border-color: #667eea !important;
-        color: #667eea !important;
+        border-color: #2E86AB !important;
+        color: #2E86AB !important;
         background: #f8f9fa !important;
     }
     

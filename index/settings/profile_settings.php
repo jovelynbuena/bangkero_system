@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 include('../../config/db_connect.php');
 
@@ -99,11 +99,11 @@ body {
 }
 
 .page-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
   border-radius: 16px;
   padding: 30px;
   margin-bottom: 30px;
-  box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+  box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
   color: white;
 }
 
@@ -154,15 +154,15 @@ body {
 }
 
 .settings-sidebar .nav-link:hover {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  color: #667eea;
+  background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.1) 100%);
+  color: #2E86AB;
   transform: translateX(5px);
 }
 
 .settings-sidebar .nav-link.active {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
   color: #fff;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  box-shadow: 0 4px 12px rgba(46, 134, 171, 0.20);
 }
 
 .profile-card {
@@ -183,7 +183,7 @@ body {
 
 .profile-card h4 i {
   margin-right: 12px;
-  color: #667eea;
+  color: #2E86AB;
 }
 
 .avatar-container {
@@ -198,8 +198,8 @@ body {
   height: 140px;
   border-radius: 50%;
   object-fit: cover;
-  border: 4px solid #667eea;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+  border: 4px solid #2E86AB;
+  box-shadow: 0 4px 12px rgba(46, 134, 171, 0.20);
 }
 
 .avatar-upload-btn {
@@ -208,7 +208,7 @@ body {
   right: 5px;
   width: 40px;
   height: 40px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -246,13 +246,13 @@ body {
 }
 
 .form-control:focus, .form-select:focus {
-  border-color: #667eea;
-  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  border-color: #2E86AB;
+  box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.20);
   outline: none;
 }
 
 .save-btn {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
   border: none;
   border-radius: 10px;
   padding: 12px 32px;
@@ -263,12 +263,12 @@ body {
 
 .save-btn:hover {
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+  box-shadow: 0 6px 20px rgba(46, 134, 171, 0.20);
 }
 
 .info-badge {
   display: inline-block;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
   color: white;
   padding: 6px 16px;
   border-radius: 20px;
@@ -298,7 +298,7 @@ body {
 }
 
 .password-toggle:hover {
-  color: #667eea;
+  color: #2E86AB;
 }
 
 .position-relative { 
@@ -306,11 +306,11 @@ body {
 }
 
 .username-display {
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
-  border: 2px solid #667eea;
+  background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.1) 100%);
+  border: 2px solid #2E86AB;
   border-radius: 10px;
   padding: 12px 16px;
-  color: #667eea;
+  color: #2E86AB;
   font-weight: 600;
   display: flex;
   align-items: center;
@@ -593,7 +593,7 @@ Swal.fire({
   icon: 'error',
   title: 'Error',
   text: '<?php echo addslashes($pass_error); ?>',
-  confirmButtonColor: '#667eea'
+  confirmButtonColor: '#2E86AB'
 });
 <?php elseif ($pass_success): ?>
 Swal.fire({
@@ -618,7 +618,7 @@ document.getElementById('passwordForm')?.addEventListener('submit', function(e) 
       icon: 'error',
       title: 'Passwords do not match',
       text: 'Please make sure both password fields match.',
-      confirmButtonColor: '#667eea'
+      confirmButtonColor: '#2E86AB'
     });
     return false;
   }
@@ -629,7 +629,7 @@ document.getElementById('passwordForm')?.addEventListener('submit', function(e) 
       icon: 'warning',
       title: 'Password too short',
       text: 'Password must be at least 6 characters long.',
-      confirmButtonColor: '#667eea'
+      confirmButtonColor: '#2E86AB'
     });
     return false;
   }
