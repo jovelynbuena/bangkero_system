@@ -1,0 +1,13 @@
+# Backup files - too large for GitHub
+index/utilities/backups/*.zip
+index/utilities/backups/*.sql
+
+# Uploads (large media files)
+uploads/
+
+# Vendor
+vendor/
+
+# System files
+.DS_Store
+Thumbs.db
