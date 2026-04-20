@@ -218,7 +218,11 @@ body {
 /* ========== SIDEBAR BRAND ========== */
 .sidebar-brand {
   padding: 22px 16px;
+<<<<<<< HEAD
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+=======
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   display: flex;
   align-items: center;
   gap: 13px;
@@ -285,7 +289,11 @@ body {
 .sidebar-toggle-btn {
   width: 42px;
   height: 42px;
+<<<<<<< HEAD
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+=======
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   border: none;
   border-radius: 10px;
   display: flex;
@@ -293,7 +301,11 @@ body {
   justify-content: center;
   cursor: pointer;
   z-index: 1060;
+<<<<<<< HEAD
   box-shadow: 0 3px 10px rgba(99,102,241,0.4);
+=======
+  box-shadow: 0 3px 10px rgba(46,134,171,0.4);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   transition: background 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
   font-size: 1.3rem;
   color: #ffffff;
@@ -301,8 +313,13 @@ body {
 }
 
 .sidebar-toggle-btn:hover {
+<<<<<<< HEAD
   background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
   box-shadow: 0 5px 18px rgba(99,102,241,0.55);
+=======
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+  box-shadow: 0 5px 18px rgba(46,134,171,0.55);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   transform: scale(1.08);
 }
 
@@ -373,17 +390,30 @@ body.sidebar-icon-only .sidebar-toggle-btn {
 
 .nav-link-item:hover {
   background: #f1f5f9;
+<<<<<<< HEAD
   color: #6366f1;
+=======
+  color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   transform: translateX(2px);
 }
 
 .nav-link-item.active {
+<<<<<<< HEAD
   background: linear-gradient(135deg, #eef2ff 0%, #f5f3ff 100%);
   color: #6366f1;
   font-weight: 700;
   border-left: 4px solid #6366f1;
   padding-left: 9px;
   box-shadow: 0 2px 8px rgba(99,102,241,0.12);
+=======
+  background: linear-gradient(135deg, #e8f4f8 0%, #d6eef6 100%);
+  color: #2E86AB;
+  font-weight: 700;
+  border-left: 4px solid #2E86AB;
+  padding-left: 9px;
+  box-shadow: 0 2px 8px rgba(46,134,171,0.12);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 /* ========== ICONS ========== */
@@ -397,7 +427,11 @@ body.sidebar-icon-only .sidebar-toggle-btn {
 
 .nav-link-item:hover .nav-icon,
 .nav-link-item.active .nav-icon {
+<<<<<<< HEAD
   color: #6366f1;
+=======
+  color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 .nav-label {
@@ -450,6 +484,7 @@ body.sidebar-icon-only .sidebar-toggle-btn {
 
 .sub-menu .nav-link-item:hover {
   background: #f8faff;
+<<<<<<< HEAD
   color: #6366f1;
 }
 
@@ -458,6 +493,16 @@ body.sidebar-icon-only .sidebar-toggle-btn {
   color: #6366f1;
   font-weight: 700;
   border-left: 4px solid #6366f1;
+=======
+  color: #2E86AB;
+}
+
+.sub-menu .nav-link-item.active {
+  background: #e8f4f8;
+  color: #2E86AB;
+  font-weight: 700;
+  border-left: 4px solid #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   padding-left: 9px;
 }
 
@@ -576,7 +621,11 @@ body.sidebar-icon-only .sidebar-toggle-btn {
 }
 
 .hamburger-toggle {
+<<<<<<< HEAD
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+=======
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   border: none;
   color: white;
   width: 46px;
@@ -587,7 +636,11 @@ body.sidebar-icon-only .sidebar-toggle-btn {
   justify-content: center;
   font-size: 1.4rem;
   cursor: pointer;
+<<<<<<< HEAD
   box-shadow: 0 3px 10px rgba(99,102,241,0.3);
+=======
+  box-shadow: 0 3px 10px rgba(46,134,171,0.3);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   transition: all 0.2s ease;
   flex-shrink: 0;
 }
@@ -609,7 +662,11 @@ body.sidebar-icon-only .sidebar-toggle-btn {
   width: 38px;
   height: 38px;
   border-radius: 50%;
+<<<<<<< HEAD
   background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+=======
+  background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   object-fit: cover;
   overflow: hidden;
   flex-shrink: 0;
@@ -675,6 +732,114 @@ body.sidebar-open { overflow: hidden; }
 </head>
 <body>
 
+<<<<<<< HEAD
+=======
+<!-- ========== PAGE LOADER ========== -->
+<div id="pageLoader">
+  <div class="loader-wrap">
+    <img src="<?= $assocLogo ?>" class="loader-logo" alt="Logo">
+    <div class="loader-ripple"></div>
+  </div>
+</div>
+
+<style>
+#pageLoader {
+  position: fixed;
+  inset: 0;
+  z-index: 99999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0,0,0,0.5);
+  transition: opacity 0.4s ease, visibility 0.4s ease;
+}
+#pageLoader.hide {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.loader-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 160px;
+}
+.loader-logo {
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  object-fit: cover;
+  position: relative;
+  z-index: 2;
+  animation: heartbeat 1.2s ease-in-out infinite;
+}
+@keyframes heartbeat {
+  0%   { transform: scale(1);    }
+  14%  { transform: scale(1.2);  }
+  28%  { transform: scale(1);    }
+  42%  { transform: scale(1.15); }
+  56%  { transform: scale(1);    }
+  100% { transform: scale(1);    }
+}
+.loader-ripple {
+  position: absolute;
+  width: 110px;
+  height: 110px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.25);
+  animation: ripple 1.2s ease-out infinite;
+  z-index: 1;
+}
+@keyframes ripple {
+  0%   { transform: scale(1);   opacity: 0.6; }
+  100% { transform: scale(2.2); opacity: 0;   }
+}
+</style>
+
+<script>
+(function() {
+  var loader = document.getElementById('pageLoader');
+
+  // Hide loader once page fully loads
+  window.addEventListener('load', function() {
+    setTimeout(function() {
+      loader.classList.add('hide');
+    }, 300); // tiny buffer so it doesn't flicker
+  });
+
+  // Show loader on any internal link click (navigation)
+  document.addEventListener('click', function(e) {
+    var anchor = e.target.closest('a');
+    if (!anchor) return;
+    var href = anchor.getAttribute('href') || '';
+    // Skip: anchors, js links, mailto, blank target
+    if (!href || href.startsWith('#') || href.startsWith('javascript') || href.startsWith('mailto') || anchor.target === '_blank') return;
+    // Skip: file downloads / export links (CSV, PDF, Excel)
+    if (/[?&]export=/.test(href)) return;
+    // Skip: print triggers
+    if (anchor.hasAttribute('data-print') || anchor.getAttribute('onclick') === 'window.print()') return;
+    loader.classList.remove('hide');
+    loader.style.opacity = '1';
+    loader.style.visibility = 'visible';
+  });
+
+  // Show loader on form submits (except AJAX/modal/filter forms)
+  document.addEventListener('submit', function(e) {
+    // Skip AJAX forms
+    if (e.target.hasAttribute('data-ajax')) return;
+    // Skip filter/search forms (method GET, no page navigation intended)
+    if (e.target.id === 'filterForm') return;
+    loader.classList.remove('hide');
+    loader.style.opacity = '1';
+    loader.style.visibility = 'visible';
+  });
+})();
+</script>
+<!-- ========== END PAGE LOADER ========== -->
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 <!-- Overlay -->
 <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
@@ -985,7 +1150,61 @@ body.sidebar-open { overflow: hidden; }
     <i class="bi bi-list"></i>
   </button>
 
+<<<<<<< HEAD
   <!-- User pill -->
+=======
+  <!-- Pending Approval Bell (Admin only) -->
+  <?php if (strtolower($role) === 'admin'): ?>
+  <div class="ms-auto d-flex align-items-center gap-2 flex-shrink-0">
+  <div class="me-1 position-relative" id="pendingBellWrap" style="display:flex;align-items:center;flex-shrink:0;">
+    <button type="button" id="pendingBellBtn"
+      title="Pending Approvals"
+      style="background:none;border:none;cursor:pointer;position:relative;padding:6px 10px;border-radius:10px;transition:background 0.2s;"
+      onmouseover="this.style.background='rgba(46,134,171,0.1)'"
+      onmouseout="this.style.background='none'">
+      <i class="bi bi-bell-fill" style="font-size:1.25rem;color:#1B4F72;" id="pendingBellIcon"></i>
+      <span id="pendingBellBadge"
+        style="display:none;position:absolute;top:2px;right:4px;background:#ef4444;color:#fff;
+               border-radius:50%;font-size:0.6rem;font-weight:700;min-width:16px;height:16px;
+               line-height:16px;text-align:center;padding:0 3px;"></span>
+    </button>
+    <div id="pendingBellPanel"
+      style="display:none;position:absolute;top:44px;right:0;width:320px;background:#fff;
+             border-radius:12px;box-shadow:0 8px 32px rgba(0,0,0,0.15);border:1px solid #e2e8f0;
+             z-index:9999;overflow:hidden;">
+      <div style="background:linear-gradient(135deg,#1B4F72,#2E86AB);color:#fff;padding:12px 16px;font-weight:700;font-size:0.95rem;display:flex;justify-content:space-between;align-items:center;">
+        <span><i class="bi bi-person-check me-2"></i>Pending Approvals</span>
+        <a href="<?= BASE_URL ?>management/manage_officer.php" style="color:rgba(255,255,255,0.85);font-size:0.75rem;text-decoration:none;">View All</a>
+      </div>
+      <div id="pendingBellList" style="max-height:280px;overflow-y:auto;padding:8px 0;">
+        <div style="padding:20px;text-align:center;color:#94a3b8;font-size:0.88rem;">Loading...</div>
+      </div>
+    </div>
+  </div><!-- end pendingBellWrap -->
+  <!-- User pill -->
+  <div class="navbar-user-pill">
+    <?php if ($navbarAvatar): ?>
+      <img src="/bangkero_system/index/uploads/avatars/<?= htmlspecialchars($navbarAvatar) ?>"
+           class="user-avatar-img"
+           alt="<?= htmlspecialchars($firstName) ?>"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="user-avatar" style="display:none; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1rem;">
+        <?= strtoupper(substr($firstName, 0, 1)) ?>
+      </div>
+    <?php else: ?>
+      <div class="user-avatar" style="display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1rem;">
+        <?= strtoupper(substr($firstName, 0, 1)) ?>
+      </div>
+    <?php endif; ?>
+    <div class="user-info-text">
+      <div class="u-name"><?= htmlspecialchars($firstName) ?></div>
+      <div class="u-role"><?= htmlspecialchars($roleDisplay) ?></div>
+    </div>
+  </div>
+  </div><!-- end ms-auto wrapper (admin) -->
+  <?php else: ?>
+  <!-- User pill (non-admin) -->
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
   <div class="navbar-user-pill ms-auto">
     <?php if ($navbarAvatar): ?>
       <img src="/bangkero_system/index/uploads/avatars/<?= htmlspecialchars($navbarAvatar) ?>"
@@ -1005,6 +1224,10 @@ body.sidebar-open { overflow: hidden; }
       <div class="u-role"><?= htmlspecialchars($roleDisplay) ?></div>
     </div>
   </div>
+<<<<<<< HEAD
+=======
+  <?php endif; ?>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -1143,5 +1366,73 @@ body.sidebar-open { overflow: hidden; }
 
 })();
 </script>
+
+<?php if (strtolower($role) === 'admin'): ?>
+<script>
+(function() {
+  var btn   = document.getElementById('pendingBellBtn');
+  var panel = document.getElementById('pendingBellPanel');
+  var badge = document.getElementById('pendingBellBadge');
+  var list  = document.getElementById('pendingBellList');
+  var icon  = document.getElementById('pendingBellIcon');
+  if (!btn) return;
+
+  function fetchPending() {
+    fetch('<?= BASE_URL ?>management/api/get_pending_count.php')
+      .then(function(r){ return r.json(); })
+      .then(function(data) {
+        var count = data.count || 0;
+        if (count > 0) {
+          badge.textContent = count > 99 ? '99+' : count;
+          badge.style.display = 'inline-block';
+          icon.style.color = '#ef4444';
+        } else {
+          badge.style.display = 'none';
+          icon.style.color = '#1B4F72';
+        }
+        if (data.accounts && data.accounts.length > 0) {
+          var html = '';
+          data.accounts.forEach(function(a) {
+            var name = ((a.first_name || '') + ' ' + (a.last_name || '')).trim() || a.username;
+            var date = a.created_at ? a.created_at.split(' ')[0] : '';
+            html += '<div style="padding:10px 16px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px;">' +
+              '<div style="width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#2E86AB,#1B4F72);display:flex;align-items:center;justify-content:center;color:#fff;font-weight:700;font-size:0.9rem;flex-shrink:0;">' +
+                name.charAt(0).toUpperCase() +
+              '</div>' +
+              '<div style="flex:1;min-width:0;">' +
+                '<div style="font-weight:600;font-size:0.88rem;color:#1e293b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + name + '</div>' +
+                '<div style="font-size:0.75rem;color:#94a3b8;">@' + a.username + (date ? ' &bull; ' + date : '') + '</div>' +
+              '</div>' +
+              '<a href="<?= BASE_URL ?>management/manage_officer.php" style="font-size:0.72rem;background:#2E86AB;color:#fff;border-radius:6px;padding:3px 8px;text-decoration:none;white-space:nowrap;">Review</a>' +
+            '</div>';
+          });
+          list.innerHTML = html;
+        } else {
+          list.innerHTML = '<div style="padding:20px;text-align:center;color:#94a3b8;font-size:0.88rem;"><i class="bi bi-check-circle" style="font-size:1.5rem;display:block;margin-bottom:6px;color:#10b981;"></i>No pending approvals</div>';
+        }
+      })
+      .catch(function() {
+        badge.style.display = 'none';
+        list.innerHTML = '<div style="padding:20px;text-align:center;color:#ef4444;font-size:0.85rem;">Failed to load</div>';
+      });
+  }
+
+  btn.addEventListener('click', function(e) {
+    e.stopPropagation();
+    var isOpen = panel.style.display === 'block';
+    panel.style.display = isOpen ? 'none' : 'block';
+    if (!isOpen) fetchPending();
+  });
+
+  document.addEventListener('click', function(e) {
+    var wrap = document.getElementById('pendingBellWrap');
+    if (wrap && !wrap.contains(e.target)) panel.style.display = 'none';
+  });
+
+  fetchPending();
+  setInterval(fetchPending, 60000);
+})();
+</script>
+<?php endif; ?>
 </body>
 </html>

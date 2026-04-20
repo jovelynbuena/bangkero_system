@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -589,6 +589,10 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<<<<<<< HEAD
+=======
+<link rel="stylesheet" href="../../css/admin-theme.css">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     body { 
@@ -607,7 +611,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
     /* Page Header */
     .page-header {
+<<<<<<< HEAD
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         padding: 28px 28px 24px;
         border-radius: 18px;
         color: white;
@@ -675,7 +683,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     }
 
     .stat-primary .stat-icon {
+<<<<<<< HEAD
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         color: white;
     }
     .stat-success .stat-icon {
@@ -683,7 +695,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         color: white;
     }
     .stat-info .stat-icon {
+<<<<<<< HEAD
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+=======
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         color: white;
     }
     .stat-warning .stat-icon {
@@ -745,8 +761,13 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
     .filter-select:focus,
     .filter-section .search-box input:focus {
+<<<<<<< HEAD
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.18);
+=======
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.18);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         outline: none;
     }
     .filter-info {
@@ -827,7 +848,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     }
     .dropdown-item:hover {
         background-color: #f8fafc;
+<<<<<<< HEAD
         color: #667eea;
+=======
+        color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     }
     .dropdown-item i {
         width: 20px;
@@ -861,14 +886,22 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 
     /* Add Member Button */
     .btn-add-member {
+<<<<<<< HEAD
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         color: white;
         padding: 14px 28px;
         border-radius: 12px;
         border: none;
         font-weight: 600;
         font-size: 16px;
+<<<<<<< HEAD
         box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+=======
+        box-shadow: 0 6px 20px rgba(46, 134, 171, 0.40);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         display: inline-flex;
         align-items: center;
@@ -877,7 +910,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     .btn-add-member:hover {
         transform: translateY(-2px);
         box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+<<<<<<< HEAD
         background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+=======
+        background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     }
 
     /* Export Buttons */
@@ -925,8 +962,13 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     }
     .search-box input:focus {
         outline: none;
+<<<<<<< HEAD
         border-color: #667eea;
         box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+=======
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     }
     .search-box i {
         position: absolute;
@@ -999,13 +1041,21 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     .btn-add-member:focus-visible,
     .btn-export:focus-visible,
     .btn-submit:focus-visible {
+<<<<<<< HEAD
         outline: 2px solid #1d4ed8;
+=======
+        outline: 2px solid #1B4F72;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         outline-offset: 2px;
         box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.35);
     }
 
     .btn-view {
+<<<<<<< HEAD
         background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+=======
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         color: white;
     }
     .btn-view:hover {
@@ -1039,7 +1089,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
     }
     .modal-header {
+<<<<<<< HEAD
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         color: white;
         border-radius: 20px 20px 0 0;
         padding: 24px;
@@ -1081,12 +1135,21 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         font-size: 14px;
     }
     .form-select:focus, .form-control:focus {
+<<<<<<< HEAD
         border-color: #667eea;
         box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
     }
     .form-check-input:checked {
         background-color: #667eea;
         border-color: #667eea;
+=======
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
+    }
+    .form-check-input:checked {
+        background-color: #2E86AB;
+        border-color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     }
 
     /* Submit Button */
@@ -1126,11 +1189,19 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         color: #334155;
         margin-bottom: 16px;
         padding-bottom: 8px;
+<<<<<<< HEAD
         border-bottom: 2px solid #667eea;
     }
     .section-header i {
         font-size: 20px;
         color: #667eea;
+=======
+        border-bottom: 2px solid #2E86AB;
+    }
+    .section-header i {
+        font-size: 20px;
+        color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     }
 
     /* Form Control Consistency */
@@ -1142,8 +1213,13 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         transition: all 0.2s ease;
     }
     .form-control:focus, .form-select:focus {
+<<<<<<< HEAD
         border-color: #667eea;
         box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+=======
+        border-color: #2E86AB;
+        box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.15);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     }
     textarea.form-control {
         height: auto;
@@ -1181,7 +1257,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
     }
     .page-link {
         border: 2px solid #e0e0e0;
+<<<<<<< HEAD
         color: #667eea;
+=======
+        color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         border-radius: 8px;
         margin: 0 2px;
         font-weight: 600;
@@ -1189,6 +1269,7 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         padding: 8px 12px;
     }
     .page-link:hover {
+<<<<<<< HEAD
         background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
         color: white;
         border-color: #667eea;
@@ -1199,6 +1280,18 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
         border-color: #667eea;
         color: white;
         box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+=======
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+        color: white;
+        border-color: #2E86AB;
+        transform: translateY(-2px);
+    }
+    .page-item.active .page-link {
+        background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+        border-color: #2E86AB;
+        color: white;
+        box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     }
     .page-item.disabled .page-link {
         border-color: #f0f0f0;
@@ -1659,7 +1752,11 @@ $attendanceStmt = $conn->prepare("SELECT COUNT(*) AS total_present, MAX(attendan
 <div class="modal fade" id="addMemberModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
+<<<<<<< HEAD
       <div class="modal-header" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+=======
+      <div class="modal-header" style="background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); color: white;">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         <h5 class="modal-title">
             <i class="bi bi-person-plus-fill me-2"></i>
             Add New Member
@@ -2224,7 +2321,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     icon: 'error',
                     title: 'Required Fields Missing',
                     text: 'Please fill in all required fields marked with *',
+<<<<<<< HEAD
                     confirmButtonColor: '#667eea'
+=======
+                    confirmButtonColor: '#2E86AB'
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 });
             }
         });
@@ -2578,7 +2679,11 @@ Swal.fire({
     icon: '<?= $alertType ?>',
     title: '<?= ucfirst($alertType) ?>!',
     text: '<?= addslashes($alertMsg) ?>',
+<<<<<<< HEAD
     confirmButtonColor: '<?= $alertType === "success" ? "#667eea" : "#ef4444" ?>',
+=======
+    confirmButtonColor: '<?= $alertType === "success" ? "#2E86AB" : "#ef4444" ?>',
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     confirmButtonText: 'OK',
     allowOutsideClick: false
 }).then(() => {
@@ -2594,7 +2699,11 @@ Swal.fire({
     text: 'Member moved to archive successfully.',
     timer: 2500,
     showConfirmButton: false,
+<<<<<<< HEAD
     confirmButtonColor: '#667eea'
+=======
+    confirmButtonColor: '#2E86AB'
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }).then(() => {
     window.location.href = "memberlist.php";
 });
@@ -2607,7 +2716,11 @@ Swal.fire({
     text: '<?= intval($_GET['bulk_archived']) ?> member(s) have been moved to archive.',
     timer: 3000,
     showConfirmButton: false,
+<<<<<<< HEAD
     confirmButtonColor: '#667eea'
+=======
+    confirmButtonColor: '#2E86AB'
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }).then(() => {
     window.location.href = "memberlist.php";
 });

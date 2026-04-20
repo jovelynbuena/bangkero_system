@@ -1,0 +1,471 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Manual — Transparency Dashboard</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <style>
+    body { background: #f8f9fa; font-family: 'Segoe UI', sans-serif; }
+    .cover {
+      background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+      color: white;
+      padding: 60px 40px;
+      border-radius: 0 0 32px 32px;
+      margin-bottom: 40px;
+    }
+    .cover h1 { font-size: 2.4rem; font-weight: 800; }
+    .cover p  { font-size: 1.1rem; opacity: 0.9; }
+
+    .section-title {
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: #1B4F72;
+      border-left: 5px solid #2E86AB;
+      padding-left: 12px;
+      margin-bottom: 20px;
+    }
+
+    .card-manual {
+      background: white;
+      border-radius: 14px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      padding: 28px;
+      margin-bottom: 28px;
+    }
+
+    .btn-demo {
+      font-size: 0.82rem;
+      pointer-events: none;
+      border-radius: 6px;
+    }
+
+    table.manual-table { font-size: 0.92rem; }
+    table.manual-table th { background: #e8f4f9; color: #1B4F72; }
+    table.manual-table td { vertical-align: middle; }
+
+    .step-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: #2E86AB;
+      color: white;
+      font-weight: 700;
+      font-size: 0.85rem;
+      flex-shrink: 0;
+    }
+    .step-row { display: flex; gap: 14px; align-items: flex-start; margin-bottom: 14px; }
+    .step-row p { margin: 0; }
+
+    .note-box {
+      background: #fff8e1;
+      border-left: 4px solid #f59e0b;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+    }
+    .tip-box {
+      background: #e8f5e9;
+      border-left: 4px solid #28a745;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+    }
+    .warn-box {
+      background: #fdecea;
+      border-left: 4px solid #dc3545;
+      border-radius: 6px;
+      padding: 12px 16px;
+      font-size: 0.88rem;
+    }
+
+    .toc a { text-decoration: none; color: #2E86AB; }
+    .toc a:hover { text-decoration: underline; }
+    .toc li { margin-bottom: 6px; }
+
+    @media print {
+      .cover { border-radius: 0; }
+      .card-manual { box-shadow: none; border: 1px solid #dee2e6; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="cover text-center">
+  <div class="mb-3"><i class="bi bi-shield-check" style="font-size:3.5rem;"></i></div>
+  <h1>Transparency Dashboard</h1>
+  <p class="mb-1">User Manual — Admin / Officer Guide</p>
+  <small class="opacity-75">Bangkero &amp; Fishermen Association Management System</small>
+</div>
+
+<div class="container pb-5" style="max-width:900px;">
+
+  <!-- TABLE OF CONTENTS -->
+  <div class="card-manual">
+    <div class="section-title"><i class="bi bi-list-ul me-2"></i>Table of Contents</div>
+    <ul class="toc">
+      <li><a href="#overview">1. Page Overview</a></li>
+      <li><a href="#view-reports">2. View Reports Button</a></li>
+      <li><a href="#tabs">3. Tab Navigation (Assistance / Expenses / Achievements)</a></li>
+      <li><a href="#add-assistance">4. Add Assistance Button</a></li>
+      <li><a href="#record-assistance-modal">5. Record Assistance Modal — All Fields &amp; Buttons</a></li>
+      <li><a href="#edit-archive-assistance">6. Edit &amp; Archive Assistance</a></li>
+      <li><a href="#add-expense">7. Add Expense Button</a></li>
+      <li><a href="#record-expense-modal">8. Record Expense Modal — All Fields &amp; Buttons</a></li>
+      <li><a href="#edit-delete-expense">9. Edit &amp; Delete Expense</a></li>
+      <li><a href="#add-achievement">10. Add Photo (Community Achievement)</a></li>
+      <li><a href="#edit-archive-achievement">11. Edit &amp; Archive Achievement</a></li>
+      <li><a href="#roles">12. Access Roles</a></li>
+      <li><a href="#tips">13. Tips &amp; Reminders</a></li>
+    </ul>
+  </div>
+
+  <!-- 1. OVERVIEW -->
+  <div class="card-manual" id="overview">
+    <div class="section-title"><i class="bi bi-layout-text-window me-2"></i>1. Page Overview</div>
+    <p>The <strong>Transparency Dashboard</strong> is the admin/officer page for recording and managing all financial and community transparency data. It has three main sections:</p>
+    <table class="table manual-table">
+      <thead><tr><th>Section</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><i class="bi bi-cash-coin text-success me-1"></i> <strong>Assistance</strong></td><td>Record money or goods/equipment received from government, NGOs, LGUs, or private partners.</td></tr>
+        <tr><td><i class="bi bi-receipt text-danger me-1"></i> <strong>Expenses</strong></td><td>Record how funds were spent — purchases, payments, disbursements.</td></tr>
+        <tr><td><i class="bi bi-image text-primary me-1"></i> <strong>Community Achievements</strong></td><td>Upload photos of products, milestones, and outcomes shown on the public page.</td></tr>
+      </tbody>
+    </table>
+    <p>At the top of the page you will also see <strong>summary stat cards</strong>:</p>
+    <ul>
+      <li><strong>Cash Assistance</strong> — total monetary assistance received (₱)</li>
+      <li><strong>In-Kind (Gamit)</strong> — estimated value of goods/equipment received (₱)</li>
+      <li><strong>Partners</strong> — number of unique sources that gave assistance</li>
+      <li><strong>Total Expenses</strong> — total amount recorded as expenses (₱)</li>
+    </ul>
+  </div>
+
+  <!-- 2. VIEW REPORTS -->
+  <div class="card-manual" id="view-reports">
+    <div class="section-title"><i class="bi bi-file-earmark-text me-2"></i>2. View Reports Button</div>
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <button class="btn btn-light btn-demo"><i class="bi bi-file-earmark-text"></i> View Reports</button>
+      <span class="text-muted">— top right of the header</span>
+    </div>
+    <p><strong>What it does:</strong> Opens the <code>transparency_reports.php</code> page where you can see printable summaries, charts, and exportable data of all assistance, expenses, and beneficiaries.</p>
+    <div class="tip-box"><i class="bi bi-lightbulb me-1"></i> Use this when preparing reports for meetings or audits.</div>
+  </div>
+
+  <!-- 3. TABS -->
+  <div class="card-manual" id="tabs">
+    <div class="section-title"><i class="bi bi-folder-symlink me-2"></i>3. Tab Navigation</div>
+    <p>Click any tab to switch between sections. Only one section is shown at a time.</p>
+    <table class="table manual-table">
+      <thead><tr><th>Tab</th><th>Icon</th><th>What You Can Do</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><strong>Assistance</strong></td>
+          <td><i class="bi bi-cash-coin text-success"></i></td>
+          <td>View, add, edit, and archive assistance records (cash or in-kind)</td>
+        </tr>
+        <tr>
+          <td><strong>Expenses</strong></td>
+          <td><i class="bi bi-receipt text-danger"></i></td>
+          <td>View, add, edit, and delete expense records. Also shows cash balance.</td>
+        </tr>
+        <tr>
+          <td><strong>Community Achievements</strong></td>
+          <td><i class="bi bi-image text-primary"></i></td>
+          <td>View, add, edit, and archive community achievement photos.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 4. ADD ASSISTANCE BUTTON -->
+  <div class="card-manual" id="add-assistance">
+    <div class="section-title"><i class="bi bi-plus-circle me-2"></i>4. Add Assistance Button</div>
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <button class="btn btn-success btn-sm btn-demo"><i class="bi bi-plus"></i> Add</button>
+      <span class="text-muted">— top-right of the Assistance tab</span>
+    </div>
+    <p><strong>What it does:</strong> Opens the <em>Record Assistance</em> modal form where you can log a new assistance entry (cash or in-kind).</p>
+    <div class="note-box"><i class="bi bi-info-circle me-1"></i> This button is only visible to users with <strong>edit permissions</strong> (Admin or Treasurer).</div>
+  </div>
+
+  <!-- 5. RECORD ASSISTANCE MODAL -->
+  <div class="card-manual" id="record-assistance-modal">
+    <div class="section-title"><i class="bi bi-ui-checks-grid me-2"></i>5. Record Assistance Modal — All Fields &amp; Buttons</div>
+    <p>This modal opens when you click <strong>Add</strong> or <strong>Edit (pencil icon)</strong> on an assistance row.</p>
+
+    <h6 class="fw-bold mt-3 mb-2"><i class="bi bi-toggles me-1 text-primary"></i>Step 1 — Choose Assistance Type</h6>
+    <table class="table manual-table mb-3">
+      <thead><tr><th>Button</th><th>What It Means</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><button class="btn btn-outline-success btn-demo btn-sm px-3"><i class="bi bi-cash-coin me-1"></i><strong>Pera / Cash</strong></button></td>
+          <td>Select this if the assistance received is <strong>money</strong>. An "Amount" field will appear.</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-outline-primary btn-demo btn-sm px-3"><i class="bi bi-box-seam me-1"></i><strong>Gamit / In-Kind</strong></button></td>
+          <td>Select this if the assistance is <strong>goods, equipment, or supplies</strong>. An item list table will appear instead.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h6 class="fw-bold mt-3 mb-2"><i class="bi bi-input-cursor-text me-1 text-primary"></i>Form Fields</h6>
+    <table class="table manual-table mb-3">
+      <thead><tr><th>Field</th><th>Required?</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Source Name</strong></td><td><span class="badge bg-danger">Required</span></td><td>Name of the organization or person who gave the assistance (e.g., DOLE Region IV).</td></tr>
+        <tr><td><strong>Source Type</strong></td><td>Optional</td><td>Dropdown: DOLE, LGU, NGO, Private, Membership, Others.</td></tr>
+        <tr><td><strong>Date Received</strong></td><td>Optional</td><td>Date the assistance was received. Defaults to today.</td></tr>
+        <tr><td><strong>Reference / Receipt No.</strong></td><td>Optional</td><td>Official receipt number or reference code for tracking.</td></tr>
+        <tr><td><strong>Amount</strong> (Cash only)</td><td><span class="badge bg-danger">Required</span></td><td>Monetary amount received in Philippine Peso (₱).</td></tr>
+        <tr><td><strong>Items Table</strong> (In-Kind only)</td><td><span class="badge bg-danger">Required</span></td><td>List of goods received. Each row needs an item name, quantity, unit, and unit value.</td></tr>
+        <tr><td><strong>Notes</strong></td><td>Optional</td><td>Any additional details or remarks about the assistance.</td></tr>
+        <tr><td><strong>Photos / Images</strong></td><td>Optional</td><td>Upload one or more images as proof or documentation (JPG, PNG, WebP, etc.).</td></tr>
+      </tbody>
+    </table>
+
+    <h6 class="fw-bold mt-3 mb-2"><i class="bi bi-table me-1 text-primary"></i>In-Kind Items Table Buttons</h6>
+    <table class="table manual-table mb-3">
+      <thead><tr><th>Button</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-primary btn-demo"><i class="bi bi-plus-lg"></i> Add Item</button></td>
+          <td>Adds a new row to the items table. Fill in: <em>Item Name, Qty, Unit, Unit Value (₱)</em>. The subtotal auto-calculates.</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-secondary btn-demo p-1"><i class="bi bi-camera"></i></button></td>
+          <td>Camera icon on each row — lets you attach a photo for that specific item (optional).</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-danger btn-demo p-1"><i class="bi bi-trash"></i></button></td>
+          <td>Trash icon on each row — removes that item from the list.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <h6 class="fw-bold mt-3 mb-2"><i class="bi bi-sliders me-1 text-primary"></i>Modal Footer Buttons</h6>
+    <table class="table manual-table">
+      <thead><tr><th>Button</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><button class="btn btn-secondary btn-sm btn-demo">Cancel</button></td>
+          <td>Closes the modal without saving. No changes are made.</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-success btn-sm btn-demo">Save</button></td>
+          <td>Saves the assistance record to the database. The page will reload and show a success message.</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-danger btn-sm btn-demo p-0 lh-1" style="width:20px;height:20px;border-radius:50%;font-size:11px;"><i class="bi bi-x"></i></button></td>
+          <td>Small red X on existing images (in edit mode) — permanently removes that image from the record.</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="note-box mt-3"><i class="bi bi-info-circle me-1"></i> When editing an existing record, previously uploaded images are shown with a delete (×) button. New images you upload are <em>added</em> to existing ones — old images are not replaced unless you delete them first.</div>
+  </div>
+
+  <!-- 6. EDIT / ARCHIVE ASSISTANCE -->
+  <div class="card-manual" id="edit-archive-assistance">
+    <div class="section-title"><i class="bi bi-pencil-square me-2"></i>6. Edit &amp; Archive Assistance</div>
+    <p>Each row in the Assistance table has two action buttons in the <strong>Actions</strong> column:</p>
+    <table class="table manual-table">
+      <thead><tr><th>Button</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-primary btn-demo"><i class="bi bi-pencil"></i></button></td>
+          <td><strong>Edit</strong> — Opens the assistance form pre-filled with the existing data. Make changes and click Save to update.</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-warning btn-demo"><i class="bi bi-archive"></i></button></td>
+          <td><strong>Archive</strong> — Shows a confirmation dialog. If confirmed, moves the record to the archive (hidden from the main list). It can be restored from the Archives page.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="warn-box"><i class="bi bi-exclamation-triangle me-1"></i> Archiving is <strong>not permanent deletion</strong>. The record is preserved in the archive and can be restored by an Admin.</div>
+  </div>
+
+  <!-- 7. ADD EXPENSE -->
+  <div class="card-manual" id="add-expense">
+    <div class="section-title"><i class="bi bi-plus-circle me-2"></i>7. Add Expense Button</div>
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <button class="btn btn-danger btn-sm btn-demo"><i class="bi bi-plus"></i> Add Expense</button>
+      <span class="text-muted">— top-right of the Expenses tab</span>
+    </div>
+    <p><strong>What it does:</strong> Opens the <em>Record Expense</em> modal where you can log a disbursement or purchase made using the association's funds.</p>
+    <p>Above the table you will also see a <strong>summary strip</strong> showing:</p>
+    <ul>
+      <li><strong>Total Expenses</strong> — sum of all expenses recorded</li>
+      <li><strong>Cash Received</strong> — total cash assistance received</li>
+      <li><strong>Cash Balance</strong> — Cash Received minus Total Expenses (shown in <span class="text-danger">red</span> if negative)</li>
+    </ul>
+  </div>
+
+  <!-- 8. RECORD EXPENSE MODAL -->
+  <div class="card-manual" id="record-expense-modal">
+    <div class="section-title"><i class="bi bi-ui-checks-grid me-2"></i>8. Record Expense Modal — All Fields &amp; Buttons</div>
+    <table class="table manual-table mb-3">
+      <thead><tr><th>Field</th><th>Required?</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Title / Purpose</strong></td><td><span class="badge bg-danger">Required</span></td><td>Short description of what the expense was for (e.g., "Fishing nets purchase").</td></tr>
+        <tr><td><strong>Category</strong></td><td>Optional</td><td>Dropdown: Equipment, Livelihood, Relief Goods, Transportation, Administrative, Training, Medical, Others.</td></tr>
+        <tr><td><strong>Date</strong></td><td>Optional</td><td>Date the expense was made. Defaults to today.</td></tr>
+        <tr><td><strong>Amount</strong></td><td><span class="badge bg-danger">Required</span></td><td>Amount spent in Philippine Peso (₱). Cannot be negative.</td></tr>
+        <tr><td><strong>Reference / OR No.</strong></td><td>Optional</td><td>Official receipt number or reference for documentation.</td></tr>
+        <tr><td><strong>Paid To</strong></td><td>Optional</td><td>Name of the vendor, supplier, or person who was paid.</td></tr>
+        <tr><td><strong>Linked to Assistance Source</strong></td><td>Optional</td><td>Link this expense to a specific assistance source to show where the money came from and where it went.</td></tr>
+        <tr><td><strong>Notes</strong></td><td>Optional</td><td>Any additional details, breakdown, or remarks.</td></tr>
+      </tbody>
+    </table>
+    <h6 class="fw-bold mb-2">Modal Footer Buttons</h6>
+    <table class="table manual-table">
+      <thead><tr><th>Button</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr><td><button class="btn btn-secondary btn-sm btn-demo">Cancel</button></td><td>Closes the modal without saving.</td></tr>
+        <tr><td><button class="btn btn-danger btn-sm btn-demo"><i class="bi bi-check-lg me-1"></i>Save Expense</button></td><td>Saves the expense and reloads the page. The new record appears in the Expenses table.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 9. EDIT / DELETE EXPENSE -->
+  <div class="card-manual" id="edit-delete-expense">
+    <div class="section-title"><i class="bi bi-pencil-square me-2"></i>9. Edit &amp; Delete Expense</div>
+    <p>Each row in the Expenses table has two action buttons:</p>
+    <table class="table manual-table">
+      <thead><tr><th>Button</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-primary btn-demo"><i class="bi bi-pencil"></i></button></td>
+          <td><strong>Edit</strong> — Opens the expense form pre-filled. Make changes and click Save Expense to update.</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-danger btn-demo"><i class="bi bi-trash"></i></button></td>
+          <td><strong>Delete</strong> — Shows a confirmation dialog. If confirmed, the expense is <em>permanently deleted</em>. This cannot be undone.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="warn-box"><i class="bi bi-exclamation-triangle me-1"></i> Unlike assistance records, <strong>deleting an expense is permanent</strong>. Double-check before confirming.</div>
+  </div>
+
+  <!-- 10. ADD ACHIEVEMENT -->
+  <div class="card-manual" id="add-achievement">
+    <div class="section-title"><i class="bi bi-plus-circle me-2"></i>10. Add Photo (Community Achievement)</div>
+    <div class="d-flex align-items-center gap-3 mb-3">
+      <button class="btn btn-success btn-sm btn-demo"><i class="bi bi-plus"></i> Add Photo</button>
+      <span class="text-muted">— top-right of the Community Achievements tab</span>
+    </div>
+    <p><strong>What it does:</strong> Opens the <em>Add Community Achievement</em> modal to upload one or more photos along with a title, caption, and label. These appear on the public-facing transparency page.</p>
+    <table class="table manual-table mb-3">
+      <thead><tr><th>Field</th><th>Required?</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><strong>Photos / Images</strong></td><td><span class="badge bg-danger">Required</span></td><td>Upload one or more images. Accepted formats: JPG, PNG, WebP, GIF, BMP, TIFF, HEIC, AVIF. You can select multiple files at once.</td></tr>
+        <tr><td><strong>Title</strong></td><td><span class="badge bg-danger">Required</span></td><td>Short title for the achievement (e.g., "Dried Fish Products — Barangay Barretto").</td></tr>
+        <tr><td><strong>Caption</strong></td><td>Optional</td><td>Brief description displayed below the title on the public page.</td></tr>
+        <tr><td><strong>Tag / Label</strong></td><td>Optional</td><td>Category or program label (e.g., "Livelihood Program", "Fish Processing"). Shown as a badge on the card.</td></tr>
+        <tr><td><strong>Sort Order</strong></td><td>Optional</td><td>Number to control display order. Lower numbers appear first. Default is 0.</td></tr>
+      </tbody>
+    </table>
+    <table class="table manual-table">
+      <thead><tr><th>Button</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr><td><button class="btn btn-secondary btn-sm btn-demo">Cancel</button></td><td>Closes the modal without saving.</td></tr>
+        <tr><td><button class="btn btn-success btn-sm btn-demo"><i class="bi bi-check-lg me-1"></i>Save</button></td><td>Uploads the photos and saves the achievement record. It will appear on the public Transparency page.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 11. EDIT / ARCHIVE ACHIEVEMENT -->
+  <div class="card-manual" id="edit-archive-achievement">
+    <div class="section-title"><i class="bi bi-pencil-square me-2"></i>11. Edit &amp; Archive Achievement</div>
+    <p>Each achievement card has two action buttons at the bottom:</p>
+    <table class="table manual-table">
+      <thead><tr><th>Button</th><th>What It Does</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-primary btn-demo"><i class="bi bi-pencil"></i></button></td>
+          <td><strong>Edit</strong> — Opens the achievement form. You can update the title, caption, tag, sort order, and add more images. Existing images are shown with a delete (×) button to remove individual photos.</td>
+        </tr>
+        <tr>
+          <td><button class="btn btn-sm btn-outline-warning btn-demo"><i class="bi bi-archive"></i></button></td>
+          <td><strong>Archive</strong> — Shows a confirmation dialog. If confirmed, the achievement is moved to the archive and hidden from the public page.</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="note-box"><i class="bi bi-info-circle me-1"></i> When editing, you can remove individual images using the <strong>×</strong> button on each thumbnail. New images you upload are appended — existing images are kept unless deleted.</div>
+  </div>
+
+  <!-- 12. ROLES -->
+  <div class="card-manual" id="roles">
+    <div class="section-title"><i class="bi bi-person-badge me-2"></i>12. Access Roles</div>
+    <table class="table manual-table">
+      <thead><tr><th>Role</th><th>Can View?</th><th>Can Add / Edit / Archive?</th></tr></thead>
+      <tbody>
+        <tr>
+          <td><span class="badge bg-danger">Admin</span></td>
+          <td><i class="bi bi-check-circle-fill text-success"></i> Yes</td>
+          <td><i class="bi bi-check-circle-fill text-success"></i> Full Access</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-warning text-dark">Treasurer</span></td>
+          <td><i class="bi bi-check-circle-fill text-success"></i> Yes</td>
+          <td><i class="bi bi-check-circle-fill text-success"></i> Full Access</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-info text-dark">Secretary</span></td>
+          <td><i class="bi bi-check-circle-fill text-success"></i> Yes</td>
+          <td><i class="bi bi-x-circle-fill text-danger"></i> View Only (no Add/Edit buttons)</td>
+        </tr>
+        <tr>
+          <td><span class="badge bg-secondary">Member / Others</span></td>
+          <td><i class="bi bi-x-circle-fill text-danger"></i> No access</td>
+          <td><i class="bi bi-x-circle-fill text-danger"></i> Redirected to dashboard</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- 13. TIPS -->
+  <div class="card-manual" id="tips">
+    <div class="section-title"><i class="bi bi-lightbulb me-2"></i>13. Tips &amp; Reminders</div>
+    <div class="d-flex flex-column gap-3">
+      <div class="tip-box">
+        <strong><i class="bi bi-check-circle me-1"></i> Always fill in required fields</strong><br>
+        Fields marked with <span class="text-danger">*</span> (Source Name and Amount / Items) must be filled before saving. The form will not submit if these are empty.
+      </div>
+      <div class="tip-box">
+        <strong><i class="bi bi-images me-1"></i> You can upload multiple images</strong><br>
+        On both Assistance and Achievement forms, hold <kbd>Ctrl</kbd> (Windows) or <kbd>Cmd</kbd> (Mac) while selecting files in the file picker to choose multiple images at once.
+      </div>
+      <div class="tip-box">
+        <strong><i class="bi bi-link-45deg me-1"></i> Link expenses to assistance sources</strong><br>
+        When adding an expense, use the <em>Linked to Assistance Source</em> dropdown to connect it to the fund it came from. This makes the financial trail clear for audits.
+      </div>
+      <div class="note-box">
+        <strong><i class="bi bi-archive me-1"></i> Archive ≠ Delete</strong><br>
+        Archiving an assistance record or achievement moves it to a hidden archive — it is <strong>not</strong> permanently deleted. Only expenses can be permanently deleted.
+      </div>
+      <div class="note-box">
+        <strong><i class="bi bi-calculator me-1"></i> In-Kind total auto-calculates</strong><br>
+        When recording Gamit/In-Kind assistance, the system multiplies Qty × Unit Value for each item and shows the estimated total at the bottom of the items table. You do not need to compute manually.
+      </div>
+      <div class="warn-box">
+        <strong><i class="bi bi-exclamation-triangle me-1"></i> Cash Balance warning</strong><br>
+        If Total Expenses exceeds Cash Received, the Cash Balance will show in <span class="text-danger">red</span>. This means more has been spent than received in cash — review your expense and assistance records.
+      </div>
+    </div>
+  </div>
+
+  <div class="text-center text-muted py-4" style="font-size:0.85rem;">
+    <i class="bi bi-shield-check me-1"></i> Bangkero &amp; Fishermen Association Management System &nbsp;|&nbsp; Transparency Dashboard User Manual
+    <br><small>For technical support, contact your system administrator.</small>
+  </div>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

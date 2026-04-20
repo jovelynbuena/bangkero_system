@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -125,9 +129,15 @@ if ($format === 'pdf') {
     $generatedAt = date('F d, Y h:i A');
 
     // Use standardized association name and real logo for this report
+<<<<<<< HEAD
     $systemName = 'Bankero and Fisherman Association';
     // Prefer PNG logo for PDF compatibility
     $logoPath = __DIR__ . '/../../images/logo1.png';
+=======
+    require_once __DIR__ . '/../../config/logo_helper.php';
+    $systemName = $assocName;
+    $logoPath = $assocLogoPath;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
     // --- PDF helpers (no external libs) ---
     function pdf_escape_text($text) {
@@ -192,7 +202,11 @@ if ($format === 'pdf') {
         return $jpeg ?: null;
     }
 
+<<<<<<< HEAD
     function build_galleries_report_pdf(array $rows, $generatedAt, $logoBytes, $logoPxW, $logoPxH, $systemName) {
+=======
+    function build_galleries_report_pdf(array $rows, $generatedAt, $logoBytes, $logoPxW, $logoPxH, $systemName, $assocAddress = '') {
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         // A4 in points
         $pageW = 595.28;
         $pageH = 841.89;
@@ -343,7 +357,11 @@ if ($format === 'pdf') {
 
             // Address (below system name)
             $addressFont = 9;
+<<<<<<< HEAD
             $addressText = 'Barangay Baretto, Olongapo City';
+=======
+            $addressText = $assocAddress;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             $addressX = $textStartX;
             $addressY = $toPdfY($marginTop + 47);
             $c .= "BT /F1 {$addressFont} Tf " . pdf_color_rgb($colorMuted[0], $colorMuted[1], $colorMuted[2]) . " rg 1 0 0 1 " . sprintf("%.2F %.2F", $addressX, $addressY) . " Tm (" . pdf_escape_text($addressText) . ") Tj ET\n";
@@ -557,7 +575,11 @@ if ($format === 'pdf') {
         $logoBytes = load_logo_as_jpeg_bytes($logoPath, $logoW, $logoH);
     }
 
+<<<<<<< HEAD
     $pdf = build_galleries_report_pdf($rows, $generatedAt, $logoBytes, $logoW, $logoH, $systemName);
+=======
+    $pdf = build_galleries_report_pdf($rows, $generatedAt, $logoBytes, $logoW, $logoH, $systemName, $assocAddress);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
     // Force download
     header('Content-Type: application/pdf');
@@ -775,8 +797,13 @@ if ($format === 'print') {
                     <div class="brand-logo">BFA</div>
                     <div class="brand-text">
                         <h1>Galleries Export Report</h1>
+<<<<<<< HEAD
                         <div class="org">Bankero and Fisherman Association</div>
                         <div class="loc">Barangay Baretto, Olongapo City</div>
+=======
+                        <div class="org"><?= htmlspecialchars($assocName) ?></div>
+                        <div class="loc"><?= htmlspecialchars($assocAddress) ?></div>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                     </div>
                 </div>
                 <div class="report-title">
@@ -853,11 +880,19 @@ if ($format === 'excel') {
     
     echo '<table border="1">
             <tr>
+<<<<<<< HEAD
                 <th style="background-color: #667eea; color: white;">ID</th>
                 <th style="background-color: #667eea; color: white;">Title</th>
                 <th style="background-color: #667eea; color: white;">Category</th>
                 <th style="background-color: #667eea; color: white;">Image Count</th>
                 <th style="background-color: #667eea; color: white;">Created At</th>
+=======
+                <th style="background-color: #2E86AB; color: white;">ID</th>
+                <th style="background-color: #2E86AB; color: white;">Title</th>
+                <th style="background-color: #2E86AB; color: white;">Category</th>
+                <th style="background-color: #2E86AB; color: white;">Image Count</th>
+                <th style="background-color: #2E86AB; color: white;">Created At</th>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             </tr>';
             
     while ($row = $result->fetch_assoc()) {

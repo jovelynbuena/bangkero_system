@@ -1,8 +1,12 @@
 <?php
+<<<<<<< HEAD
 // ============================================
 // DATABASE CONNECTION - LOCAL VERSION
 // For offline/defense day backup
 // ============================================
+=======
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
 $servername = "localhost";
 $username   = "root";

@@ -156,7 +156,12 @@ function getAnnouncementStatus($expiry_date) {
     </div>
 
     <div class="doc-header">
+<<<<<<< HEAD
         <img src="../images/logo1.png" alt="Association Logo">
+=======
+        <?php require_once __DIR__ . '/../../config/logo_helper.php'; ?>
+        <img src="<?= $assocLogoUrl ?>" alt="Association Logo">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         <div class="titles">
             <h1>Bangkero & Fishermen Association</h1>
             <div class="sub">Announcements Report</div>

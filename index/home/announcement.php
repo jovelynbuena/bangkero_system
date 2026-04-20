@@ -1,12 +1,16 @@
 <?php
 include('../../config/db_connect.php');
 
-// Fetch latest announcements for the carousel (limit 5)
-$carousel_sql = "SELECT * FROM announcements ORDER BY date_posted DESC LIMIT 5";
+// Fetch latest announcements for the carousel (limit 5, exclude expired)
+$carousel_sql = "SELECT * FROM announcements 
+                 WHERE (expiry_date IS NULL OR expiry_date = '' OR expiry_date >= CURDATE())
+                 ORDER BY date_posted DESC LIMIT 5";
 $carousel_result = $conn->query($carousel_sql);
 
-// Fetch all announcements for list view
-$announcement_sql = "SELECT * FROM announcements ORDER BY date_posted DESC";
+// Fetch all announcements for list view (exclude expired)
+$announcement_sql = "SELECT * FROM announcements 
+                     WHERE (expiry_date IS NULL OR expiry_date = '' OR expiry_date >= CURDATE())
+                     ORDER BY date_posted DESC";
 $announcement_result = $conn->query($announcement_sql);
 ?>
 <!DOCTYPE html>

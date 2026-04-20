@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if(empty($_SESSION['username'])){
     header('location: ../login.php');
@@ -75,6 +75,10 @@ $result = $conn->query($sql);
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+<<<<<<< HEAD
+=======
+<link rel="stylesheet" href="../../css/admin-theme.css">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 <style>
 body { 
     font-family: 'Inter', sans-serif; 
@@ -88,11 +92,19 @@ body {
 }
 
 .page-header {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 16px;
     padding: 30px;
     margin-bottom: 30px;
     box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 
@@ -129,7 +141,11 @@ body {
 }
 
 .search-box input:focus {
+<<<<<<< HEAD
     border-color: #3b82f6;
+=======
+    border-color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
     outline: none;
 }
@@ -139,7 +155,11 @@ body {
     right: 8px;
     top: 50%;
     transform: translateY(-50%);
+<<<<<<< HEAD
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border: none;
     border-radius: 8px;
     padding: 8px 20px;

@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>User Manual – Backup & Restore</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    body { font-family: 'Inter', sans-serif; background: #f4f6f9; color: #1a1a1a; }
+    .manual-header {
+      background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+      color: white; padding: 40px 32px 30px; border-radius: 0 0 20px 20px;
+      margin-bottom: 32px;
+    }
+    .manual-header h1 { font-size: 28px; font-weight: 800; margin-bottom: 6px; }
+    .manual-header p  { font-size: 14px; opacity: .85; margin: 0; }
+    .toc-card { background: white; border-radius: 12px; padding: 24px 28px; box-shadow: 0 2px 10px rgba(0,0,0,.07); margin-bottom: 32px; }
+    .toc-card h2 { font-size: 16px; font-weight: 700; margin-bottom: 14px; color: #2E86AB; }
+    .toc-card ol { margin: 0; padding-left: 20px; }
+    .toc-card li { margin-bottom: 6px; }
+    .toc-card a { color: #2E86AB; text-decoration: none; font-size: 14px; }
+    .toc-card a:hover { text-decoration: underline; }
+
+    .section-card { background: white; border-radius: 12px; padding: 28px 32px; box-shadow: 0 2px 10px rgba(0,0,0,.07); margin-bottom: 24px; }
+    .section-card h2 { font-size: 20px; font-weight: 700; color: #1B4F72; border-bottom: 2px solid #e9ecef; padding-bottom: 12px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+    .section-card h3 { font-size: 15px; font-weight: 700; color: #2E86AB; margin: 20px 0 8px; display: flex; align-items: center; gap: 8px; }
+    .section-card p, .section-card li { font-size: 14px; line-height: 1.7; color: #444; }
+    .section-card ul, .section-card ol { padding-left: 20px; }
+    .section-card li { margin-bottom: 6px; }
+
+    .btn-pill {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 5px 14px; border-radius: 20px; font-size: 13px; font-weight: 600;
+      color: white; text-decoration: none;
+    }
+    .pill-teal   { background: linear-gradient(135deg,#2E86AB,#1B4F72); }
+    .pill-blue   { background: linear-gradient(135deg,#0d6efd,#0a58ca); }
+    .pill-red    { background: linear-gradient(135deg,#dc3545,#c82333); }
+    .pill-green  { background: linear-gradient(135deg,#198754,#157347); }
+    .pill-dark   { background: #343a40; }
+
+    .note-box { border-radius: 8px; padding: 14px 18px; margin: 14px 0; font-size: 13px; line-height: 1.6; display: flex; gap: 12px; align-items: flex-start; }
+    .note-box i { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .note-info    { background: #e8f4fd; border-left: 4px solid #2E86AB; }
+    .note-info i  { color: #2E86AB; }
+    .note-warning { background: #fff8e1; border-left: 4px solid #ffc107; }
+    .note-warning i { color: #ffc107; }
+    .note-danger  { background: #fff0f0; border-left: 4px solid #dc3545; }
+    .note-danger i { color: #dc3545; }
+    .note-success { background: #f0fff4; border-left: 4px solid #198754; }
+    .note-success i { color: #198754; }
+
+    .step-grid { display: grid; grid-template-columns: 28px 1fr; gap: 6px 14px; align-items: start; margin: 14px 0; }
+    .step-num { width: 28px; height: 28px; background: linear-gradient(135deg,#2E86AB,#1B4F72); color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+    .step-text { font-size: 14px; line-height: 1.65; color: #444; padding-top: 4px; }
+
+    .roles-table th { background: #1B4F72; color: white; font-size: 13px; }
+    .roles-table td { font-size: 13px; vertical-align: middle; }
+    .check { color: #198754; font-size: 16px; }
+    .cross { color: #dc3545; font-size: 16px; }
+
+    .summary-strip { display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px; }
+    .stat-badge { background: #f4f6f9; border: 1px solid #dee2e6; border-radius: 8px; padding: 10px 16px; font-size: 13px; }
+    .stat-badge strong { display: block; font-size: 18px; color: #2E86AB; }
+
+    @media print {
+      .manual-header { border-radius: 0; }
+      .section-card { page-break-inside: avoid; }
+    }
+    @media (max-width: 576px) {
+      .section-card { padding: 18px 16px; }
+      .step-grid { grid-template-columns: 24px 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<div class="manual-header">
+  <div class="container">
+    <div class="d-flex align-items-center gap-3 mb-2">
+      <i class="bi bi-shield-check" style="font-size:38px;"></i>
+      <div>
+        <h1>User Manual – Backup &amp; Restore</h1>
+        <p>Step-by-step guide to every button and feature on the Backup &amp; Restore page</p>
+      </div>
+    </div>
+    <span style="font-size:12px; opacity:.7;">System: Bangkero Association Management &nbsp;|&nbsp; Page: /index/utilities/backup.php</span>
+  </div>
+</div>
+
+<div class="container pb-5">
+
+  <!-- Table of Contents -->
+  <div class="toc-card">
+    <h2><i class="bi bi-list-ul me-2"></i>Table of Contents</h2>
+    <ol>
+      <li><a href="#overview">Page Overview &amp; Summary Cards</a></li>
+      <li><a href="#create-db">Create Database Backup</a></li>
+      <li><a href="#restore-db">Restore Database Backup (Upload .sql)</a></li>
+      <li><a href="#create-system">Create System Backup (.zip)</a></li>
+      <li><a href="#restore-system">Restore System Backup (Upload .zip)</a></li>
+      <li><a href="#history">Backup History Tabs</a></li>
+      <li><a href="#history-actions">Per-Backup Actions (Download · Restore · Delete)</a></li>
+      <li><a href="#filters">Search &amp; Filter Backups</a></li>
+      <li><a href="#roles">Access &amp; Roles</a></li>
+      <li><a href="#tips">Tips &amp; Best Practices</a></li>
+    </ol>
+  </div>
+
+  <!-- 1. Overview -->
+  <div class="section-card" id="overview">
+    <h2><i class="bi bi-speedometer2"></i> 1. Page Overview &amp; Summary Cards</h2>
+    <p>The <strong>Backup &amp; Restore</strong> page lets admins protect the system by saving snapshots of the database or the entire project, and reverting to those snapshots when needed.</p>
+
+    <div class="summary-strip">
+      <div class="stat-badge"><strong id="totalBackups">–</strong>Total Backups (SQL + ZIP combined)</div>
+      <div class="stat-badge"><strong>Last Backup</strong>Date and time of the most recent backup file</div>
+    </div>
+
+    <p>The two summary cards at the top of the page give a quick status snapshot so you know at a glance how many backups exist and when the last one was taken.</p>
+
+    <div class="note-box note-info">
+      <i class="bi bi-info-circle-fill"></i>
+      <div>The <strong>Auto Backup Status</strong> card is temporarily hidden on the current version. It will return when the scheduled-backup feature is activated in System Settings.</div>
+    </div>
+  </div>
+
+  <!-- 2. Create Database Backup -->
+  <div class="section-card" id="create-db">
+    <h2><i class="bi bi-cloud-download"></i> 2. Create Database Backup</h2>
+    <p>Generates a <code>.sql</code> file that contains a complete snapshot of all tables, structures, and data in the current database.</p>
+
+    <h3><i class="bi bi-cursor-fill"></i> Button</h3>
+    <span class="btn-pill pill-teal"><i class="bi bi-plus-circle"></i> Create Backup Now</span>
+
+    <h3><i class="bi bi-list-check"></i> How it works</h3>
+    <div class="step-grid">
+      <div class="step-num">1</div><div class="step-text">Click <strong>Create Backup Now</strong>.</div>
+      <div class="step-num">2</div><div class="step-text">The system queries every table (<code>SHOW TABLES</code>) and writes a <code>DROP TABLE IF EXISTS</code> + <code>CREATE TABLE</code> + <code>INSERT</code> block for each one.</div>
+      <div class="step-num">3</div><div class="step-text">The resulting file is saved as <code>backup_YYYY-MM-DD_HH-II-SS.sql</code> inside <code>/index/utilities/backups/</code>.</div>
+      <div class="step-num">4</div><div class="step-text">A green success banner appears with a <strong>Download</strong> button so you can save the file locally right away.</div>
+      <div class="step-num">5</div><div class="step-text">The activity log records who created the backup and when.</div>
+    </div>
+
+    <div class="note-box note-warning">
+      <i class="bi bi-exclamation-circle-fill"></i>
+      <div>If the storage limit is reached, the <strong>Create Backup Now</strong> button will be disabled. Delete older backups first to free space.</div>
+    </div>
+
+    <h3><i class="bi bi-file-earmark-code"></i> Output file</h3>
+    <ul>
+      <li>Format: <code>.sql</code> (plain-text SQL statements)</li>
+      <li>Includes: all tables + all data rows</li>
+      <li>Can be opened in phpMyAdmin, MySQL Workbench, or any text editor</li>
+    </ul>
+  </div>
+
+  <!-- 3. Restore Database Backup -->
+  <div class="section-card" id="restore-db">
+    <h2><i class="bi bi-database-up"></i> 3. Restore Database Backup (Upload .sql)</h2>
+    <p>Lets you upload any previously downloaded <code>.sql</code> backup file and overwrite the current database with it.</p>
+
+    <h3><i class="bi bi-folder2-open"></i> File field</h3>
+    <p>Click <strong>Select SQL file</strong> and choose a <code>.sql</code> backup file from your computer. Only <code>.sql</code> files are accepted.</p>
+
+    <h3><i class="bi bi-cursor-fill"></i> Button</h3>
+    <span class="btn-pill pill-teal"><i class="bi bi-arrow-counterclockwise"></i> Restore Database</span>
+
+    <h3><i class="bi bi-list-check"></i> How it works</h3>
+    <div class="step-grid">
+      <div class="step-num">1</div><div class="step-text">Select your <code>.sql</code> file and click <strong>Restore Database</strong>.</div>
+      <div class="step-num">2</div><div class="step-text">A SweetAlert confirmation dialog appears — read it carefully, then confirm.</div>
+      <div class="step-num">3</div><div class="step-text">The system parses the SQL into individual statements and executes each one. <code>FOREIGN_KEY_CHECKS</code> is disabled during restore to avoid constraint errors.</div>
+      <div class="step-num">4</div><div class="step-text">A success or partial-warning toast message is shown with the count of successful and failed queries.</div>
+      <div class="step-num">5</div><div class="step-text">The activity log records the restore action.</div>
+    </div>
+
+    <div class="note-box note-danger">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <div><strong>Destructive action!</strong> Restoring a database <em>completely overwrites</em> the current data. All records created after the backup date will be lost. Always create a fresh backup before restoring.</div>
+    </div>
+  </div>
+
+  <!-- 4. Create System Backup -->
+  <div class="section-card" id="create-system">
+    <h2><i class="bi bi-file-zip"></i> 4. Create System Backup (.zip)</h2>
+    <p>Creates a single <code>.zip</code> archive containing <em>both</em> the database dump (as <code>database_dump.sql</code>) and the project files. Use this for a complete server migration or disaster-recovery backup.</p>
+
+    <h3><i class="bi bi-cursor-fill"></i> Button</h3>
+    <span class="btn-pill pill-teal"><i class="bi bi-archive"></i> Create System Backup</span>
+
+    <h3><i class="bi bi-list-check"></i> What is included in the ZIP</h3>
+    <ul>
+      <li><code>database_dump.sql</code> – full database export</li>
+      <li><code>index/</code> – all PHP pages and partials</li>
+      <li><code>uploads/</code> – all uploaded images/files</li>
+      <li><code>config/</code> – configuration files</li>
+      <li><code>css/</code> – stylesheets</li>
+      <li><code>images/</code> – static images</li>
+      <li><code>composer.json</code>, <code>composer.lock</code></li>
+    </ul>
+
+    <h3><i class="bi bi-x-circle text-danger"></i> What is excluded</h3>
+    <ul>
+      <li><code>vendor/</code> – PHP dependencies (re-run <code>composer install</code> after restore)</li>
+      <li><code>index/utilities/backups/</code> – previous backup files</li>
+      <li><code>node_modules/</code> – front-end dependencies</li>
+    </ul>
+
+    <h3><i class="bi bi-list-check"></i> How it works</h3>
+    <div class="step-grid">
+      <div class="step-num">1</div><div class="step-text">Click <strong>Create System Backup</strong> — a confirmation dialog appears.</div>
+      <div class="step-num">2</div><div class="step-text">A background form is submitted. A progress dialog keeps you informed while the ZIP is being built (this can take a minute for large file sets).</div>
+      <div class="step-num">3</div><div class="step-text">The ZIP is saved as <code>system_backup_YYYY-MM-DD_HH-II-SS.zip</code> in the <code>/backups/</code> folder.</div>
+      <div class="step-num">4</div><div class="step-text">A success toast with a <strong>Download System Backup</strong> button appears so you can save the ZIP locally.</div>
+    </div>
+
+    <div class="note-box note-warning">
+      <i class="bi bi-exclamation-circle-fill"></i>
+      <div>System backups can be <strong>very large</strong> (tens of MB to hundreds of MB) depending on how many uploads exist. Ensure your server has enough free disk space and the PHP <code>ZipArchive</code> extension is enabled.</div>
+    </div>
+  </div>
+
+  <!-- 5. Restore System Backup -->
+  <div class="section-card" id="restore-system">
+    <h2><i class="bi bi-file-zip"></i> 5. Restore System Backup (Upload .zip)</h2>
+    <p>Upload a previously downloaded <code>system_backup_*.zip</code> file to restore both the database and all project files at once.</p>
+
+    <h3><i class="bi bi-folder2-open"></i> File field</h3>
+    <p>Click <strong>Select ZIP file</strong> and choose a <code>.zip</code> system backup from your computer. Only files ending in <code>.zip</code> that contain a <code>database_dump.sql</code> inside are accepted.</p>
+
+    <h3><i class="bi bi-cursor-fill"></i> Button</h3>
+    <span class="btn-pill pill-teal"><i class="bi bi-arrow-counterclockwise"></i> Restore System</span>
+
+    <h3><i class="bi bi-list-check"></i> How it works</h3>
+    <div class="step-grid">
+      <div class="step-num">1</div><div class="step-text">Select the ZIP and click <strong>Restore System</strong>.</div>
+      <div class="step-num">2</div><div class="step-text">A strong warning dialog confirms your intent — type "RESTORE" or click Confirm to proceed.</div>
+      <div class="step-num">3</div><div class="step-text">All files in the ZIP (except <code>database_dump.sql</code>) are extracted and overwrite the existing project files.</div>
+      <div class="step-num">4</div><div class="step-text"><code>database_dump.sql</code> is parsed and each SQL statement is executed against the live database.</div>
+      <div class="step-num">5</div><div class="step-text">A result toast shows the number of files extracted and SQL queries executed, plus any warnings.</div>
+    </div>
+
+    <div class="note-box note-danger">
+      <i class="bi bi-exclamation-triangle-fill"></i>
+      <div><strong>Highly destructive!</strong> This operation replaces both the database <em>and</em> all project files. Use only if you need to fully revert the system. Create a fresh backup before proceeding.</div>
+    </div>
+
+    <div class="note-box note-info">
+      <i class="bi bi-info-circle-fill"></i>
+      <div>After a system restore you may need to run <code>composer install</code> in the project root to regenerate the <code>vendor/</code> folder, since it is excluded from the backup.</div>
+    </div>
+  </div>
+
+  <!-- 6. Backup History Tabs -->
+  <div class="section-card" id="history">
+    <h2><i class="bi bi-clock-history"></i> 6. Backup History Tabs</h2>
+    <p>Below the action cards is the <strong>Backup History</strong> section with two tabs:</p>
+
+    <div class="row g-3 mt-1">
+      <div class="col-md-6">
+        <div class="p-3 border rounded" style="background:#f8f9fa;">
+          <h3 class="mt-0"><i class="bi bi-database"></i> SQL Backup Tab</h3>
+          <p>Lists all <code>.sql</code> database-only backup files. Each row shows the filename, date created, file size, and action buttons.</p>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="p-3 border rounded" style="background:#f8f9fa;">
+          <h3 class="mt-0"><i class="bi bi-file-zip"></i> System Backup Tab</h3>
+          <p>Lists all <code>.zip</code> system backup files. Same layout as the SQL tab. The badge next to each tab label shows the count of files.</p>
+        </div>
+      </div>
+    </div>
+
+    <p class="mt-3">Both tabs support <strong>pagination</strong> (10 items per page) and live filtering — see Section 8.</p>
+
+    <p>The row counter at the bottom of each tab shows <em>"Showing X – Y of Z"</em> so you always know where you are in the list.</p>
+  </div>
+
+  <!-- 7. Per-Backup Actions -->
+  <div class="section-card" id="history-actions">
+    <h2><i class="bi bi-toggles"></i> 7. Per-Backup Actions</h2>
+    <p>Each backup row in the history list has up to three action buttons:</p>
+
+    <h3><i class="bi bi-download"></i> Download</h3>
+    <span class="btn-pill pill-blue mb-2"><i class="bi bi-download"></i> Download</span>
+    <p>Saves the backup file to your computer. Use this to keep an off-site copy of your backups for extra safety.</p>
+
+    <h3><i class="bi bi-arrow-counterclockwise"></i> Restore (from history)</h3>
+    <span class="btn-pill pill-green mb-2"><i class="bi bi-arrow-counterclockwise"></i> Restore</span>
+    <p>Restores the database (SQL tab) or system (System tab) directly from the server-side file — <em>no upload needed</em>. A confirmation dialog appears before anything changes.</p>
+    <ul>
+      <li>SQL tab: restores database only.</li>
+      <li>System tab: restores files + database (same as uploading the ZIP manually).</li>
+    </ul>
+
+    <h3><i class="bi bi-trash3"></i> Delete</h3>
+    <span class="btn-pill pill-red mb-2"><i class="bi bi-trash3"></i> Delete</span>
+    <p>Permanently removes the backup file from the server. A SweetAlert confirmation dialog prevents accidental deletion. <strong>This action cannot be undone.</strong></p>
+
+    <div class="note-box note-warning">
+      <i class="bi bi-exclamation-circle-fill"></i>
+      <div>Only <code>.sql</code> files can be deleted via the Delete button. System ZIP files use the same button in the System Backup tab. Always keep at least one off-site copy before deleting server-side backups.</div>
+    </div>
+  </div>
+
+  <!-- 8. Search & Filter -->
+  <div class="section-card" id="filters">
+    <h2><i class="bi bi-funnel"></i> 8. Search &amp; Filter Backups</h2>
+    <p>Both the SQL and System backup tabs have identical filter toolbars above the list:</p>
+
+    <div class="table-responsive">
+      <table class="table table-bordered align-middle" style="font-size:13px;">
+        <thead class="table-dark">
+          <tr><th>Filter Control</th><th>What it does</th></tr>
+        </thead>
+        <tbody>
+          <tr><td><i class="bi bi-search me-1"></i> <strong>Search box</strong></td><td>Type any part of the filename to filter the list in real time.</td></tr>
+          <tr><td><i class="bi bi-sort-down me-1"></i> <strong>Sort dropdown</strong></td><td>Order by: <em>Newest First</em> (default), Oldest First, Largest, Smallest.</td></tr>
+          <tr><td><i class="bi bi-calendar-range me-1"></i> <strong>Date From / Date To</strong></td><td>Show only backups created within a date range.</td></tr>
+          <tr><td><i class="bi bi-hdd me-1"></i> <strong>Min Size / Max Size (MB)</strong></td><td>Show only files within a size range (enter values in megabytes).</td></tr>
+          <tr><td><i class="bi bi-arrow-counterclockwise me-1"></i> <strong>Reset Filters</strong></td><td>Clears all filter fields and reloads the full list.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <div class="note-box note-info">
+      <i class="bi bi-info-circle-fill"></i>
+      <div>Filters apply separately to the SQL tab and the System tab. Changing filters on one tab does not affect the other.</div>
+    </div>
+  </div>
+
+  <!-- 9. Roles -->
+  <div class="section-card" id="roles">
+    <h2><i class="bi bi-person-badge"></i> 9. Access &amp; Roles</h2>
+    <p>The Backup &amp; Restore page is restricted to <strong>Admin</strong> users only. The table below summarises what each role can do:</p>
+
+    <div class="table-responsive">
+      <table class="table table-bordered roles-table align-middle">
+        <thead>
+          <tr>
+            <th>Feature</th>
+            <th>Admin</th>
+            <th>Secretary</th>
+            <th>Treasurer</th>
+            <th>Member</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr><td>View backup page</td><td class="text-center"><i class="bi bi-check-circle-fill check"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td></tr>
+          <tr><td>Create database backup</td><td class="text-center"><i class="bi bi-check-circle-fill check"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td></tr>
+          <tr><td>Restore database backup</td><td class="text-center"><i class="bi bi-check-circle-fill check"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td></tr>
+          <tr><td>Create system backup (.zip)</td><td class="text-center"><i class="bi bi-check-circle-fill check"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td></tr>
+          <tr><td>Restore system backup (.zip)</td><td class="text-center"><i class="bi bi-check-circle-fill check"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td></tr>
+          <tr><td>Download backup files</td><td class="text-center"><i class="bi bi-check-circle-fill check"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td></tr>
+          <tr><td>Delete backup files</td><td class="text-center"><i class="bi bi-check-circle-fill check"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td><td class="text-center"><i class="bi bi-x-circle-fill cross"></i></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- 10. Tips -->
+  <div class="section-card" id="tips">
+    <h2><i class="bi bi-lightbulb"></i> 10. Tips &amp; Best Practices</h2>
+    <ul>
+      <li><strong>Before any major change</strong> (importing data, updating records in bulk, upgrading the system), always create a fresh database backup first.</li>
+      <li><strong>After creating a backup</strong>, click <em>Download</em> immediately and save it to an external drive or cloud storage — server storage is not a substitute for off-site backups.</li>
+      <li><strong>System backups vs Database backups:</strong> Use a System Backup when migrating to a new server. Use a Database Backup for routine data protection — it is faster and smaller.</li>
+      <li><strong>Partial restore warnings:</strong> If a restore completes with warnings (yellow banner), some queries failed — this usually happens with minor version differences in MySQL. Check the warning details and verify your data.</li>
+      <li><strong>Storage:</strong> Old backups accumulate quickly. Clean up files older than 30 days if you have regular backups in place.</li>
+      <li><strong>Restore after system restore:</strong> After restoring a System Backup ZIP, run <code>composer install</code> on the server to regenerate the <code>vendor/</code> folder.</li>
+      <li><strong>CSRF protection:</strong> All backup/restore forms include a CSRF token. If you see an "Invalid session token" error, reload the page and try again.</li>
+    </ul>
+
+    <div class="note-box note-success">
+      <i class="bi bi-check-circle-fill"></i>
+      <div><strong>Good habit:</strong> Create a database backup every week and a system backup every month, or before and after every major system update.</div>
+    </div>
+  </div>
+
+  <p class="text-center text-muted" style="font-size:12px; margin-top: 40px;">
+    Bangkero Association Management System &nbsp;·&nbsp; Backup &amp; Restore User Manual &nbsp;·&nbsp; Generated <?= date('F j, Y') ?>
+  </p>
+
+</div>
+</body>
+</html>

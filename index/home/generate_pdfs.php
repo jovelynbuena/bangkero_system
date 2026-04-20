@@ -11,7 +11,11 @@ $assocAddress = $configRow['assoc_address'] ?? 'Barreto Street, Olongapo City';
 $assocPhone   = $configRow['assoc_phone']   ?? '';
 $assocLogo    = $configRow['assoc_logo']    ?? '';
 
+<<<<<<< HEAD
 $logoPath = __DIR__ . '/../../uploads/' . $assocLogo;
+=======
+$logoPath = __DIR__ . '/../uploads/config/' . $assocLogo;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 if (!file_exists($logoPath)) {
     $logoPath = __DIR__ . '/../../images/logo1.png';
 }

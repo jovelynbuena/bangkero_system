@@ -1,4 +1,4 @@
-<!-- Skip to main content for keyboard users -->
+﻿<!-- Skip to main content for keyboard users -->
 <a class="visually-hidden-focusable skip-link" href="#main">Skip to content</a>
 
 <nav class="navbar navbar-expand-lg fixed-top pro-navbar" role="navigation" aria-label="Main navigation">
@@ -6,7 +6,12 @@
     
     <!-- LEFT SIDE: Logo + Association Name -->
     <a class="navbar-brand d-flex align-items-center" href="user_home.php" aria-label="Bangkero and Fisherman Association - Home">
+<<<<<<< HEAD
       <img src="../images/logo1.png" alt="Association logo" class="brand-img me-3" />
+=======
+      <?php require_once __DIR__ . '/../../../config/logo_helper.php'; ?>
+      <img src="<?= $assocLogoUrl ?>" alt="Association logo" class="brand-img me-3" />
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
       <span class="brand-text">Bankero and Fisherman Association</span>
     </a>
 

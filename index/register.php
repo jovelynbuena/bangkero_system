@@ -527,7 +527,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="register-card">
         <div class="logo-wrap">
+<<<<<<< HEAD
             <img src="images/logo1.png" alt="Logo">
+=======
+            <?php require_once __DIR__ . '/../config/logo_helper.php'; ?>
+            <img src="<?= $assocLogoUrl ?>" alt="Logo">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             <h3>Officer Registration</h3>
             <p class="subtitle">Bankero & Fishermen Association</p>
             <p class="info-text">

@@ -25,8 +25,14 @@ $filename = basename($_GET['file']);
 $backupDir = __DIR__ . '/backups/';
 $filePath = $backupDir . $filename;
 
+<<<<<<< HEAD
 // Validate file existence and extension
 if (!file_exists($filePath) || pathinfo($filename, PATHINFO_EXTENSION) !== 'sql') {
+=======
+// Validate file existence and extension (allow sql and zip)
+$allowedExtensions = ['sql', 'zip'];
+if (!file_exists($filePath) || !in_array(pathinfo($filename, PATHINFO_EXTENSION), $allowedExtensions)) {
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     http_response_code(404);
     exit('File not found');
 }
@@ -51,8 +57,15 @@ try {
 }
 
 // Set proper headers for forced download
+<<<<<<< HEAD
 header('Content-Description: File Transfer');
 header('Content-Type: application/sql');
+=======
+$ext = pathinfo($filename, PATHINFO_EXTENSION);
+$contentType = ($ext === 'zip') ? 'application/zip' : 'application/sql';
+header('Content-Description: File Transfer');
+header('Content-Type: ' . $contentType);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 header('Content-Disposition: attachment; filename="' . $filename . '"');
 header('Content-Length: ' . filesize($filePath));
 header('Expires: 0');

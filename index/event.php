@@ -226,11 +226,19 @@ body {
 
 /* Page Header */
 .page-header {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     padding: 32px;
     border-radius: 20px;
     margin-bottom: 32px;
     box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
+=======
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+    padding: 32px;
+    border-radius: 20px;
+    margin-bottom: 32px;
+    box-shadow: 0 8px 32px rgba(46, 134, 171, 0.25);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 
@@ -269,14 +277,24 @@ body {
 }
 
 .event-tabs-container .btn.active {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+=======
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+    color: white;
+    box-shadow: 0 4px 12px rgba(46, 134, 171, 0.3);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 .event-tabs-container .btn:hover:not(.active) {
     background: #f8f9fa;
+<<<<<<< HEAD
     color: #667eea;
+=======
+    color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 /* Search & Filter Bar */
@@ -327,9 +345,15 @@ body {
 }
 
 #categoryFilter:focus {
+<<<<<<< HEAD
     border-color: #667eea;
     background: white;
     box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+=======
+    border-color: #2E86AB;
+    background: white;
+    box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.1);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     outline: none;
 }
 
@@ -495,13 +519,21 @@ table.dataTable tbody td img:hover {
 
 /* Add Event Button + Attendance Primary Button */
 .btn-primary, .btn-light {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border: none;
     padding: 12px 28px;
     border-radius: 12px;
     font-weight: 600;
     color: white;
+<<<<<<< HEAD
     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+=======
+    box-shadow: 0 4px 16px rgba(46, 134, 171, 0.3);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -512,8 +544,13 @@ table.dataTable tbody td img:hover {
 
 .btn-primary:hover, .btn-light:hover {
     transform: translateY(-2px);
+<<<<<<< HEAD
     box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
     background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+=======
+    box-shadow: 0 6px 24px rgba(46, 134, 171, 0.4);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 
@@ -576,9 +613,15 @@ table.dataTable tbody td img:hover {
 
 /* Print Button - Gray/Blue */
 .buttons-print {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%) !important;
     color: white !important;
     border-color: #6366f1 !important;
+=======
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%) !important;
+    color: white !important;
+    border-color: #2E86AB !important;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 .buttons-print:hover {
@@ -612,7 +655,11 @@ table.dataTable tbody td img:hover {
 }
 
 .modal-header {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
     border-radius: 20px 20px 0 0;
     padding: 24px 32px;
@@ -644,8 +691,13 @@ table.dataTable tbody td img:hover {
 }
 
 .form-control:focus, .form-select:focus {
+<<<<<<< HEAD
     border-color: #667eea;
     box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+=======
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.1);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 /* Responsive */
@@ -783,7 +835,11 @@ table.dataTable tbody td img:hover {
 }
 
 .badge-training {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%);
+=======
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 

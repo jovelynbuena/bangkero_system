@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -433,7 +433,12 @@ $officers_count = $current_count + $previous_count;
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
+<<<<<<< HEAD
     <style>
+=======
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { 
             font-family: 'Inter', sans-serif; 
@@ -448,12 +453,20 @@ $officers_count = $current_count + $previous_count;
 
         /* Header Section */
         .page-header {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             padding: 32px;
             border-radius: 20px;
             color: white;
             margin-bottom: 32px;
+<<<<<<< HEAD
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+=======
+            box-shadow: 0 10px 30px rgba(46, 134, 171, 0.30);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         }
         .page-header h2 {
             font-size: 32px;
@@ -490,14 +503,22 @@ $officers_count = $current_count + $previous_count;
 
         /* Add Officer Button */
         .btn-add-officer {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             padding: 14px 28px;
             border-radius: 12px;
             border: none;
             font-weight: 600;
             font-size: 16px;
+<<<<<<< HEAD
             box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+=======
+            box-shadow: 0 6px 20px rgba(46, 134, 171, 0.40);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             display: inline-flex;
             align-items: center;
@@ -506,7 +527,11 @@ $officers_count = $current_count + $previous_count;
         .btn-add-officer:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(102, 126, 234, 0.5);
+<<<<<<< HEAD
             background: linear-gradient(135deg, #764ba2 0%, #667eea 100%);
+=======
+            background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
         }
 
@@ -522,8 +547,13 @@ $officers_count = $current_count + $previous_count;
             height: auto;
         }
         .filter-select:focus {
+<<<<<<< HEAD
             border-color: #667eea;
             box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+=======
+            border-color: #2E86AB;
+            box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             outline: none;
         }
 
@@ -541,8 +571,13 @@ $officers_count = $current_count + $previous_count;
         }
         .search-box input:focus {
             outline: none;
+<<<<<<< HEAD
             border-color: #667eea;
             box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
+=======
+            border-color: #2E86AB;
+            box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         }
         .search-box i {
             position: absolute;
@@ -634,7 +669,11 @@ $officers_count = $current_count + $previous_count;
             color: #2c3e50;
         }
         .section-header .badge {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             font-size: 12px;
             padding: 4px 12px;
@@ -715,7 +754,11 @@ $officers_count = $current_count + $previous_count;
             box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
         }
         .modal-header {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             border-radius: 20px 20px 0 0;
             padding: 24px;
@@ -1428,7 +1471,11 @@ Swal.fire({
     icon: '<?= $alertType ?>',
     title: '<?= ucfirst($alertType) ?>!',
     text: '<?= addslashes($alertMsg) ?>',
+<<<<<<< HEAD
     confirmButtonColor: '<?= $alertType === "success" ? "#667eea" : "#ef4444" ?>',
+=======
+    confirmButtonColor: '<?= $alertType === "success" ? "#2E86AB" : "#ef4444" ?>',
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     confirmButtonText: 'OK'
 }).then(() => {
     <?php if ($alertType === "success"): ?> window.location.href = "officerslist.php"; <?php endif; ?>

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 // ============================================
 // QUICK MODE SWITCHER
 // Quickly switch between ONLINE and OFFLINE
@@ -75,7 +79,11 @@ require_once(__DIR__ . '/db_connect_local.php');
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
         * { font-family: 'Inter', sans-serif; margin: 0; padding: 0; box-sizing: border-box; }
+<<<<<<< HEAD
         body { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+=======
+        body { background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 20px; }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         .container { background: white; padding: 40px; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-width: 500px; width: 100%; }
         h1 { font-size: 24px; margin-bottom: 10px; color: #1a1a1a; }
         p { color: #666; margin-bottom: 30px; }

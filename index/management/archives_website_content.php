@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 session_start();
 
 if (empty($_SESSION['username']) || $_SESSION['role'] !== 'admin') {
@@ -201,10 +205,18 @@ $resources_archived = $conn->query("SELECT * FROM downloadable_resources_archive
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<<<<<<< HEAD
 <style>
     body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; }
     .main-content { margin-left: 250px; padding: 32px; min-height: 100vh; }
     .page-header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); border-radius: 16px; padding: 30px; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2); color: white; }
+=======
+<link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
+    body { font-family: 'Inter', sans-serif; background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%); min-height: 100vh; }
+    .main-content { margin-left: 250px; padding: 32px; min-height: 100vh; }
+    .page-header { background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%); border-radius: 16px; padding: 30px; margin-bottom: 30px; box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20); color: white; }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     .section-card { background: white; border-radius: 12px; padding: 20px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); margin-bottom: 20px; }
     .section-card h5 { font-weight: 600; }
     .table thead th { background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%); color: white; border: none; padding: 10px; font-size: 0.85rem; }

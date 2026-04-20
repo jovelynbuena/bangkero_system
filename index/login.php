@@ -620,9 +620,18 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     <div class="login-card">
         <div class="logo-wrap">
+<<<<<<< HEAD
             <img src="images/logo1.png" alt="Association Logo">
             <div class="logo-text">
                 <h3>Bankero & Fishermen</h3>
+=======
+            <?php
+            require_once __DIR__ . '/../config/logo_helper.php';
+            ?>
+            <img src="<?= $assocLogoUrl ?>" alt="Association Logo">
+            <div class="logo-text">
+                <h3><?= htmlspecialchars($assocName) ?></h3>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 <div class="small-muted">Barangay Barretto, Olongapo City</div>
             </div>
         </div>

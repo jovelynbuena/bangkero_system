@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 // Transparency Dashboard - Combined single page with Beneficiaries & Impact Metrics
 session_start();
 
@@ -73,6 +77,51 @@ $canEdit = $isAdmin
 
 mysqli_report(MYSQLI_REPORT_ERROR | MYSQLI_REPORT_STRICT);
 
+<<<<<<< HEAD
+=======
+// ── DB Migrations (run early, before any table queries) ──────────────────────
+
+// Add donation_type column to transparency_donations if missing
+try {
+    $conn->query("ALTER TABLE transparency_donations ADD COLUMN donation_type ENUM('cash','in_kind') NOT NULL DEFAULT 'cash' AFTER donor_type");
+} catch (Throwable) {}
+
+// Ensure transparency_donation_items table exists (for in-kind/gamit donations)
+try {
+    $conn->query("CREATE TABLE IF NOT EXISTS transparency_donation_items (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        donation_id INT NOT NULL,
+        item_name VARCHAR(255) NOT NULL,
+        quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
+        unit VARCHAR(50) DEFAULT NULL,
+        unit_value DECIMAL(15,2) NOT NULL DEFAULT 0,
+        total_value DECIMAL(15,2) GENERATED ALWAYS AS (quantity * unit_value) STORED,
+        photo VARCHAR(500) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_donation_id (donation_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} catch (Throwable) {}
+
+// Ensure transparency_expenses table exists
+try {
+    $conn->query("CREATE TABLE IF NOT EXISTS transparency_expenses (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        title VARCHAR(255) NOT NULL,
+        category VARCHAR(100) DEFAULT NULL,
+        amount DECIMAL(15,2) NOT NULL DEFAULT 0,
+        expense_date DATE DEFAULT NULL,
+        paid_to VARCHAR(255) DEFAULT NULL,
+        reference_code VARCHAR(100) DEFAULT NULL,
+        notes TEXT DEFAULT NULL,
+        donation_id INT DEFAULT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NULL DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+} catch (Throwable) {}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 function e($value) {
     return htmlspecialchars($value ?? '', ENT_QUOTES, 'UTF-8');
 }
@@ -135,6 +184,7 @@ try {
 
         // Add/Edit Assistance
         elseif ($action === 'add_assistance' || $action === 'edit_assistance') {
+<<<<<<< HEAD
             $program_id = null;
             $source_name = trim($_POST['source_name'] ?? '');
             $source_type = trim($_POST['source_type'] ?? '');
@@ -142,13 +192,46 @@ try {
             $date_received = $_POST['date_received'] ?: null;
             $reference = trim($_POST['reference'] ?? '');
             $notes = trim($_POST['notes'] ?? '');
+=======
+            $program_id    = null;
+            $source_name   = trim($_POST['source_name'] ?? '');
+            $source_type   = trim($_POST['source_type'] ?? '');
+            $donation_type = in_array($_POST['donation_type'] ?? '', ['cash','in_kind']) ? $_POST['donation_type'] : 'cash';
+            $date_received = $_POST['date_received'] ?: null;
+            $reference     = trim($_POST['reference'] ?? '');
+            $notes         = trim($_POST['notes'] ?? '');
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
             if ($source_name === '') {
                 throw new Exception('Source name is required.');
             }
+<<<<<<< HEAD
             if ($amount < 0) {
                 throw new Exception('Amount cannot be negative.');
             }
+=======
+
+            // For cash: use posted amount. For in_kind: compute from items.
+            $amount = 0;
+            $itemNames   = $_POST['item_name']   ?? [];
+            $itemQtys    = $_POST['item_qty']    ?? [];
+            $itemUnits   = $_POST['item_unit']   ?? [];
+            $itemValues  = $_POST['item_value']  ?? [];
+
+            if ($donation_type === 'in_kind') {
+                foreach ($itemValues as $iv) $amount += max(0, (float)$iv) * max(0, (float)($itemQtys[array_search($iv, $itemValues)] ?? 1));
+                // recompute properly
+                $amount = 0;
+                foreach ($itemNames as $idx => $iname) {
+                    $qty = max(0, (float)($itemQtys[$idx] ?? 1));
+                    $val = max(0, (float)($itemValues[$idx] ?? 0));
+                    $amount += $qty * $val;
+                }
+            } else {
+                $amount = (float)($_POST['amount'] ?? 0);
+            }
+            if ($amount < 0) throw new Exception('Amount cannot be negative.');
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
             // Handle multiple image uploads
             $uploadDir = '../../uploads/assistance/';
@@ -158,14 +241,54 @@ try {
 
             if ($action === 'add_assistance') {
                 $stmt = $conn->prepare("INSERT INTO transparency_donations 
+<<<<<<< HEAD
                     (campaign_id, donor_name, donor_type, amount, date_received, reference_code, notes, status, created_at) 
                     VALUES (?, ?, ?, ?, ?, ?, ?, 'confirmed', NOW())");
                 $stmt->bind_param('issdsss', $program_id, $source_name, $source_type, $amount, $date_received, $reference, $notes);
+=======
+                    (campaign_id, donor_name, donor_type, donation_type, amount, date_received, reference_code, notes, status, created_at) 
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'confirmed', NOW())");
+                $stmt->bind_param('isssdsss', $program_id, $source_name, $source_type, $donation_type, $amount, $date_received, $reference, $notes);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 $stmt->execute();
                 $newId = $conn->insert_id;
                 $stmt->close();
 
+<<<<<<< HEAD
                 // Upload new images
+=======
+                // Save in-kind items
+                if ($donation_type === 'in_kind' && !empty($itemNames)) {
+                    $uploadItemDir = '../../uploads/assistance/items/';
+                    if (!is_dir($uploadItemDir)) mkdir($uploadItemDir, 0755, true);
+                    $iStmt = $conn->prepare("INSERT INTO transparency_donation_items (donation_id, item_name, quantity, unit, unit_value, photo) VALUES (?,?,?,?,?,?)");
+                    foreach ($itemNames as $idx => $iname) {
+                        $iname = trim($iname);
+                        if ($iname === '') continue;
+                        $qty   = max(0, (float)($itemQtys[$idx]   ?? 1));
+                        $unit  = trim($itemUnits[$idx]  ?? '');
+                        $val   = max(0, (float)($itemValues[$idx]  ?? 0));
+                        $iPhoto = null;
+                        // per-item photo
+                        if (!empty($_FILES['item_photo']['name'][$idx]) && $_FILES['item_photo']['error'][$idx] === UPLOAD_ERR_OK) {
+                            $ext  = strtolower(pathinfo($_FILES['item_photo']['name'][$idx], PATHINFO_EXTENSION));
+                            $mime = mime_content_type($_FILES['item_photo']['tmp_name'][$idx]);
+                            if (in_array($ext, $allowed) || in_array($mime, $allowedMimes)) {
+                                if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
+                                $fn = time() . '_item_' . $idx . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+                                if (move_uploaded_file($_FILES['item_photo']['tmp_name'][$idx], $uploadItemDir . $fn)) {
+                                    $iPhoto = 'uploads/assistance/items/' . $fn;
+                                }
+                            }
+                        }
+                        $iStmt->bind_param('isdsds', $newId, $iname, $qty, $unit, $val, $iPhoto);
+                        $iStmt->execute();
+                    }
+                    $iStmt->close();
+                }
+
+                // Upload general images
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 if (!empty($_FILES['assistance_images']['name'][0])) {
                     $imgStmt = $conn->prepare("INSERT INTO transparency_donation_images (donation_id, image_path, sort_order) VALUES (?, ?, ?)");
                     foreach ($_FILES['assistance_images']['name'] as $i => $fname) {
@@ -190,12 +313,54 @@ try {
             } else {
                 $id = (int)($_POST['id'] ?? 0);
                 $stmt = $conn->prepare("UPDATE transparency_donations 
+<<<<<<< HEAD
                     SET campaign_id=?, donor_name=?, donor_type=?, amount=?, date_received=?, reference_code=?, notes=?, updated_at=NOW() 
                     WHERE id=?");
                 $stmt->bind_param('issdsssi', $program_id, $source_name, $source_type, $amount, $date_received, $reference, $notes, $id);
                 $stmt->execute();
                 $stmt->close();
 
+=======
+                    SET campaign_id=?, donor_name=?, donor_type=?, donation_type=?, amount=?, date_received=?, reference_code=?, notes=?, updated_at=NOW() 
+                    WHERE id=?");
+                $stmt->bind_param('isssdsssi', $program_id, $source_name, $source_type, $donation_type, $amount, $date_received, $reference, $notes, $id);
+                $stmt->execute();
+                $stmt->close();
+
+
+                // Replace in-kind items
+                if ($donation_type === 'in_kind') {
+                    $conn->query("DELETE FROM transparency_donation_items WHERE donation_id=$id");
+                    if (!empty($itemNames)) {
+                        $uploadItemDir = '../../uploads/assistance/items/';
+                        if (!is_dir($uploadItemDir)) mkdir($uploadItemDir, 0755, true);
+                        $iStmt = $conn->prepare("INSERT INTO transparency_donation_items (donation_id, item_name, quantity, unit, unit_value, photo) VALUES (?,?,?,?,?,?)");
+                        foreach ($itemNames as $idx => $iname) {
+                            $iname = trim($iname);
+                            if ($iname === '') continue;
+                            $qty   = max(0, (float)($itemQtys[$idx]   ?? 1));
+                            $unit  = trim($itemUnits[$idx]  ?? '');
+                            $val   = max(0, (float)($itemValues[$idx]  ?? 0));
+                            $iPhoto = null;
+                            if (!empty($_FILES['item_photo']['name'][$idx]) && $_FILES['item_photo']['error'][$idx] === UPLOAD_ERR_OK) {
+                                $ext  = strtolower(pathinfo($_FILES['item_photo']['name'][$idx], PATHINFO_EXTENSION));
+                                $mime = mime_content_type($_FILES['item_photo']['tmp_name'][$idx]);
+                                if (in_array($ext, $allowed) || in_array($mime, $allowedMimes)) {
+                                    if (in_array($ext, ['jfif','heic','heif'])) $ext = 'jpg';
+                                    $fn = time() . '_item_' . $idx . '_' . bin2hex(random_bytes(3)) . '.' . $ext;
+                                    if (move_uploaded_file($_FILES['item_photo']['tmp_name'][$idx], $uploadItemDir . $fn)) {
+                                        $iPhoto = 'uploads/assistance/items/' . $fn;
+                                    }
+                                }
+                            }
+                            $iStmt->bind_param('isdsds', $id, $iname, $qty, $unit, $val, $iPhoto);
+                            $iStmt->execute();
+                        }
+                        $iStmt->close();
+                    }
+                }
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 // Upload new images (append)
                 if (!empty($_FILES['assistance_images']['name'][0])) {
                     $imgStmt = $conn->prepare("INSERT INTO transparency_donation_images (donation_id, image_path, sort_order) VALUES (?, ?, ?)");
@@ -308,6 +473,49 @@ try {
             }
         }
 
+<<<<<<< HEAD
+=======
+        // ── Expenses ──────────────────────────────────────────────────
+        elseif ($action === 'add_expense' || $action === 'edit_expense') {
+            $exp_title       = trim($_POST['exp_title'] ?? '');
+            $exp_category    = trim($_POST['exp_category'] ?? '');
+            $exp_amount      = (float)($_POST['exp_amount'] ?? 0);
+            $exp_date        = $_POST['exp_date'] ?: null;
+            $exp_paid_to     = trim($_POST['exp_paid_to'] ?? '');
+            $exp_reference   = trim($_POST['exp_reference'] ?? '');
+            $exp_notes       = trim($_POST['exp_notes'] ?? '');
+            $exp_donation_id = (int)($_POST['exp_donation_id'] ?? 0) ?: null;
+            $exp_id          = (int)($_POST['exp_id'] ?? 0);
+
+            if ($exp_title === '') throw new Exception('Expense title is required.');
+            if ($exp_amount < 0)  throw new Exception('Amount cannot be negative.');
+
+            if ($action === 'add_expense') {
+                $stmt = $conn->prepare("INSERT INTO transparency_expenses
+                    (title, category, amount, expense_date, paid_to, reference_code, notes, donation_id, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, NOW())");
+                $stmt->bind_param('ssdsssis', $exp_title, $exp_category, $exp_amount, $exp_date, $exp_paid_to, $exp_reference, $exp_notes, $exp_donation_id);
+                $stmt->execute(); $stmt->close();
+                $alertType = 'success'; $alertMsg = 'Expense recorded successfully.';
+            } else {
+                $stmt = $conn->prepare("UPDATE transparency_expenses
+                    SET title=?, category=?, amount=?, expense_date=?, paid_to=?, reference_code=?, notes=?, donation_id=?, updated_at=NOW()
+                    WHERE id=?");
+                $stmt->bind_param('ssdssssii', $exp_title, $exp_category, $exp_amount, $exp_date, $exp_paid_to, $exp_reference, $exp_notes, $exp_donation_id, $exp_id);
+                $stmt->execute(); $stmt->close();
+                $alertType = 'success'; $alertMsg = 'Expense updated successfully.';
+            }
+        }
+
+        elseif ($action === 'delete_expense') {
+            $id = (int)($_POST['id'] ?? 0);
+            $stmt = $conn->prepare("DELETE FROM transparency_expenses WHERE id=?");
+            $stmt->bind_param('i', $id);
+            $stmt->execute(); $stmt->close();
+            $alertType = 'success'; $alertMsg = 'Expense deleted.';
+        }
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         // Delete Impact Metric
         elseif ($action === 'delete_metric') {
             $id = (int)($_POST['id'] ?? 0);
@@ -667,9 +875,19 @@ if ($res && $row = $res->fetch_assoc()) {
     $stats['active'] = (int)$row['active'];
 }
 
+<<<<<<< HEAD
 $res = $conn->query("SELECT SUM(amount) as total FROM transparency_donations WHERE status='confirmed'");
 if ($res && $row = $res->fetch_assoc()) {
     $stats['total_assistance'] = (float)($row['total'] ?? 0);
+=======
+$res = $conn->query("SELECT
+    SUM(CASE WHEN COALESCE(donation_type,'cash')='cash' THEN amount ELSE 0 END) as cash_total,
+    SUM(CASE WHEN donation_type='in_kind' THEN amount ELSE 0 END) as inkind_total
+    FROM transparency_donations WHERE status='confirmed'");
+if ($res && $row = $res->fetch_assoc()) {
+    $stats['total_assistance'] = (float)($row['cash_total']  ?? 0);
+    $stats['total_inkind']     = (float)($row['inkind_total'] ?? 0);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 $res = $conn->query("SELECT COUNT(DISTINCT donor_name) as total FROM transparency_donations");
@@ -709,6 +927,10 @@ $assistance = [];
 $res = $conn->query("SELECT d.* FROM transparency_donations d ORDER BY d.date_received DESC LIMIT 50");
 while ($res && $row = $res->fetch_assoc()) {
     $row['images'] = [];
+<<<<<<< HEAD
+=======
+    $row['items']  = [];
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     $assistance[$row['id']] = $row;
 }
 // Fetch images for all loaded donations
@@ -718,6 +940,14 @@ if (!empty($assistance)) {
     while ($imgRes && $imgRow = $imgRes->fetch_assoc()) {
         $assistance[$imgRow['donation_id']]['images'][] = $imgRow;
     }
+<<<<<<< HEAD
+=======
+    // Fetch in-kind items
+    $itemRes = $conn->query("SELECT * FROM transparency_donation_items WHERE donation_id IN ($ids) ORDER BY id");
+    while ($itemRes && $itemRow = $itemRes->fetch_assoc()) {
+        $assistance[$itemRow['donation_id']]['items'][] = $itemRow;
+    }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 $assistance = array_values($assistance);
 
@@ -766,6 +996,26 @@ try {
     }
 } catch (Throwable) {}
 
+<<<<<<< HEAD
+=======
+// Fetch expenses
+$expenses = [];
+$res = $conn->query("SELECT e.*, d.donor_name as linked_source
+    FROM transparency_expenses e
+    LEFT JOIN transparency_donations d ON e.donation_id = d.id
+    ORDER BY e.expense_date DESC, e.id DESC LIMIT 100");
+while ($res && $row = $res->fetch_assoc()) {
+    $expenses[] = $row;
+}
+
+// Total expenses stat
+$expTotal = 0;
+$resExp = $conn->query("SELECT SUM(amount) as total FROM transparency_expenses");
+if ($resExp && $rowExp = $resExp->fetch_assoc()) {
+    $expTotal = (float)($rowExp['total'] ?? 0);
+}
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 // Ensure community_achievements table exists
 $conn->query("CREATE TABLE IF NOT EXISTS community_achievements (
     id INT PRIMARY KEY AUTO_INCREMENT,
@@ -838,11 +1088,20 @@ $achievements = array_values($achievements);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<<<<<<< HEAD
     <style>
         body { background: #f8f9fa; }
         .main-content { padding: 24px; }
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
+        body { background: #f8f9fa; }
+        .main-content { padding: 24px; }
+        .page-header {
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             padding: 30px;
             border-radius: 16px;
@@ -873,6 +1132,7 @@ $achievements = array_values($achievements);
         }
         .badge-status { padding: 6px 12px; border-radius: 20px; font-size: 0.75rem; font-weight: 600; }
         .badge-active { background: #d1fae5; color: #065f46; }
+<<<<<<< HEAD
         .badge-completed { background: #dbeafe; color: #1e40af; }
         .badge-planned { background: #fef3c7; color: #92400e; }
         .badge-served { background: #d1fae5; color: #065f46; }
@@ -884,6 +1144,19 @@ $achievements = array_values($achievements);
         .featured-star { color: #f59e0b; }
         .metric-card {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+        .badge-completed { background: #dbeafe; color: #1a6d8a; }
+        .badge-planned { background: #fef3c7; color: #92400e; }
+        .badge-served { background: #d1fae5; color: #065f46; }
+        .badge-in-progress { background: #dbeafe; color: #1a6d8a; }
+        .badge-pending { background: #fef3c7; color: #92400e; }
+        .progress { height: 8px; border-radius: 4px; }
+        .nav-tabs .nav-link { color: #495057; }
+        .nav-tabs .nav-link.active { background: #2E86AB; color: white; border-color: #2E86AB; }
+        .featured-star { color: #f59e0b; }
+        .metric-card {
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             border-radius: 12px;
             padding: 20px;
@@ -926,12 +1199,32 @@ $achievements = array_values($achievements);
     <div class="row g-3 mb-4">
         <div class="col-md-3">
             <div class="stat-card d-flex align-items-center gap-3">
+<<<<<<< HEAD
                 <div class="stat-icon bg-info bg-opacity-10 text-info">
                     <i class="bi bi-cash-stack"></i>
                 </div>
                 <div>
                     <h4 class="mb-0">₱<?= number_format($stats['total_assistance'], 0) ?></h4>
                     <small class="text-muted">Total Assistance</small>
+=======
+                <div class="stat-icon bg-success bg-opacity-10 text-success">
+                    <i class="bi bi-cash-coin"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">₱<?= number_format($stats['total_assistance'], 0) ?></h4>
+                    <small class="text-muted">Cash Assistance</small>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="stat-card d-flex align-items-center gap-3">
+                <div class="stat-icon bg-primary bg-opacity-10 text-primary">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">₱<?= number_format($stats['total_inkind'] ?? 0, 0) ?></h4>
+                    <small class="text-muted">In-Kind (Gamit)</small>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 </div>
             </div>
         </div>
@@ -946,6 +1239,7 @@ $achievements = array_values($achievements);
                 </div>
             </div>
         </div>
+<<<<<<< HEAD
         <div class="col-md-2">
             <div class="stat-card d-flex align-items-center gap-3">
                 <div class="stat-icon bg-success bg-opacity-10 text-success">
@@ -954,6 +1248,16 @@ $achievements = array_values($achievements);
                 <div>
                     <h4 class="mb-0"><?= number_format($stats['beneficiaries']) ?></h4>
                     <small class="text-muted">Beneficiaries</small>
+=======
+        <div class="col-md-3">
+            <div class="stat-card d-flex align-items-center gap-3">
+                <div class="stat-icon bg-danger bg-opacity-10 text-danger">
+                    <i class="bi bi-receipt"></i>
+                </div>
+                <div>
+                    <h4 class="mb-0">₱<?= number_format($expTotal, 0) ?></h4>
+                    <small class="text-muted">Total Expenses</small>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 </div>
             </div>
         </div>
@@ -967,6 +1271,14 @@ $achievements = array_values($achievements);
             </button>
         </li>
         <li class="nav-item" role="presentation">
+<<<<<<< HEAD
+=======
+            <button class="nav-link" id="expenses-tab" data-bs-toggle="tab" data-bs-target="#expenses" type="button">
+                <i class="bi bi-receipt me-1"></i> Expenses
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             <button class="nav-link" id="achievements-tab" data-bs-toggle="tab" data-bs-target="#achievements" type="button">
                 <i class="bi bi-image me-1"></i> Community Achievements
             </button>
@@ -992,13 +1304,21 @@ $achievements = array_values($achievements);
                             <tr>
                                 <th>Source</th>
                                 <th>Type</th>
+<<<<<<< HEAD
                                 <th>Amount</th>
                                 <th>Date</th>
                                 <th>Image</th>
+=======
+                                <th>Assistance Type</th>
+                                <th>Amount / Value</th>
+                                <th>Date</th>
+                                <th>Items / Images</th>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                                 <?php if ($canEdit): ?><th>Actions</th><?php endif; ?>
                             </tr>
                         </thead>
                         <tbody>
+<<<<<<< HEAD
                             <?php foreach ($assistance as $a): ?>
                             <tr>
                                 <td><strong><?= e($a['donor_name']) ?></strong></td>
@@ -1007,6 +1327,42 @@ $achievements = array_values($achievements);
                                 <td><?= $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '-' ?></td>
                                 <td>
                                     <?php if (!empty($a['images'])): ?>
+=======
+                            <?php foreach ($assistance as $a): 
+                                $isInKind = ($a['donation_type'] ?? 'cash') === 'in_kind';
+                            ?>
+                            <tr>
+                                <td><strong><?= e($a['donor_name']) ?></strong></td>
+                                <td><span class="badge bg-secondary"><?= e($a['donor_type']) ?></span></td>
+                                <td>
+                                    <?php if ($isInKind): ?>
+                                    <span class="badge bg-primary"><i class="bi bi-box-seam me-1"></i>Gamit / In-Kind</span>
+                                    <?php else: ?>
+                                    <span class="badge bg-success"><i class="bi bi-cash-coin me-1"></i>Pera / Cash</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-success fw-bold">₱<?= number_format($a['amount'], 0) ?></td>
+                                <td><?= $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '-' ?></td>
+                                <td>
+                                    <?php if ($isInKind && !empty($a['items'])): ?>
+                                    <ul class="list-unstyled mb-0 small">
+                                        <?php foreach ($a['items'] as $it): ?>
+                                        <li class="d-flex align-items-center gap-2 mb-1">
+                                            <?php if ($it['photo']): ?>
+                                            <a href="../../<?= e($it['photo']) ?>" target="_blank">
+                                                <img src="../../<?= e($it['photo']) ?>" style="height:32px;width:38px;object-fit:cover;border-radius:4px;" onerror="this.style.display='none'">
+                                            </a>
+                                            <?php endif; ?>
+                                            <span>
+                                                <strong><?= e($it['item_name']) ?></strong>
+                                                — <?= number_format($it['quantity'], 0) ?> <?= e($it['unit']) ?>
+                                                <span class="text-muted">(₱<?= number_format($it['total_value'] ?? $it['quantity']*$it['unit_value'], 2) ?>)</span>
+                                            </span>
+                                        </li>
+                                        <?php endforeach; ?>
+                                    </ul>
+                                    <?php elseif (!empty($a['images'])): ?>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                                     <div class="d-flex flex-wrap gap-1">
                                         <?php foreach ($a['images'] as $img): ?>
                                         <a href="../../<?= e($img['image_path']) ?>" target="_blank">
@@ -1043,6 +1399,124 @@ $achievements = array_values($achievements);
             </div>
         </div>
 
+<<<<<<< HEAD
+=======
+        <!-- ── Expenses Tab ── -->
+        <div class="tab-pane fade" id="expenses" role="tabpanel">
+            <div class="table-container">
+                <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+                    <div>
+                        <h5 class="mb-0"><i class="bi bi-receipt me-2"></i>Expenses / Disbursements</h5>
+                        <small class="text-muted">Kung saan napunta ang pera — purchases, payments, disbursements.</small>
+                    </div>
+                    <?php if ($canEdit): ?>
+                    <button class="btn btn-danger btn-sm" data-bs-toggle="modal" data-bs-target="#expenseModal" onclick="resetExpenseForm()">
+                        <i class="bi bi-plus"></i> Add Expense
+                    </button>
+                    <?php endif; ?>
+                </div>
+
+                <!-- Summary strip -->
+                <div class="d-flex gap-3 mb-3 flex-wrap">
+                    <div class="px-3 py-2 rounded" style="background:#fff5f5; border:1px solid #fecaca;">
+                        <small class="text-muted d-block">Total Expenses</small>
+                        <strong class="text-danger">₱<?= number_format($expTotal, 2) ?></strong>
+                    </div>
+                    <div class="px-3 py-2 rounded" style="background:#f0fdf4; border:1px solid #bbf7d0;">
+                        <small class="text-muted d-block">Cash Received</small>
+                        <strong class="text-success">₱<?= number_format($stats['total_assistance'], 2) ?></strong>
+                    </div>
+                    <?php if (($stats['total_inkind'] ?? 0) > 0): ?>
+                    <div class="px-3 py-2 rounded" style="background:#eff6ff; border:1px solid #bfdbfe;">
+                        <small class="text-muted d-block">In-Kind (Gamit)</small>
+                        <strong class="text-primary">₱<?= number_format($stats['total_inkind'], 2) ?></strong>
+                    </div>
+                    <?php endif; ?>
+                    <div class="px-3 py-2 rounded" style="background:#eff6ff; border:1px solid #bfdbfe;">
+                        <?php $cashBalance = $stats['total_assistance'] - $expTotal; ?>
+                        <small class="text-muted d-block">Cash Balance</small>
+                        <strong class="<?= $cashBalance >= 0 ? 'text-primary' : 'text-danger' ?>">₱<?= number_format($cashBalance, 2) ?></strong>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Title / Purpose</th>
+                                <th>Category</th>
+                                <th>Paid To</th>
+                                <th>Date</th>
+                                <th>Linked Source</th>
+                                <th class="text-end">Amount</th>
+                                <?php if ($canEdit): ?><th>Actions</th><?php endif; ?>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php foreach ($expenses as $exp): ?>
+                            <tr>
+                                <td>
+                                    <strong><?= e($exp['title']) ?></strong>
+                                    <?php if ($exp['notes']): ?>
+                                    <br><small class="text-muted"><?= e(substr($exp['notes'], 0, 60)) ?><?= strlen($exp['notes']) > 60 ? '…' : '' ?></small>
+                                    <?php endif; ?>
+                                    <?php if ($exp['reference_code']): ?>
+                                    <br><small class="text-muted"><i class="bi bi-hash"></i><?= e($exp['reference_code']) ?></small>
+                                    <?php endif; ?>
+                                </td>
+                                <td>
+                                    <?php if ($exp['category']): ?>
+                                    <span class="badge bg-secondary"><?= e($exp['category']) ?></span>
+                                    <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td><?= e($exp['paid_to'] ?: '—') ?></td>
+                                <td><?= $exp['expense_date'] ? date('M d, Y', strtotime($exp['expense_date'])) : '—' ?></td>
+                                <td>
+                                    <?php if ($exp['linked_source']): ?>
+                                    <small class="text-success"><i class="bi bi-link-45deg"></i><?= e($exp['linked_source']) ?></small>
+                                    <?php else: ?>
+                                    <span class="text-muted">—</span>
+                                    <?php endif; ?>
+                                </td>
+                                <td class="text-end text-danger fw-bold">₱<?= number_format($exp['amount'], 2) ?></td>
+                                <?php if ($canEdit): ?>
+                                <td>
+                                    <div class="d-flex gap-1">
+                                        <button class="btn btn-sm btn-outline-primary" onclick="editExpense(<?= htmlspecialchars(json_encode($exp)) ?>)" title="Edit">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                        <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteExpense(<?= $exp['id'] ?>, '<?= addslashes($exp['title']) ?>')" title="Delete">
+                                            <i class="bi bi-trash"></i>
+                                        </button>
+                                    </div>
+                                </td>
+                                <?php endif; ?>
+                            </tr>
+                            <?php endforeach; ?>
+                            <?php if (empty($expenses)): ?>
+                            <tr><td colspan="<?= $canEdit ? 7 : 6 ?>" class="text-center text-muted py-4">
+                                <i class="bi bi-receipt fs-2 d-block opacity-25 mb-2"></i>
+                                No expenses recorded yet.
+                            </td></tr>
+                            <?php endif; ?>
+                        </tbody>
+                        <?php if (!empty($expenses)): ?>
+                        <tfoot>
+                            <tr class="table-light">
+                                <td colspan="<?= $canEdit ? 5 : 4 ?>" class="text-end"><strong>TOTAL:</strong></td>
+                                <td class="text-end text-danger fw-bold">₱<?= number_format($expTotal, 2) ?></td>
+                                <?php if ($canEdit): ?><td></td><?php endif; ?>
+                            </tr>
+                        </tfoot>
+                        <?php endif; ?>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         <!-- ── Community Achievements Tab ── -->
         <div class="tab-pane fade" id="achievements" role="tabpanel">
             <div class="table-container">
@@ -1118,9 +1592,15 @@ $achievements = array_values($achievements);
 <?php if ($canEdit): ?>
 <!-- Assistance Modal -->
 <div class="modal fade" id="assistanceModal" tabindex="-1">
+<<<<<<< HEAD
     <div class="modal-dialog">
         <div class="modal-content">
             <form method="POST" enctype="multipart/form-data">
+=======
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <form method="POST" enctype="multipart/form-data" id="assistanceForm">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
                 <input type="hidden" name="action" id="assistanceAction" value="add_assistance">
                 <input type="hidden" name="id" id="assistanceId">
@@ -1130,6 +1610,7 @@ $achievements = array_values($achievements);
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
+<<<<<<< HEAD
                     <div class="mb-3">
                         <label class="form-label">Source Name</label>
                         <input type="text" name="source_name" id="assistanceSource" class="form-control" placeholder="e.g., DOLE Region IV" required>
@@ -1157,15 +1638,123 @@ $achievements = array_values($achievements);
                         <input type="text" name="reference" id="assistanceRef" class="form-control">
                     </div>
                     <div class="mb-3">
+=======
+
+                    <!-- Step 1: Choose type -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold">Anong uri ng tulong?</label>
+                        <div class="d-flex gap-3">
+                            <div class="flex-fill">
+                                <input type="radio" class="btn-check" name="donation_type" id="typeCash" value="cash" checked>
+                                <label class="btn btn-outline-success w-100 py-3" for="typeCash">
+                                    <i class="bi bi-cash-coin d-block fs-3 mb-1"></i>
+                                    <strong>Pera / Cash</strong><br>
+                                    <small class="text-muted fw-normal">Monetary assistance</small>
+                                </label>
+                            </div>
+                            <div class="flex-fill">
+                                <input type="radio" class="btn-check" name="donation_type" id="typeInKind" value="in_kind">
+                                <label class="btn btn-outline-primary w-100 py-3" for="typeInKind">
+                                    <i class="bi bi-box-seam d-block fs-3 mb-1"></i>
+                                    <strong>Gamit / In-Kind</strong><br>
+                                    <small class="text-muted fw-normal">Goods, equipment, supplies</small>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="mb-3">
+
+                    <!-- Common fields -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Source Name <span class="text-danger">*</span></label>
+                            <input type="text" name="source_name" id="assistanceSource" class="form-control" placeholder="e.g., DOLE Region IV" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Source Type</label>
+                            <select name="source_type" id="assistanceType" class="form-select">
+                                <?php foreach ($sourceTypes as $type): ?>
+                                <option value="<?= $type ?>"><?= $type ?></option>
+                                <?php endforeach; ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date Received</label>
+                            <input type="date" name="date_received" id="assistanceDate" class="form-control" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Reference/Receipt No.</label>
+                            <input type="text" name="reference" id="assistanceRef" class="form-control">
+                        </div>
+                    </div>
+
+                    <!-- Cash section -->
+                    <div id="cashSection">
+                        <div class="mb-3">
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₱</span>
+                                <input type="number" name="amount" id="assistanceAmount" class="form-control" min="0" step="0.01">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- In-Kind section -->
+                    <div id="inKindSection" style="display:none;">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label mb-0 fw-semibold">Items / Gamit na Ibinigay <span class="text-danger">*</span></label>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="addItemRow()">
+                                <i class="bi bi-plus-lg"></i> Add Item
+                            </button>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-bordered" id="itemsTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Item Name / Description</th>
+                                        <th style="width:80px;">Qty</th>
+                                        <th style="width:80px;">Unit</th>
+                                        <th style="width:110px;">Unit Value (₱)</th>
+                                        <th style="width:110px;">Subtotal</th>
+                                        <th style="width:80px;">Photo</th>
+                                        <th style="width:40px;"></th>
+                                    </tr>
+                                </thead>
+                                <tbody id="itemsBody">
+                                    <!-- rows added by JS -->
+                                </tbody>
+                                <tfoot>
+                                    <tr class="table-success">
+                                        <td colspan="4" class="text-end fw-semibold">Estimated Total Value:</td>
+                                        <td class="fw-bold text-success" id="itemsTotal">₱0.00</td>
+                                        <td colspan="2"></td>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        <small class="text-muted">Pwedeng mag-attach ng picture per item (optional).</small>
+                    </div>
+
+                    <div class="mb-3 mt-3">
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                         <label class="form-label">Notes</label>
                         <textarea name="notes" id="assistanceNotes" class="form-control" rows="2"></textarea>
                     </div>
                     <div class="mb-3">
+<<<<<<< HEAD
                         <label class="form-label">Photos / Images <small class="text-muted">(Optional — pwedeng marami, e.g., goods, tools, equipment)</small></label>
                         <input type="file" name="assistance_images[]" id="assistanceImageInput" class="form-control" accept="image/*" multiple>
                         <!-- Preview for newly selected files -->
                         <div id="assistanceNewPreviewWrap" class="d-flex flex-wrap gap-2 mt-2"></div>
                         <!-- Existing images (edit mode) -->
+=======
+                        <label class="form-label">Photos / Images <small class="text-muted">(Optional — overall photos)</small></label>
+                        <input type="file" name="assistance_images[]" id="assistanceImageInput" class="form-control" accept="image/*" multiple>
+                        <div id="assistanceNewPreviewWrap" class="d-flex flex-wrap gap-2 mt-2"></div>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                         <div id="assistanceExistingImages" class="d-flex flex-wrap gap-2 mt-2"></div>
                     </div>
                 </div>
@@ -1230,6 +1819,93 @@ $achievements = array_values($achievements);
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <script>
+<<<<<<< HEAD
+=======
+// ── Assistance: type toggle ───────────────────────────────────────
+(function () {
+    function toggleAssistanceType(val) {
+        const cashSec   = document.getElementById('cashSection');
+        const kindSec   = document.getElementById('inKindSection');
+        const amtInput  = document.getElementById('assistanceAmount');
+        if (!cashSec || !kindSec) return;
+        if (val === 'in_kind') {
+            cashSec.style.display  = 'none';
+            kindSec.style.display  = '';
+            if (amtInput) amtInput.removeAttribute('required');
+            if (document.getElementById('itemsBody').children.length === 0) addItemRow();
+        } else {
+            cashSec.style.display  = '';
+            kindSec.style.display  = 'none';
+            if (amtInput) amtInput.setAttribute('required','required');
+        }
+    }
+    document.addEventListener('change', function(e) {
+        if (e.target.name === 'donation_type') toggleAssistanceType(e.target.value);
+    });
+    window._toggleAssistanceType = toggleAssistanceType;
+})();
+
+let itemRowIndex = 0;
+function addItemRow(data) {
+    data = data || {};
+    const idx  = itemRowIndex++;
+    const body = document.getElementById('itemsBody');
+    const tr   = document.createElement('tr');
+    tr.dataset.idx = idx;
+    const photoId = 'itemPhoto_' + idx;
+    tr.innerHTML = `
+        <td><input type="text" name="item_name[]" class="form-control form-control-sm" placeholder="e.g., Bigas 50kg" value="${data.item_name||''}" required></td>
+        <td><input type="number" name="item_qty[]"   class="form-control form-control-sm item-qty"   min="0" step="0.01" value="${data.quantity||1}"     onchange="recalcItems()"></td>
+        <td><input type="text"   name="item_unit[]"  class="form-control form-control-sm"             placeholder="sacks" value="${data.unit||''}"></td>
+        <td><input type="number" name="item_value[]" class="form-control form-control-sm item-val"   min="0" step="0.01" value="${data.unit_value||0}"   onchange="recalcItems()"></td>
+        <td class="fw-bold text-end item-sub">₱${((data.quantity||1)*(data.unit_value||0)).toFixed(2)}</td>
+        <td>
+            <label class="btn btn-sm btn-outline-secondary p-1" for="${photoId}" title="Attach photo">
+                <i class="bi bi-camera"></i>
+            </label>
+            <input type="file" name="item_photo[]" id="${photoId}" class="d-none" accept="image/*" onchange="previewItemPhoto(this)">
+            <div class="item-photo-preview mt-1"></div>
+        </td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger p-1" onclick="removeItemRow(this)" title="Remove"><i class="bi bi-trash"></i></button></td>`;
+    body.appendChild(tr);
+    recalcItems();
+}
+
+function removeItemRow(btn) {
+    btn.closest('tr').remove();
+    recalcItems();
+}
+
+function recalcItems() {
+    let total = 0;
+    document.querySelectorAll('#itemsBody tr').forEach(tr => {
+        const qty = parseFloat(tr.querySelector('.item-qty')?.value) || 0;
+        const val = parseFloat(tr.querySelector('.item-val')?.value) || 0;
+        const sub = qty * val;
+        const subEl = tr.querySelector('.item-sub');
+        if (subEl) subEl.textContent = '₱' + sub.toFixed(2);
+        total += sub;
+    });
+    const totalEl = document.getElementById('itemsTotal');
+    if (totalEl) totalEl.textContent = '₱' + total.toFixed(2);
+}
+
+function previewItemPhoto(input) {
+    const preview = input.closest('td').querySelector('.item-photo-preview');
+    preview.innerHTML = '';
+    if (input.files && input.files[0]) {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = document.createElement('img');
+            img.src = e.target.result;
+            img.style.cssText = 'height:40px;width:48px;object-fit:cover;border-radius:4px;border:1px solid #dee2e6;';
+            preview.appendChild(img);
+        };
+        reader.readAsDataURL(input.files[0]);
+    }
+}
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 // Assistance functions
 function resetAssistanceForm() {
     document.getElementById('assistanceAction').value = 'add_assistance';
@@ -1244,6 +1920,14 @@ function resetAssistanceForm() {
     document.getElementById('assistanceImageInput').value = '';
     document.getElementById('assistanceNewPreviewWrap').innerHTML = '';
     document.getElementById('assistanceExistingImages').innerHTML = '';
+<<<<<<< HEAD
+=======
+    document.getElementById('itemsBody').innerHTML = '';
+    itemRowIndex = 0;
+    // Default to cash
+    document.getElementById('typeCash').checked = true;
+    window._toggleAssistanceType('cash');
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 function editAssistance(data) {
@@ -1253,11 +1937,33 @@ function editAssistance(data) {
     document.getElementById('assistanceSource').value = data.donor_name;
     document.getElementById('assistanceType').value = data.donor_type || 'DOLE';
     document.getElementById('assistanceAmount').value = data.amount;
+<<<<<<< HEAD
     document.getElementById('assistanceDate').value = data.date_received;
+=======
+    document.getElementById('assistanceDate').value = data.date_received ? data.date_received.substring(0,10) : '';
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     document.getElementById('assistanceRef').value = data.reference_code || '';
     document.getElementById('assistanceNotes').value = data.notes || '';
     document.getElementById('assistanceImageInput').value = '';
     document.getElementById('assistanceNewPreviewWrap').innerHTML = '';
+<<<<<<< HEAD
+=======
+    document.getElementById('itemsBody').innerHTML = '';
+    itemRowIndex = 0;
+
+    // Set type
+    const dType = data.donation_type || 'cash';
+    document.getElementById(dType === 'in_kind' ? 'typeInKind' : 'typeCash').checked = true;
+
+    // Populate items BEFORE calling toggle (so toggle doesn't auto-add a blank row)
+    if (dType === 'in_kind' && data.items && data.items.length > 0) {
+        data.items.forEach(item => addItemRow(item));
+    }
+
+    window._toggleAssistanceType(dType);
+
+    // (items already populated above)
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
     // Show existing images with delete button
     const existingWrap = document.getElementById('assistanceExistingImages');
@@ -1444,6 +2150,138 @@ document.addEventListener('DOMContentLoaded', function() {
 
 
 </script>
+<<<<<<< HEAD
+=======
+
+<!-- Expense Modal -->
+<div class="modal fade" id="expenseModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="POST">
+                <input type="hidden" name="csrf_token" value="<?= $csrf ?>">
+                <input type="hidden" name="action" id="expenseAction" value="add_expense">
+                <input type="hidden" name="exp_id" id="expenseId">
+                <input type="hidden" name="active_tab" value="expenses">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="expenseModalTitle">Record Expense</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Title / Purpose <span class="text-danger">*</span></label>
+                        <input type="text" name="exp_title" id="expTitle" class="form-control" placeholder="e.g., Fishing nets purchase, Transportation allowance" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Category</label>
+                            <select name="exp_category" id="expCategory" class="form-select">
+                                <option value="">-- Select --</option>
+                                <option value="Equipment">Equipment</option>
+                                <option value="Livelihood">Livelihood</option>
+                                <option value="Relief Goods">Relief Goods</option>
+                                <option value="Transportation">Transportation</option>
+                                <option value="Administrative">Administrative</option>
+                                <option value="Training">Training</option>
+                                <option value="Medical">Medical</option>
+                                <option value="Others">Others</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Date</label>
+                            <input type="date" name="exp_date" id="expDate" class="form-control">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Amount <span class="text-danger">*</span></label>
+                            <div class="input-group">
+                                <span class="input-group-text">₱</span>
+                                <input type="number" name="exp_amount" id="expAmount" class="form-control" min="0" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Reference / OR No.</label>
+                            <input type="text" name="exp_reference" id="expReference" class="form-control" placeholder="Receipt or OR number">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Paid To</label>
+                        <input type="text" name="exp_paid_to" id="expPaidTo" class="form-control" placeholder="Vendor, supplier, or person paid">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Linked to Assistance Source <small class="text-muted">(optional)</small></label>
+                        <select name="exp_donation_id" id="expDonationId" class="form-select">
+                            <option value="">-- Not linked --</option>
+                            <?php foreach ($assistance as $a): ?>
+                            <option value="<?= $a['id'] ?>"><?= e($a['donor_name']) ?> — ₱<?= number_format($a['amount'], 0) ?> (<?= $a['date_received'] ? date('M d, Y', strtotime($a['date_received'])) : '—' ?>)</option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Notes</label>
+                        <textarea name="exp_notes" id="expNotes" class="form-control" rows="2" placeholder="Additional details..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                    <button type="submit" class="btn btn-danger"><i class="bi bi-check-lg me-1"></i>Save Expense</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function resetExpenseForm() {
+    document.getElementById('expenseAction').value = 'add_expense';
+    document.getElementById('expenseId').value = '';
+    document.getElementById('expenseModalTitle').textContent = 'Record Expense';
+    document.getElementById('expTitle').value = '';
+    document.getElementById('expCategory').value = '';
+    document.getElementById('expDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('expAmount').value = '';
+    document.getElementById('expReference').value = '';
+    document.getElementById('expPaidTo').value = '';
+    document.getElementById('expDonationId').value = '';
+    document.getElementById('expNotes').value = '';
+}
+
+function editExpense(data) {
+    document.getElementById('expenseAction').value = 'edit_expense';
+    document.getElementById('expenseId').value = data.id;
+    document.getElementById('expenseModalTitle').textContent = 'Edit Expense';
+    document.getElementById('expTitle').value = data.title || '';
+    document.getElementById('expCategory').value = data.category || '';
+    document.getElementById('expDate').value = data.expense_date || '';
+    document.getElementById('expAmount').value = data.amount || '';
+    document.getElementById('expReference').value = data.reference_code || '';
+    document.getElementById('expPaidTo').value = data.paid_to || '';
+    document.getElementById('expDonationId').value = data.donation_id || '';
+    document.getElementById('expNotes').value = data.notes || '';
+    new bootstrap.Modal(document.getElementById('expenseModal')).show();
+}
+
+function confirmDeleteExpense(id, name) {
+    Swal.fire({
+        title: 'Delete this expense?',
+        text: `"${name}" will be permanently deleted.`,
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc3545',
+        cancelButtonColor: '#6c757d',
+        confirmButtonText: 'Yes, Delete'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            document.getElementById('deleteType').value = 'delete_expense';
+            document.getElementById('deleteId').value = id;
+            document.getElementById('deleteTab').value = 'expenses';
+            document.getElementById('deleteForm').submit();
+        }
+    });
+}
+</script>
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 <?php else: ?>
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 <?php endif; ?>
@@ -1467,7 +2305,11 @@ document.addEventListener('DOMContentLoaded', function() {
 (function () {
     const tab = <?= json_encode($_POST['active_tab'] ?? '') ?>;
     if (tab && tab !== 'programs') {
+<<<<<<< HEAD
         const tabEl = document.querySelector('#' + tab + '-tab');
+=======
+        const tabEl = document.querySelector('#' + CSS.escape(tab) + '-tab');
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         if (tabEl) bootstrap.Tab.getOrCreateInstance(tabEl).show();
     }
 })();

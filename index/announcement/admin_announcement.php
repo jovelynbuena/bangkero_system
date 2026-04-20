@@ -1,4 +1,4 @@
-<?php 
+﻿<?php 
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -11,7 +11,7 @@ $user_id = $_SESSION['user_id'] ?? 0;
 $role = $_SESSION['role'] ?? 'Member';
 
 $error = '';
-$success = false;
+$success = $_GET['success'] ?? false;
 
 // ✅ Handle Add or Edit Announcement
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -20,6 +20,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $content = trim($_POST['content'] ?? '');
     $category = trim($_POST['category'] ?? 'General');
     $expiry_date = trim($_POST['expiry_date'] ?? '');
+<<<<<<< HEAD
+=======
+    $expiry_date = ($expiry_date === '' || $expiry_date === '0000-00-00') ? null : $expiry_date;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     $image = null;
 
     // 🔸 Handle image upload
@@ -42,7 +46,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $desc = "Title: " . $title;
             $log_stmt->bind_param("is", $user_id, $desc);
             $log_stmt->execute();
-            $success = "added";
+            $stmt->close();
+            header('Location: admin_announcement.php?success=added');
+            exit;
         } else {
             $error = "Failed to add announcement.";
         }
@@ -64,7 +70,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $desc = "Edited Title: " . $title;
             $log_stmt->bind_param("is", $user_id, $desc);
             $log_stmt->execute();
-            $success = "edited";
+            $stmt->close();
+            header('Location: admin_announcement.php?success=edited');
+            exit;
         } else {
             $error = "Failed to update announcement.";
         }
@@ -199,10 +207,19 @@ $announcements_count = $announcements ? (int)($announcements->num_rows ?? 0) : 0
 // Helper function to determine announcement status
 function getAnnouncementStatus($expiry_date) {
 
+<<<<<<< HEAD
     if (empty($expiry_date)) return 'ongoing';
     
     $today = new DateTime();
     $expiry = new DateTime($expiry_date);
+=======
+    if (empty($expiry_date) || $expiry_date === '0000-00-00' || $expiry_date === '0000-00-00 00:00:00') return 'ongoing';
+    
+    $today = new DateTime();
+    $today->setTime(0, 0, 0); // compare by date only
+    $expiry = new DateTime($expiry_date);
+    $expiry->setTime(0, 0, 0);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     
     $diff = $today->diff($expiry);
     
@@ -250,6 +267,7 @@ if ($hour >= 5 && $hour < 12) {
 <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<link rel="stylesheet" href="../../css/admin-theme.css">
 <style>
 body { 
     font-family: 'Inter', 'Segoe UI', sans-serif; 
@@ -265,12 +283,20 @@ body {
 
 /* Page Header */
 .page-header {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     padding: 32px;
     border-radius: 20px;
     color: white;
     margin-bottom: 32px;
+<<<<<<< HEAD
     box-shadow: 0 10px 30px rgba(102, 126, 234, 0.3);
+=======
+    box-shadow: 0 10px 30px rgba(46, 134, 171, 0.30);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 .page-header h2 {
     font-size: 32px;
@@ -413,7 +439,11 @@ body {
     gap: 6px;
 }
 .btn-view {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 .btn-view:hover {
@@ -442,36 +472,62 @@ body {
 
 /* Primary Buttons with Gradient */
 .btn-primary { 
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border: none;
     font-weight: 600;
     color: white;
     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+    border: none;
+    font-weight: 600;
+    color: white;
+    box-shadow: 0 4px 16px rgba(46, 134, 171, 0.30);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .btn-primary:hover { 
     transform: translateY(-2px);
+<<<<<<< HEAD
     box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    box-shadow: 0 6px 24px rgba(46, 134, 171, 0.40);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border: none;
     color: white;
 }
 
 /* Add Button (light style with gradient) */
 .btn-light {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border: none;
     color: white;
     font-weight: 600;
     padding: 12px 28px;
     border-radius: 12px;
+<<<<<<< HEAD
     box-shadow: 0 4px 16px rgba(102, 126, 234, 0.3);
+=======
+    box-shadow: 0 4px 16px rgba(46, 134, 171, 0.30);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 .btn-light:hover {
     transform: translateY(-2px);
+<<<<<<< HEAD
     box-shadow: 0 6px 24px rgba(102, 126, 234, 0.4);
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    box-shadow: 0 6px 24px rgba(46, 134, 171, 0.40);
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 
@@ -631,7 +687,11 @@ body {
 }
 
 .btn-gradient {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%) !important;
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%) !important;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border: none !important;
     font-weight: 600 !important;
     padding: 10px 24px !important;
@@ -641,7 +701,11 @@ body {
 
 .btn-gradient:hover {
     transform: translateY(-1px) !important;
+<<<<<<< HEAD
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4) !important;
+=======
+    box-shadow: 0 4px 12px rgba(46, 134, 171, 0.40) !important;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 .btn-cancel {
@@ -746,6 +810,7 @@ body {
         </div>
     </form>
 
+<<<<<<< HEAD
     <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
         <div class="text-muted small">
             <?php
@@ -855,6 +920,208 @@ body {
             <p>Try adjusting your search filters or add a new announcement.</p>
         </div>
     <?php endif; ?>
+=======
+    <?php
+        // Separate active and expired
+        $active_rows = [];
+        $expired_rows = [];
+        if ($announcements) {
+            while ($row = $announcements->fetch_assoc()) {
+                $st = getAnnouncementStatus($row['expiry_date'] ?? '');
+                if ($st === 'expired') $expired_rows[] = $row;
+                else $active_rows[] = $row;
+            }
+        }
+        $active_count  = count($active_rows);
+        $expired_count = count($expired_rows);
+
+        $filters = [];
+        if ($search !== '') $filters[] = 'Search: "' . htmlspecialchars($search) . '"';
+        if ($filter_category !== '') $filters[] = 'Category: ' . htmlspecialchars($filter_category);
+        if ($date_from !== '' || $date_to !== '') {
+            $range  = 'Date: ';
+            $range .= $date_from !== '' ? htmlspecialchars($date_from) : 'Any';
+            $range .= ' to ';
+            $range .= $date_to !== '' ? htmlspecialchars($date_to) : 'Any';
+            $filters[] = $range;
+        }
+        if ($has_image === '1') $filters[] = 'With Image';
+        elseif ($has_image === '0') $filters[] = 'Without Image';
+    ?>
+
+    <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+        <div class="text-muted small">
+            <?php if (!empty($filters)): ?>
+                Filtered: <?= implode(' | ', $filters) ?> (<?= $announcements_count ?> results)
+            <?php else: ?>
+                Showing all <?= $announcements_count ?> announcements
+            <?php endif; ?>
+        </div>
+    </div>
+
+    <!-- Tabs -->
+    <ul class="nav nav-tabs mb-3" id="announcementTabs" role="tablist">
+        <li class="nav-item" role="presentation">
+            <button class="nav-link active" id="active-tab" data-bs-toggle="tab" data-bs-target="#activeTab" type="button" role="tab">
+                <i class="bi bi-megaphone me-1"></i> Active
+                <span class="badge bg-success ms-1"><?= $active_count ?></span>
+            </button>
+        </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="expired-tab" data-bs-toggle="tab" data-bs-target="#expiredTab" type="button" role="tab">
+                <i class="bi bi-clock-history me-1"></i> Expired
+                <span class="badge bg-secondary ms-1"><?= $expired_count ?></span>
+            </button>
+        </li>
+    </ul>
+
+    <div class="tab-content" id="announcementTabContent">
+
+        <!-- ACTIVE TAB -->
+        <div class="tab-pane fade show active" id="activeTab" role="tabpanel">
+            <?php if (!empty($active_rows)): ?>
+                <?php foreach ($active_rows as $row):
+                    $status   = getAnnouncementStatus($row['expiry_date'] ?? '');
+                    $category = $row['category'] ?? 'General';
+                    $icon     = getCategoryIcon($category);
+                    $postedBy = $row['posted_by'] ?? 'Admin';
+                ?>
+                <div class="announcement-item" data-id="<?= $row['id'] ?>">
+                    <span class="status-badge status-<?= $status ?>">
+                        <?= $status === 'upcoming' ? 'Expiring Soon' : 'Active' ?>
+                    </span>
+                    <div class="announcement-header">
+                        <span class="announcement-icon"><i class="bi <?= $icon ?>"></i></span>
+                        <div>
+                            <h6><?= htmlspecialchars($row['title']) ?></h6>
+                            <div class="announcement-meta">
+                                <span><i class="bi bi-person-circle"></i> Posted by: <?= htmlspecialchars($postedBy) ?></span>
+                                <span><i class="bi bi-calendar3"></i> <?= date("F j, Y", strtotime($row['date_posted'])) ?></span>
+                                <?php if (!empty($row['expiry_date'])): ?>
+                                    <span><i class="bi bi-clock-history"></i> Expires: <?= date("M j, Y", strtotime($row['expiry_date'])) ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="announcement-content truncated" id="content-<?= $row['id'] ?>">
+                        <?= nl2br(htmlspecialchars($row['content'])) ?>
+                    </div>
+                    <span class="read-more-link" onclick="toggleContent(<?= $row['id'] ?>)">
+                        <span id="toggle-text-<?= $row['id'] ?>">Read more...</span>
+                    </span>
+                    <div class="announcement-divider"></div>
+                    <div class="action-buttons">
+                        <a href="#" class="btn-action btn-view view-btn"
+                           title="View" data-bs-placement="top"
+                           data-title="<?= htmlspecialchars($row['title']) ?>"
+                           data-content="<?= htmlspecialchars($row['content']) ?>"
+                           data-image="<?= htmlspecialchars($row['image'] ?? '') ?>"
+                           data-category="<?= htmlspecialchars($category) ?>"
+                           data-posted-by="<?= htmlspecialchars($postedBy) ?>"
+                           data-date="<?= date("F j, Y", strtotime($row['date_posted'])) ?>"
+                           data-expiry="<?= !empty($row['expiry_date']) ? date("F j, Y", strtotime($row['expiry_date'])) : 'N/A' ?>"
+                           data-bs-toggle="modal" data-bs-target="#viewAnnouncementModal">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="#" class="btn-action btn-edit edit-btn"
+                           title="Edit" data-bs-placement="top"
+                           data-id="<?= $row['id'] ?>"
+                           data-title="<?= htmlspecialchars($row['title']) ?>"
+                           data-content="<?= htmlspecialchars($row['content']) ?>"
+                           data-category="<?= htmlspecialchars($category) ?>"
+                           data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>"
+                           data-bs-toggle="modal" data-bs-target="#editAnnouncementModal">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                        <a href="#" class="btn-action btn-archive archive-announcement"
+                           title="Archive" data-bs-placement="top"
+                           data-id="<?= intval($row['id']) ?>">
+                            <i class="bi bi-archive"></i>
+                        </a>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-state">
+                    <i class="bi bi-megaphone"></i>
+                    <h5>No active announcements</h5>
+                    <p>All announcements have expired or none have been added yet.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+
+        <!-- EXPIRED TAB -->
+        <div class="tab-pane fade" id="expiredTab" role="tabpanel">
+            <?php if (!empty($expired_rows)): ?>
+                <?php foreach ($expired_rows as $row):
+                    $category = $row['category'] ?? 'General';
+                    $icon     = getCategoryIcon($category);
+                    $postedBy = $row['posted_by'] ?? 'Admin';
+                ?>
+                <div class="announcement-item expired" data-id="<?= $row['id'] ?>">
+                    <span class="status-badge status-expired">Expired</span>
+                    <div class="announcement-header">
+                        <span class="announcement-icon"><i class="bi <?= $icon ?>"></i></span>
+                        <div>
+                            <h6><?= htmlspecialchars($row['title']) ?></h6>
+                            <div class="announcement-meta">
+                                <span><i class="bi bi-person-circle"></i> Posted by: <?= htmlspecialchars($postedBy) ?></span>
+                                <span><i class="bi bi-calendar3"></i> <?= date("F j, Y", strtotime($row['date_posted'])) ?></span>
+                                <?php if (!empty($row['expiry_date'])): ?>
+                                    <span><i class="bi bi-clock-history"></i> Expired: <?= date("M j, Y", strtotime($row['expiry_date'])) ?></span>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="announcement-content truncated" id="content-<?= $row['id'] ?>">
+                        <?= nl2br(htmlspecialchars($row['content'])) ?>
+                    </div>
+                    <span class="read-more-link" onclick="toggleContent(<?= $row['id'] ?>)">
+                        <span id="toggle-text-<?= $row['id'] ?>">Read more...</span>
+                    </span>
+                    <div class="announcement-divider"></div>
+                    <div class="action-buttons">
+                        <a href="#" class="btn-action btn-view view-btn"
+                           title="View" data-bs-placement="top"
+                           data-title="<?= htmlspecialchars($row['title']) ?>"
+                           data-content="<?= htmlspecialchars($row['content']) ?>"
+                           data-image="<?= htmlspecialchars($row['image'] ?? '') ?>"
+                           data-category="<?= htmlspecialchars($category) ?>"
+                           data-posted-by="<?= htmlspecialchars($postedBy) ?>"
+                           data-date="<?= date("F j, Y", strtotime($row['date_posted'])) ?>"
+                           data-expiry="<?= !empty($row['expiry_date']) ? date("F j, Y", strtotime($row['expiry_date'])) : 'N/A' ?>"
+                           data-bs-toggle="modal" data-bs-target="#viewAnnouncementModal">
+                            <i class="bi bi-eye"></i>
+                        </a>
+                        <a href="#" class="btn-action btn-edit edit-btn"
+                           title="Edit" data-bs-placement="top"
+                           data-id="<?= $row['id'] ?>"
+                           data-title="<?= htmlspecialchars($row['title']) ?>"
+                           data-content="<?= htmlspecialchars($row['content']) ?>"
+                           data-category="<?= htmlspecialchars($category) ?>"
+                           data-expiry="<?= htmlspecialchars($row['expiry_date'] ?? '') ?>"
+                           data-bs-toggle="modal" data-bs-target="#editAnnouncementModal">
+                            <i class="bi bi-pencil-square"></i>
+                        </a>
+                        <a href="#" class="btn-action btn-archive archive-announcement"
+                           title="Archive" data-bs-placement="top"
+                           data-id="<?= intval($row['id']) ?>">
+                            <i class="bi bi-archive"></i>
+                        </a>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php else: ?>
+                <div class="empty-state">
+                    <i class="bi bi-clock-history"></i>
+                    <h5>No expired announcements</h5>
+                    <p>All current announcements are still active.</p>
+                </div>
+            <?php endif; ?>
+        </div>
+
+    </div>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 </div>
 
 <!-- Add Announcement Modal -->
@@ -1046,6 +1313,7 @@ function toggleContent(id) {
     }
 }
 
+<<<<<<< HEAD
 // Edit modal fill
 document.querySelectorAll('.edit-btn').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1073,10 +1341,43 @@ document.querySelectorAll('.view-btn').forEach(btn => {
         const imgEl = document.getElementById('view_image');
         if (btn.dataset.image) {
             imgEl.src = '../../uploads/' + btn.dataset.image;
+=======
+// Use event delegation on document for all dynamic buttons
+document.addEventListener('click', function(e) {
+
+    // Edit button
+    const editBtn = e.target.closest('.edit-btn');
+    if (editBtn) {
+        document.getElementById('edit_id').value = editBtn.dataset.id;
+        document.getElementById('edit_title').value = editBtn.dataset.title;
+        document.getElementById('edit_content').value = editBtn.dataset.content;
+        document.getElementById('edit_category').value = editBtn.dataset.category || 'General';
+        document.getElementById('edit_expiry').value = editBtn.dataset.expiry || '';
+        return;
+    }
+
+    // View button
+    const viewBtn = e.target.closest('.view-btn');
+    if (viewBtn) {
+        document.getElementById('view_title').textContent = viewBtn.dataset.title;
+        document.getElementById('view_content').textContent = viewBtn.dataset.content;
+        document.getElementById('view_posted_by').textContent = viewBtn.dataset.postedBy || 'Admin';
+        document.getElementById('view_date').textContent = viewBtn.dataset.date;
+        document.getElementById('view_expiry').textContent = viewBtn.dataset.expiry;
+
+        const categoryBadge = document.getElementById('view_category_badge');
+        categoryBadge.textContent = viewBtn.dataset.category || 'General';
+
+        const imgContainer = document.getElementById('view_image_container');
+        const imgEl = document.getElementById('view_image');
+        if (viewBtn.dataset.image) {
+            imgEl.src = '../../uploads/' + viewBtn.dataset.image;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             imgContainer.classList.remove('d-none');
         } else {
             imgContainer.classList.add('d-none');
         }
+<<<<<<< HEAD
     });
 });
 
@@ -1095,13 +1396,33 @@ document.querySelectorAll('.archive-announcement').forEach(btn => {
             return;
         }
         
+=======
+        return;
+    }
+
+    // Archive button
+    const archiveBtn = e.target.closest('.archive-announcement');
+    if (archiveBtn) {
+        e.preventDefault();
+        const id = archiveBtn.dataset.id;
+
+        if (!id || parseInt(id) <= 0) {
+            Swal.fire({ icon: 'error', title: 'Error', text: 'Invalid announcement ID.' });
+            return;
+        }
+
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         Swal.fire({
             title: 'Archive this announcement?',
             html: '<p style="margin-bottom: 8px;">It will be moved to the archive.</p><p style="color: #6c757d; font-size: 0.9rem; margin: 0;">You can restore it later from the archived announcements page.</p>',
             icon: 'warning',
             iconColor: '#f59e0b',
             showCancelButton: true,
+<<<<<<< HEAD
             confirmButtonColor: '#667eea',
+=======
+            confirmButtonColor: '#2E86AB',
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             cancelButtonColor: '#6c757d',
             confirmButtonText: '<i class="bi bi-archive me-1"></i> Yes, archive it!',
             cancelButtonText: '<i class="bi bi-x-circle me-1"></i> Cancel',
@@ -1111,17 +1432,28 @@ document.querySelectorAll('.archive-announcement').forEach(btn => {
                 cancelButton: 'btn-cancel',
                 popup: 'swal-custom'
             },
+<<<<<<< HEAD
             backdrop: `rgba(0,0,0,0.4)`
         }).then(res => {
             if (res.isConfirmed) {
                 // Keep current filters/search when archiving
+=======
+            backdrop: 'rgba(0,0,0,0.4)'
+        }).then(res => {
+            if (res.isConfirmed) {
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 const params = new URLSearchParams(window.location.search);
                 params.set('archive', id);
                 window.location.href = 'admin_announcement.php?' + params.toString();
             }
         });
+<<<<<<< HEAD
 
     });
+=======
+        return;
+    }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 });
 
 // Export dropdown manual toggle (no dependency on Bootstrap JS)
@@ -1204,7 +1536,11 @@ Swal.fire({
     icon: 'error', 
     title: 'Error', 
     text: <?php echo json_encode($error); ?>,
+<<<<<<< HEAD
     confirmButtonColor: '#667eea',
+=======
+    confirmButtonColor: '#2E86AB',
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     customClass: {
         confirmButton: 'btn-gradient'
     }

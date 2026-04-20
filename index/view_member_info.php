@@ -128,12 +128,13 @@ if ($member && !empty($member['image']) && file_exists($serverPath . $member['im
     </div>
 
     <div class="doc-header">
-        <img src="images/logo1.png" alt="Association Logo">
+        <?php require_once __DIR__ . '/../config/logo_helper.php'; ?>
+        <img src="<?= $assocLogoUrl ?>" alt="Association Logo">
         <div class="titles">
             <h2 class="h4 mb-1">Member Information Sheet</h2>
-            <small>Bangkero & Fishermen Association</small>
+            <small><?= htmlspecialchars($assocName) ?></small>
             <div class="address mt-1">
-                <small class="text-muted">Barangay Baretto, Olongapo City</small>
+                <small class="text-muted"><?= htmlspecialchars($assocAddress) ?></small>
             </div>
         </div>
     </div>

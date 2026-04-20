@@ -128,7 +128,8 @@ body { font-family: "Segoe UI", sans-serif; background: #f4f6f9; }
 <div class="form-sheet">
 
     <div class="form-header">
-        <img src="../images/logo1.png" alt="Association Logo">
+        <?php require_once __DIR__ . '/../../config/logo_helper.php'; ?>
+        <img src="<?= $assocLogoUrl ?>" alt="Association Logo">
         <div class="titles">
             <h2>Add Member Form</h2>
             <small>Bangkero & Fishermen Association</small>

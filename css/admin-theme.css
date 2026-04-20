@@ -1,0 +1,197 @@
+/* =============================================================
+   BANGKERO & FISHERMEN ASSOCIATION — Admin Theme (Ocean Blue)
+   Shared CSS file. Link this in every admin page <head>.
+   Colors:
+     Primary Dark  : #1B4F72
+     Primary Mid   : #2E86AB
+     Primary Light : #A8DADC
+     Accent Mid    : #1a6d8a
+   ============================================================= */
+
+/* ── CSS Variables ─────────────────────────────────────────── */
+:root {
+    --adm-dark:    #1B4F72;
+    --adm-mid:     #2E86AB;
+    --adm-light:   #A8DADC;
+    --adm-accent:  #1a6d8a;
+    --adm-shadow:  rgba(46, 134, 171, 0.28);
+    --adm-grad:    linear-gradient(135deg, #1B4F72 0%, #2E86AB 100%);
+    --adm-grad-r:  linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+}
+
+/* ── Page Header / Banner ──────────────────────────────────── */
+.page-header,
+.admin-page-header {
+    background: var(--adm-grad);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px var(--adm-shadow);
+    color: white;
+}
+
+/* ── Greeting Banner (admin.php specific, kept here for ref) ─ */
+.greeting-banner {
+    background: linear-gradient(135deg, #1B4F72 0%, #2E86AB 55%, #A8DADC 100%);
+    color: white;
+    padding: 32px 36px;
+    border-radius: 18px;
+    box-shadow: 0 8px 28px var(--adm-shadow);
+    margin-bottom: 2rem;
+}
+
+/* ── Buttons ───────────────────────────────────────────────── */
+.btn-primary {
+    background-color: var(--adm-mid) !important;
+    border-color: var(--adm-mid) !important;
+    color: white !important;
+    font-weight: 600;
+}
+.btn-primary:hover,
+.btn-primary:focus {
+    background-color: var(--adm-accent) !important;
+    border-color: var(--adm-accent) !important;
+    color: white !important;
+}
+
+/* Generic gradient action button (used in page headers as "Add" btn) */
+.btn-adm,
+.btn-adm-grad {
+    background: var(--adm-grad) !important;
+    border: none !important;
+    color: white !important;
+    font-weight: 600;
+    box-shadow: 0 4px 16px var(--adm-shadow);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    border-radius: 10px;
+}
+.btn-adm:hover,
+.btn-adm-grad:hover {
+    background: var(--adm-grad-r) !important;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 24px rgba(46, 134, 171, 0.40);
+    color: white !important;
+}
+
+/* ── Form Focus Ring ───────────────────────────────────────── */
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--adm-mid) !important;
+    box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.12) !important;
+    outline: none;
+}
+
+/* ── Modal Header ──────────────────────────────────────────── */
+.modal-header.adm-modal-header,
+.modal .modal-header {
+    background: var(--adm-grad);
+    color: white;
+    border-radius: 18px 18px 0 0;
+    border: none;
+}
+
+/* ── Nav Tabs (active tab) ─────────────────────────────────── */
+.nav-tabs .nav-link.active {
+    background: var(--adm-mid) !important;
+    color: white !important;
+    border-color: var(--adm-mid) !important;
+}
+
+/* ── Stats / Stat Cards ────────────────────────────────────── */
+.stat-card,
+.stats-card {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Table Container ───────────────────────────────────────── */
+.table-container {
+    background: white;
+    border-radius: 12px;
+    padding: 24px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* ── Accent Link / Icon Color ──────────────────────────────── */
+.adm-accent-color { color: var(--adm-mid); }
+
+/* ── Focus visible outline ─────────────────────────────────── */
+:focus-visible { outline: 2px solid var(--adm-mid); outline-offset: 2px; }
+
+/* ── Alert / Notification strip ───────────────────────────── */
+.adm-alert-strip {
+    border-left: 5px solid var(--adm-mid);
+    animation: slideInDown 0.3s ease-out;
+    background: #eaf4f8;
+    border-radius: 0 8px 8px 0;
+    padding: 12px 16px;
+    margin-bottom: 16px;
+}
+
+/* ── Upload drop zone ──────────────────────────────────────── */
+.adm-dropzone {
+    border: 3px dashed var(--adm-mid);
+    border-radius: 12px;
+    padding: 48px;
+    text-align: center;
+    color: var(--adm-mid);
+    cursor: pointer;
+    transition: background 0.2s;
+}
+.adm-dropzone:hover {
+    background: rgba(46, 134, 171, 0.06);
+}
+.adm-dropzone i {
+    font-size: 2.5rem;
+    color: var(--adm-mid);
+    margin-bottom: 12px;
+}
+
+/* ── Progress Bar ──────────────────────────────────────────── */
+.progress-bar.adm-progress {
+    background: var(--adm-grad);
+}
+
+/* ── Checkbox / Radio accent ───────────────────────────────── */
+.form-check-input:checked {
+    background-color: var(--adm-mid);
+    border-color: var(--adm-mid);
+}
+
+/* ── Scrollbar (webkit) ────────────────────────────────────── */
+::-webkit-scrollbar-thumb {
+    background: var(--adm-mid);
+    border-radius: 4px;
+}
+::-webkit-scrollbar-track { background: #f1f5f9; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+
+/* ── SweetAlert2 confirm button ────────────────────────────── */
+/* Used via JS: confirmButtonColor: '#2E86AB' (set in each page's JS) */
+
+/* ── DataTables override ───────────────────────────────────── */
+.dataTables_wrapper .dataTables_paginate .paginate_button.current,
+.dataTables_wrapper .dataTables_paginate .paginate_button.current:hover {
+    background: var(--adm-grad) !important;
+    color: white !important;
+    border-color: var(--adm-mid) !important;
+    border-radius: 6px;
+}
+.dataTables_wrapper .dataTables_paginate .paginate_button:hover {
+    background: var(--adm-light) !important;
+    color: var(--adm-dark) !important;
+    border-color: var(--adm-light) !important;
+    border-radius: 6px;
+}
+
+/* ── Animations ────────────────────────────────────────────── */
+@keyframes slideInDown {
+    from { transform: translateY(-10px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}
+@keyframes fadeInDown {
+    from { transform: translateY(-20px); opacity: 0; }
+    to   { transform: translateY(0);     opacity: 1; }
+}

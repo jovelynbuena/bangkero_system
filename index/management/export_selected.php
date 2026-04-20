@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 /**
  * EXPORT SELECTED MEMBERS
  * Exports only the selected members to CSV/PDF
@@ -68,8 +72,14 @@ if ($format === 'csv') {
 
 // PDF Export (basic implementation)
 if ($format === 'pdf') {
+<<<<<<< HEAD
     $logoPath = '../../images/logo1.png';
     $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
+=======
+    require_once __DIR__ . '/../../config/logo_helper.php';
+    $logoPath = $assocLogoPath;
+    $logoData = $assocLogoB64;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     
     echo '<!DOCTYPE html>
     <html>
@@ -84,7 +94,11 @@ if ($format === 'pdf') {
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
             th { background-color: #0e7490; color: white; }
+<<<<<<< HEAD
             h1 { color: #667eea; }
+=======
+            h1 { color: #2E86AB; }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         </style>
     </head>
     <body>
@@ -92,7 +106,11 @@ if ($format === 'pdf') {
             ' . ($logoData ? '<img src="data:image/png;base64,' . $logoData . '" class="logo" alt="Logo">' : '') . '
             <div class="header-text">
                 <h1>Selected Members Export</h1>
+<<<<<<< HEAD
                 <p>Bankero and Fisherman Association</p>
+=======
+                <p>' . htmlspecialchars($assocName) . '</p>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 <p>Generated: ' . date('F d, Y h:i A') . '</p>
             </div>
         </div>';

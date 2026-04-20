@@ -57,8 +57,14 @@ if ($totalMembers > 0) {
 }
 
 $generatedAt = date('F d, Y h:i A');
+<<<<<<< HEAD
 $systemName  = 'Bankero and Fisherman Association';
 $logoPath    = __DIR__ . '/images/logo1.png';
+=======
+require_once __DIR__ . '/../config/logo_helper.php';
+$systemName  = $assocName;
+$logoPath = $assocLogoPath;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
 // -------------------------
 // PDF helper functions (no external library)

@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 // Transparency Archive Page
 session_start();
 
@@ -257,11 +261,20 @@ $totalArchived = count($archivedAssistance) + count($archivedAchievements);
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<<<<<<< HEAD
     <style>
         body { background: #f8f9fa; }
         .main-content { padding: 24px; }
         .page-header {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
+        body { background: #f8f9fa; }
+        .main-content { padding: 24px; }
+        .page-header {
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             padding: 30px;
             border-radius: 16px;

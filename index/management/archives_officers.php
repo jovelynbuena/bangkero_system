@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 if (empty($_SESSION['username'])) {
@@ -117,6 +117,7 @@ $result = $conn->query($sql);
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+<link rel="stylesheet" href="../../css/admin-theme.css">
 <style>
 body { 
     font-family: 'Inter', sans-serif; 
@@ -130,11 +131,19 @@ body {
 }
 
 .page-header {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 16px;
     padding: 30px;
     margin-bottom: 30px;
     box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 
@@ -171,8 +180,13 @@ body {
 }
 
 .search-box input:focus {
+<<<<<<< HEAD
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+=======
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.10);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     outline: none;
 }
 
@@ -181,7 +195,11 @@ body {
     right: 8px;
     top: 50%;
     transform: translateY(-50%);
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border: none;
     border-radius: 8px;
     padding: 8px 20px;
@@ -191,7 +209,11 @@ body {
 
 .search-box button:hover {
     transform: translateY(-50%) scale(1.05);
+<<<<<<< HEAD
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+=======
+    box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 .table-container {
@@ -280,7 +302,11 @@ body {
     align-items: center;
     justify-content: space-between;
     margin-bottom: 24px;
+<<<<<<< HEAD
     border-left: 5px solid #667eea;
+=======
+    border-left: 5px solid #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     animation: slideInDown 0.3s ease-out;
 }
 

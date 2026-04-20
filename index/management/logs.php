@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -71,7 +71,8 @@ while ($row = $actions_result->fetch_assoc()) {
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 
-    <style>
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
         body {
             font-family: 'Inter', 'Segoe UI', sans-serif;
             background: #f9fafb;
@@ -86,11 +87,19 @@ while ($row = $actions_result->fetch_assoc()) {
         
         /* Page Header */
         .page-header {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             padding: 32px;
             border-radius: 20px;
             margin-bottom: 32px;
             box-shadow: 0 8px 32px rgba(102, 126, 234, 0.25);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+            padding: 32px;
+            border-radius: 20px;
+            margin-bottom: 32px;
+            box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
         }
         
@@ -132,12 +141,21 @@ while ($row = $actions_result->fetch_assoc()) {
         }
         
         .form-control:focus, .form-select:focus {
+<<<<<<< HEAD
             border-color: #667eea;
             box-shadow: 0 0 0 4px rgba(102, 126, 234, 0.1);
         }
         
         .btn-primary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            border-color: #2E86AB;
+            box-shadow: 0 0 0 4px rgba(46, 134, 171, 0.10);
+        }
+        
+        .btn-primary {
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             border: none;
             padding: 12px 24px;
             border-radius: 10px;
@@ -190,7 +208,11 @@ while ($row = $actions_result->fetch_assoc()) {
             width: 36px;
             height: 36px;
             border-radius: 50%;
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             display: inline-flex;
             align-items: center;

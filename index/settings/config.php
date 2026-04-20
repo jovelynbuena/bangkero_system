@@ -1,6 +1,7 @@
-<?php
+﻿<?php
 session_start();
 require_once('../../config/db_connect.php');
+require_once('../../config/path.php');
 
 // Only allow admin
 $role = strtolower($_SESSION['role'] ?? 'guest');
@@ -155,11 +156,19 @@ body {
 }
 
 .page-header {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     border-radius: 16px;
     padding: 30px;
     margin-bottom: 30px;
     box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+    border-radius: 16px;
+    padding: 30px;
+    margin-bottom: 30px;
+    box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     color: white;
 }
 
@@ -207,18 +216,30 @@ body {
     width: 160px;
     height: 160px;
     margin: 0 auto 24px;
+<<<<<<< HEAD
     border: 4px dashed #667eea;
+=======
+    border: 4px dashed #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border-radius: 16px;
     display: flex;
     align-items: center;
     justify-content: center;
+<<<<<<< HEAD
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.05) 0%, rgba(118, 75, 162, 0.05) 100%);
+=======
+    background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.05) 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     overflow: hidden;
     transition: all 0.3s ease;
 }
 
 .logo-preview-container:hover {
+<<<<<<< HEAD
     border-color: #764ba2;
+=======
+    border-color: #1B4F72;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     transform: scale(1.02);
 }
 
@@ -236,7 +257,11 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+<<<<<<< HEAD
     background: rgba(102, 126, 234, 0.9);
+=======
+    background: rgba(46, 134, 171, 0.20);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -267,7 +292,11 @@ body {
 
 .form-label i {
     margin-right: 8px;
+<<<<<<< HEAD
     color: #667eea;
+=======
+    color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 .form-control, .form-select {
@@ -278,8 +307,13 @@ body {
 }
 
 .form-control:focus, .form-select:focus {
+<<<<<<< HEAD
     border-color: #667eea;
     box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+=======
+    border-color: #2E86AB;
+    box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.20);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     outline: none;
 }
 
@@ -289,7 +323,11 @@ textarea.form-control {
 }
 
 .save-btn {
+<<<<<<< HEAD
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+    background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border: none;
     border-radius: 10px;
     padding: 14px 32px;
@@ -301,19 +339,32 @@ textarea.form-control {
 
 .save-btn:hover {
     transform: translateY(-2px);
+<<<<<<< HEAD
     box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
 }
 
 .info-box {
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
     border-left: 4px solid #667eea;
+=======
+    box-shadow: 0 6px 20px rgba(46, 134, 171, 0.20);
+}
+
+.info-box {
+    background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-left: 4px solid #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     border-radius: 8px;
     padding: 16px;
     margin-bottom: 24px;
 }
 
 .info-box i {
+<<<<<<< HEAD
     color: #667eea;
+=======
+    color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     margin-right: 10px;
 }
 
@@ -335,17 +386,30 @@ textarea.form-control {
     justify-content: center;
     padding: 12px 20px;
     background: white;
+<<<<<<< HEAD
     border: 2px dashed #667eea;
     border-radius: 10px;
     cursor: pointer;
     transition: all 0.3s ease;
     color: #667eea;
+=======
+    border: 2px dashed #2E86AB;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     font-weight: 500;
 }
 
 .file-upload-label:hover {
+<<<<<<< HEAD
     background: linear-gradient(135deg, rgba(102, 126, 234, 0.1) 0%, rgba(118, 75, 162, 0.1) 100%);
     border-color: #764ba2;
+=======
+    background: linear-gradient(135deg, rgba(46, 134, 171, 0.20) 0%, rgba(118, 75, 162, 0.1) 100%);
+    border-color: #1B4F72;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 }
 
 .file-upload-label i {
@@ -396,7 +460,11 @@ textarea.form-control {
                 <!-- Logo Preview -->
                 <div class="text-center mb-4">
                     <div class="logo-preview-container" onclick="document.getElementById('logoInput').click()">
+<<<<<<< HEAD
                         <img src="<?= !empty($config['assoc_logo']) ? BASE_URL.'uploads/config/'.htmlspecialchars($config['assoc_logo']) : BASE_URL.'images/logo1.png' ?>" 
+=======
+                        <img src="<?= !empty($config['assoc_logo']) ? BASE_URL.'uploads/config/'.htmlspecialchars($config['assoc_logo']).'?v='.time() : BASE_URL.'../images/logo1.png' ?>" 
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                              alt="Association Logo" 
                              class="hero-logo"
                              id="logoPreview">
@@ -476,6 +544,10 @@ textarea.form-control {
                               placeholder="Enter complete address including barangay, city, province"><?= htmlspecialchars($assocAddress) ?></textarea>
                 </div>
 
+<<<<<<< HEAD
+=======
+                <?php /* AUTO BACKUP SETTINGS - temporarily hidden
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 <hr class="my-4">
 
                 <!-- Auto Backup Settings -->
@@ -502,6 +574,10 @@ textarea.form-control {
                     </div>
                     <small class="text-muted d-block mt-1">You still control the actual schedule via Windows Task Scheduler. This switch only allows or blocks auto backups.</small>
                 </div>
+<<<<<<< HEAD
+=======
+                */ ?>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
                 <!-- Submit Button -->
                 <div class="text-end">
@@ -557,7 +633,11 @@ Swal.fire({
     icon: 'error',
     title: 'Error!',
     text: '<?= htmlspecialchars($error) ?>',
+<<<<<<< HEAD
     confirmButtonColor: '#667eea'
+=======
+    confirmButtonColor: '#2E86AB'
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 });
 </script>
 <?php endif; ?>

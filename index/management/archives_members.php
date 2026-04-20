@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 session_start();
 
 if (empty($_SESSION['username'])) {
@@ -202,7 +202,12 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
 
+<<<<<<< HEAD
     <style>
+=======
+    <link rel="stylesheet" href="../../css/admin-theme.css">
+<style>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         * {
             margin: 0;
             padding: 0;
@@ -222,11 +227,19 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
         }
 
         .page-header {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 16px;
             padding: 30px;
             margin-bottom: 30px;
             box-shadow: 0 8px 32px rgba(102, 126, 234, 0.2);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+            border-radius: 16px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 8px 32px rgba(46, 134, 171, 0.20);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
         }
 
@@ -277,7 +290,11 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
         }
 
         .stat-card.purple .icon {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
         }
 
@@ -321,8 +338,13 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
         }
 
         .search-box input:focus {
+<<<<<<< HEAD
             border-color: #667eea;
             box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+=======
+            border-color: #2E86AB;
+            box-shadow: 0 0 0 3px rgba(46, 134, 171, 0.10);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             outline: none;
         }
 
@@ -331,7 +353,11 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             right: 8px;
             top: 50%;
             transform: translateY(-50%);
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             border: none;
             border-radius: 8px;
             padding: 8px 16px;
@@ -341,7 +367,11 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
 
         .search-box button:hover {
             transform: translateY(-50%) scale(1.05);
+<<<<<<< HEAD
             box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+=======
+            box-shadow: 0 4px 12px rgba(46, 134, 171, 0.30);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         }
 
         .table-container {
@@ -434,7 +464,11 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             align-items: center;
             justify-content: space-between;
             margin-bottom: 24px;
+<<<<<<< HEAD
             border-left: 5px solid #667eea;
+=======
+            border-left: 5px solid #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             animation: slideInDown 0.3s ease-out;
         }
 
@@ -458,21 +492,35 @@ $thisMonth = $thisMonthQuery->fetch_assoc()['total'];
             border: 2px solid #e5e7eb;
             border-radius: 8px;
             padding: 8px 16px;
+<<<<<<< HEAD
             color: #667eea;
+=======
+            color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             font-weight: 500;
             transition: all 0.3s ease;
         }
 
         .page-link:hover {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-color: #667eea;
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+            border-color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             transform: translateY(-2px);
         }
 
         .page-item.active .page-link {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-color: #667eea;
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+            border-color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         }
 
         .badge {
@@ -891,7 +939,11 @@ function confirmDeletePerm(id, name) {
         icon: 'error',
         title: 'Restore Failed',
         text: '<?php echo htmlspecialchars($_GET['error']); ?>',
+<<<<<<< HEAD
         confirmButtonColor: '#667eea'
+=======
+        confirmButtonColor: '#2E86AB'
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     });
 <?php endif; ?>
 </script>

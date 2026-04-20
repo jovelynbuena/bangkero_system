@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 // Transparency PDF Export
 session_start();
 
@@ -34,6 +38,7 @@ $sql .= " ORDER BY d.date_received DESC";
 
 $res = $conn->query($sql);
 while ($res && $row = $res->fetch_assoc()) {
+<<<<<<< HEAD
     $transactions[] = $row;
 }
 
@@ -47,6 +52,50 @@ $assocName = 'Bankero and Fishermen Association';
 $generatedDate = date('F d, Y h:i A');
 $logoPath = '../../images/logo1.png';
 $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
+=======
+    $row['items'] = [];
+    $transactions[$row['id']] = $row;
+}
+
+// Fetch in-kind items
+if (!empty($transactions)) {
+    $conn->query("CREATE TABLE IF NOT EXISTS transparency_donation_items (
+        id INT PRIMARY KEY AUTO_INCREMENT,
+        donation_id INT NOT NULL,
+        item_name VARCHAR(255) NOT NULL,
+        quantity DECIMAL(10,2) NOT NULL DEFAULT 1,
+        unit VARCHAR(50) DEFAULT NULL,
+        unit_value DECIMAL(15,2) NOT NULL DEFAULT 0,
+        total_value DECIMAL(15,2) GENERATED ALWAYS AS (quantity * unit_value) STORED,
+        photo VARCHAR(500) DEFAULT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        INDEX idx_donation_id (donation_id)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+    $txnIds = implode(',', array_keys($transactions));
+    $itemRes = $conn->query("SELECT * FROM transparency_donation_items WHERE donation_id IN ($txnIds) ORDER BY donation_id, id");
+    while ($itemRes && $ir = $itemRes->fetch_assoc()) {
+        $transactions[$ir['donation_id']]['items'][] = $ir;
+    }
+}
+$transactions = array_values($transactions);
+
+// Calculate totals (cash and in-kind separately)
+$cashTotal   = 0;
+$inkindTotal = 0;
+foreach ($transactions as $t) {
+    if (($t['donation_type'] ?? 'cash') === 'in_kind') {
+        $inkindTotal += $t['amount'];
+    } else {
+        $cashTotal += $t['amount'];
+    }
+}
+$total = $cashTotal + $inkindTotal;
+
+require_once __DIR__ . '/../../config/logo_helper.php';
+$logoPath = $assocLogoPath;
+$logoData = $assocLogoB64;
+$generatedDate = date('F d, Y h:i A');
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 
 // Simple HTML to PDF-like output
 ?>
@@ -66,7 +115,11 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
         .header {
             display: flex;
             align-items: center;
+<<<<<<< HEAD
             border-bottom: 2px solid #667eea;
+=======
+            border-bottom: 2px solid #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             padding-bottom: 15px;
             margin-bottom: 20px;
         }
@@ -81,7 +134,11 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
         }
         .header-text h2 {
             margin: 0 0 5px 0;
+<<<<<<< HEAD
             color: #667eea;
+=======
+            color: #2E86AB;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         }
         .header-text p {
             margin: 0;
@@ -109,7 +166,11 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
             text-align: left;
         }
         th {
+<<<<<<< HEAD
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+=======
+            background: linear-gradient(135deg, #2E86AB 0%, #1B4F72 100%);
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             font-weight: bold;
         }
@@ -121,13 +182,39 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
             font-family: monospace;
         }
         .total-row {
+<<<<<<< HEAD
             background: #667eea !important;
+=======
+            background: #2E86AB !important;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             color: white;
             font-weight: bold;
         }
         .total-row td {
+<<<<<<< HEAD
             border-color: #667eea;
         }
+=======
+            border-color: #2E86AB;
+        }
+        .inkind-row {
+            background: #eff6ff !important;
+        }
+        .inkind-items {
+            font-size: 10px;
+            color: #444;
+            padding-left: 8px;
+            margin: 2px 0 0 0;
+            list-style: none;
+        }
+        .inkind-items li::before {
+            content: "→ ";
+            color: #2E86AB;
+        }
+        .badge-cash   { background:#198754; color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; }
+        .badge-inkind { background:#0d6efd; color:#fff; padding:2px 6px; border-radius:4px; font-size:10px; }
+        .subtotal-row td { background:#f1f5ff; font-weight:600; }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
         .footer {
             text-align: center;
             margin-top: 30px;
@@ -175,15 +262,24 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
             <tr>
                 <th style="width: 10%;">Date</th>
                 <th style="width: 20%;">Source Name</th>
+<<<<<<< HEAD
                 <th style="width: 12%;">Type</th>
                 <th style="width: 23%;">Program</th>
                 <th style="width: 15%;">Reference</th>
                 <th style="width: 12%; text-align: right;">Amount</th>
+=======
+                <th style="width: 10%;">Source Type</th>
+                <th style="width: 10%;">Don. Type</th>
+                <th style="width: 20%;">Program</th>
+                <th style="width: 12%;">Reference</th>
+                <th style="width: 18%; text-align: right;">Amount / Items</th>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             </tr>
         </thead>
         <tbody>
             <?php if (empty($transactions)): ?>
             <tr>
+<<<<<<< HEAD
                 <td colspan="6" style="text-align: center; padding: 20px;">No records found for the selected period</td>
             </tr>
             <?php else: ?>
@@ -200,6 +296,53 @@ $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath))
                 <tr class="total-row">
                     <td colspan="5" style="text-align: right;">TOTAL ASSISTANCE RECEIVED:</td>
                     <td class="amount">₱<?= number_format($total, 2) ?></td>
+=======
+                <td colspan="7" style="text-align: center; padding: 20px;">No records found for the selected period</td>
+            </tr>
+            <?php else: ?>
+                <?php foreach ($transactions as $t): 
+                    $isInKind = ($t['donation_type'] ?? 'cash') === 'in_kind';
+                ?>
+                <tr class="<?= $isInKind ? 'inkind-row' : '' ?>">
+                    <td><?= $t['date_received'] ? date('M d, Y', strtotime($t['date_received'])) : '-' ?></td>
+                    <td><?= htmlspecialchars($t['donor_name']) ?></td>
+                    <td><?= htmlspecialchars($t['donor_type']) ?></td>
+                    <td>
+                        <?php if ($isInKind): ?>
+                        <span class="badge-inkind">Gamit/In-Kind</span>
+                        <?php else: ?>
+                        <span class="badge-cash">Pera/Cash</span>
+                        <?php endif; ?>
+                    </td>
+                    <td><?= htmlspecialchars($t['program_name'] ?: 'Not linked') ?></td>
+                    <td><?= htmlspecialchars($t['reference_code'] ?: '-') ?></td>
+                    <td class="amount">
+                        ₱<?= number_format($t['amount'], 2) ?>
+                        <?php if ($isInKind && !empty($t['items'])): ?>
+                        <ul class="inkind-items">
+                            <?php foreach ($t['items'] as $it): ?>
+                            <li><?= htmlspecialchars($it['item_name']) ?> × <?= number_format((float)$it['quantity'], 0) ?> <?= htmlspecialchars($it['unit']) ?> @ ₱<?= number_format((float)$it['unit_value'], 2) ?></li>
+                            <?php endforeach; ?>
+                        </ul>
+                        <?php endif; ?>
+                    </td>
+                </tr>
+                <?php endforeach; ?>
+
+                <?php if ($inkindTotal > 0): ?>
+                <tr class="subtotal-row">
+                    <td colspan="6" style="text-align: right;">Cash Assistance Subtotal:</td>
+                    <td class="amount">₱<?= number_format($cashTotal, 2) ?></td>
+                </tr>
+                <tr class="subtotal-row">
+                    <td colspan="6" style="text-align: right;">In-Kind (Gamit) Subtotal:</td>
+                    <td class="amount">₱<?= number_format($inkindTotal, 2) ?></td>
+                </tr>
+                <?php endif; ?>
+                <tr class="total-row">
+                    <td colspan="6" style="text-align: right;">CASH ASSISTANCE TOTAL:</td>
+                    <td class="amount">₱<?= number_format($cashTotal, 2) ?></td>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 </tr>
             <?php endif; ?>
         </tbody>

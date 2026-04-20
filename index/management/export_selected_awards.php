@@ -1,4 +1,8 @@
+<<<<<<< HEAD
 <?php
+=======
+﻿<?php
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
 session_start();
 if (empty($_SESSION['username'])) {
     header('location: ../login.php');
@@ -108,8 +112,14 @@ if ($format === 'csv') {
 }
 
 if ($format === 'pdf' || $format === 'print') {
+<<<<<<< HEAD
     $logoPath = '../../images/logo1.png';
     $logoData = file_exists($logoPath) ? base64_encode(file_get_contents($logoPath)) : '';
+=======
+    require_once __DIR__ . '/../../config/logo_helper.php';
+    $logoPath = $assocLogoPath;
+    $logoData = $assocLogoB64;
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
     
     echo '<!DOCTYPE html>
     <html lang="en">
@@ -118,15 +128,25 @@ if ($format === 'pdf' || $format === 'print') {
         <title>Awards &amp; Recognition Record</title>
         <style>
             body { font-family: "Inter", sans-serif; padding: 40px; color: #333; }
+<<<<<<< HEAD
             .header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #667eea; padding-bottom: 15px; }
+=======
+            .header { display: flex; align-items: center; margin-bottom: 20px; border-bottom: 3px solid #2E86AB; padding-bottom: 15px; }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             .logo { width: 70px; height: 70px; margin-right: 15px; object-fit: contain; }
             .header-text h1 { margin: 0; color: #1f2937; font-size: 22px; }
             .header-text p { margin: 3px 0; color: #6b7280; font-size: 12px; }
             table { width: 100%; border-collapse: collapse; margin-top: 20px; }
             th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: left; font-size: 14px; }
+<<<<<<< HEAD
             th { background-color: #667eea; color: white; text-transform: uppercase; letter-spacing: 0.5px; }
             tr:nth-child(even) { background-color: #f8fafc; }
             h1 { color: #667eea; margin-bottom: 5px; }
+=======
+            th { background-color: #2E86AB; color: white; text-transform: uppercase; letter-spacing: 0.5px; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            h1 { color: #2E86AB; margin-bottom: 5px; }
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             .meta { color: #64748b; font-size: 13px; margin-bottom: 20px; }
         </style>
     </head>
@@ -135,7 +155,11 @@ if ($format === 'pdf' || $format === 'print') {
             ' . ($logoData ? '<img src="data:image/png;base64,' . $logoData . '" class="logo" alt="Logo">' : '') . '
             <div class="header-text">
                 <h1>Awards &amp; Recognition Record</h1>
+<<<<<<< HEAD
                 <p>Bankero and Fishermen Association</p>
+=======
+                <p>' . htmlspecialchars($assocName) . '</p>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
                 <p>Generated: ' . date('F d, Y h:i A') . '</p>
             </div>
         </div>
@@ -176,6 +200,7 @@ if ($format === 'excel') {
     
     echo '<table border="1">
             <tr>
+<<<<<<< HEAD
                 <th style="background-color: #667eea; color: white;">ID</th>
                 <th style="background-color: #667eea; color: white;">Award Title</th>
                 <th style="background-color: #667eea; color: white;">Awarding Body</th>
@@ -183,6 +208,15 @@ if ($format === 'excel') {
                 <th style="background-color: #667eea; color: white;">Year</th>
                 <th style="background-color: #667eea; color: white;">Date Received</th>
                 <th style="background-color: #667eea; color: white;">Description</th>
+=======
+                <th style="background-color: #2E86AB; color: white;">ID</th>
+                <th style="background-color: #2E86AB; color: white;">Award Title</th>
+                <th style="background-color: #2E86AB; color: white;">Awarding Body</th>
+                <th style="background-color: #2E86AB; color: white;">Category</th>
+                <th style="background-color: #2E86AB; color: white;">Year</th>
+                <th style="background-color: #2E86AB; color: white;">Date Received</th>
+                <th style="background-color: #2E86AB; color: white;">Description</th>
+>>>>>>> 5443c480df76631363d13229f44bcb08f4d23560
             </tr>';
             
     while ($row = $result->fetch_assoc()) {
