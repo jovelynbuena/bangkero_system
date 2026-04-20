@@ -1482,7 +1482,7 @@ $achievements = array_values($achievements);
 
                     <!-- Step 1: Choose type -->
                     <div class="mb-4">
-                        <label class="form-label fw-semibold">What type of assistance are you recording?</label>
+                        <label class="form-label fw-semibold">Anong uri ng tulong?</label>
                         <div class="d-flex gap-3">
                             <div class="flex-fill">
                                 <input type="radio" class="btn-check" name="donation_type" id="typeCash" value="cash" checked>

@@ -10,7 +10,7 @@ if ($role !== 'admin') {
     exit;
 }
 
-include(__DIR__ . '/../../../../config/db_connect.php');
+include(__DIR__ . '/../../../config/db_connect.php');
 
 $count = 0;
 $accounts = [];

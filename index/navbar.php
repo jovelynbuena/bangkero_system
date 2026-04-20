@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -1092,7 +1092,8 @@ body.sidebar-open { overflow: hidden; }
 
   <!-- Pending Approval Bell (Admin only) -->
   <?php if (strtolower($role) === 'admin'): ?>
-  <div class="ms-auto me-2 position-relative" id="pendingBellWrap" style="display:flex;align-items:center;">
+  <div class="ms-auto d-flex align-items-center gap-2 flex-shrink-0">
+  <div class="me-1 position-relative" id="pendingBellWrap" style="display:flex;align-items:center;flex-shrink:0;">
     <button type="button" id="pendingBellBtn"
       title="Pending Approvals"
       style="background:none;border:none;cursor:pointer;position:relative;padding:6px 10px;border-radius:10px;transition:background 0.2s;"
@@ -1116,11 +1117,9 @@ body.sidebar-open { overflow: hidden; }
         <div style="padding:20px;text-align:center;color:#94a3b8;font-size:0.88rem;">Loading...</div>
       </div>
     </div>
-  </div>
-  <?php endif; ?>
-
+  </div><!-- end pendingBellWrap -->
   <!-- User pill -->
-  <div class="navbar-user-pill <?= strtolower($role) !== 'admin' ? 'ms-auto' : '' ?>">
+  <div class="navbar-user-pill">
     <?php if ($navbarAvatar): ?>
       <img src="/bangkero_system/index/uploads/avatars/<?= htmlspecialchars($navbarAvatar) ?>"
            class="user-avatar-img"
@@ -1139,6 +1138,29 @@ body.sidebar-open { overflow: hidden; }
       <div class="u-role"><?= htmlspecialchars($roleDisplay) ?></div>
     </div>
   </div>
+  </div><!-- end ms-auto wrapper (admin) -->
+  <?php else: ?>
+  <!-- User pill (non-admin) -->
+  <div class="navbar-user-pill ms-auto">
+    <?php if ($navbarAvatar): ?>
+      <img src="/bangkero_system/index/uploads/avatars/<?= htmlspecialchars($navbarAvatar) ?>"
+           class="user-avatar-img"
+           alt="<?= htmlspecialchars($firstName) ?>"
+           onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+      <div class="user-avatar" style="display:none; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1rem;">
+        <?= strtoupper(substr($firstName, 0, 1)) ?>
+      </div>
+    <?php else: ?>
+      <div class="user-avatar" style="display:flex; align-items:center; justify-content:center; color:#fff; font-weight:700; font-size:1rem;">
+        <?= strtoupper(substr($firstName, 0, 1)) ?>
+      </div>
+    <?php endif; ?>
+    <div class="user-info-text">
+      <div class="u-name"><?= htmlspecialchars($firstName) ?></div>
+      <div class="u-role"><?= htmlspecialchars($roleDisplay) ?></div>
+    </div>
+  </div>
+  <?php endif; ?>
 </nav>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
@@ -1337,9 +1359,7 @@ body.sidebar-open { overflow: hidden; }
 
   document.addEventListener('click', function(e) {
     var wrap = document.getElementById('pendingBellWrap');
-    if (wrap && !wrap.contains(e.target)) {
-      panel.style.display = 'none';
-    }
+    if (wrap && !wrap.contains(e.target)) panel.style.display = 'none';
   });
 
   fetchPending();

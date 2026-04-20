@@ -147,35 +147,6 @@ $gallery_result = $conn->query($gallery_sql);
     .modal .carousel-item::before {
       display: none;
     }
-
-    /* Visible carousel control arrows */
-    .modal .carousel-control-prev,
-    .modal .carousel-control-next {
-      width: 56px;
-      height: 56px;
-      top: 50%;
-      transform: translateY(-50%);
-      background: rgba(46, 134, 171, 0.85);
-      border-radius: 50%;
-      opacity: 1;
-      margin: 0 12px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.35);
-      transition: background 0.2s, transform 0.2s;
-    }
-    .modal .carousel-control-prev:hover,
-    .modal .carousel-control-next:hover {
-      background: rgba(27, 79, 114, 0.95);
-      transform: translateY(-50%) scale(1.1);
-    }
-    .modal .carousel-control-prev-icon,
-    .modal .carousel-control-next-icon {
-      width: 28px;
-      height: 28px;
-      filter: brightness(0) invert(1);
-    }
   </style>
 </head>
 <body>

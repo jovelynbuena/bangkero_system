@@ -739,10 +739,11 @@ if (isset($_POST['delete_file'])) {
     if (!backup_check_csrf()) {
         $error_message = 'Invalid session token. Please reload the page and try again.';
     } else {
-    $filename = $_POST['delete_file'];
+    $filename = basename($_POST['delete_file']);
     $filepath = $backupDir . $filename;
-    
-    if (file_exists($filepath) && pathinfo($filepath, PATHINFO_EXTENSION) === 'sql') {
+    $ext = strtolower(pathinfo($filepath, PATHINFO_EXTENSION));
+
+    if (file_exists($filepath) && ($ext === 'sql' || $ext === 'zip')) {
 
         unlink($filepath);
         
@@ -2318,6 +2319,8 @@ function confirmSystemBackup() {
                             confirmButtonText: 'OK',
                             customClass: { confirmButton: 'btn btn-primary px-4 py-2' },
                             buttonsStyling: false
+                        }).then(() => {
+                            window.location.reload();
                         });
                     } else {
                         Swal.fire({
